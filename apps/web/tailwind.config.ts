@@ -20,8 +20,19 @@ export default {
         accent2: '#9b7bff',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['ui-monospace', 'JetBrains Mono', 'Consolas', 'monospace'],
+        sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+      },
+      keyframes: {
+        pulse2: { '0%,100%': { opacity: '1' }, '50%': { opacity: '0.3' } },
+        fadeUp: {
+          '0%': { opacity: '0', transform: 'translateY(6px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        pulse2: 'pulse2 2s ease-in-out infinite',
+        fadeUp: 'fadeUp 0.4s ease both',
       },
     },
   },
