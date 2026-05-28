@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { getToken } from '../lib/tokenStore'
 
 export function VerifyMagicLink() {
   const { completeLink } = useAuth()
@@ -12,6 +13,11 @@ export function VerifyMagicLink() {
   useEffect(() => {
     if (ran.current) return // guard StrictMode double-invoke (token is single-use)
     ran.current = true
+    if (getToken()) {
+      // Already signed in (e.g. back/forward to a consumed link) — don't re-consume.
+      navigate('/', { replace: true })
+      return
+    }
     const token = params.get('token')
     if (!token) {
       setError('Missing token.')
