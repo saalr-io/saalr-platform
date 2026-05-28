@@ -82,7 +82,7 @@ function Invoke-WebTask1 {
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
@@ -200,23 +200,7 @@ export default { plugins: { tailwindcss: {}, autoprefixer: {} } }
     "noUnusedParameters": true,
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
-}
-'@
-
-    Set-FileContent 'apps/web/tsconfig.node.json' @'
-{
-  "compilerOptions": {
-    "composite": true,
-    "skipLibCheck": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "noEmit": true
-  },
-  "include": ["vite.config.ts"]
+  "include": ["src", "vite.config.ts"]
 }
 '@
 

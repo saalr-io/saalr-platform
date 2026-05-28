@@ -24,3 +24,9 @@ Thumbs.db
 
 # Orchestrator logs
 logs/
+
+# Node / web
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
