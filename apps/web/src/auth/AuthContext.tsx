@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { devLogin, getMe, type Me } from '../lib/api'
+import { devLogin, getMe, requestMagicLink, verifyMagicLink, type Me } from '../lib/api'
 import { getToken, setToken } from '../lib/tokenStore'
 
 export type AuthStatus = 'loading' | 'authed' | 'anon'
@@ -15,6 +15,8 @@ export interface AuthContextValue {
   status: AuthStatus
   me: Me | null
   login: (email?: string) => Promise<void>
+  requestLink: (email: string) => Promise<{ dev_link?: string }>
+  completeLink: (token: string) => Promise<void>
   logout: () => void
 }
 
@@ -59,6 +61,19 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
     [refresh],
   )
 
+  const requestLink = useCallback(async (email: string) => {
+    return await requestMagicLink(email)
+  }, [])
+
+  const completeLink = useCallback(
+    async (token: string) => {
+      const sessionToken = await verifyMagicLink(token)
+      setToken(sessionToken)
+      await refresh()
+    },
+    [refresh],
+  )
+
   const logout = useCallback(() => {
     setToken(null)
     setMe(null)
@@ -66,7 +81,9 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ status, me, login, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ status, me, login, requestLink, completeLink, logout }}>
+      {children}
+    </AuthContext.Provider>
   )
 }
 

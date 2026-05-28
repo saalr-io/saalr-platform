@@ -13,7 +13,14 @@ beforeEach(() => mockUseAuth.mockReset())
 
 describe('RequireAuth', () => {
   it('redirects anonymous users to /login', () => {
-    mockUseAuth.mockReturnValue({ status: 'anon', me: null, login: vi.fn(), logout: vi.fn() })
+    mockUseAuth.mockReturnValue({
+      status: 'anon',
+      me: null,
+      login: vi.fn(),
+      requestLink: vi.fn(),
+      completeLink: vi.fn(),
+      logout: vi.fn(),
+    })
     render(
       <MemoryRouter initialEntries={['/secret']}>
         <Routes>
@@ -34,7 +41,14 @@ describe('RequireAuth', () => {
   })
 
   it('renders children when authed', () => {
-    mockUseAuth.mockReturnValue({ status: 'authed', me: null, login: vi.fn(), logout: vi.fn() })
+    mockUseAuth.mockReturnValue({
+      status: 'authed',
+      me: null,
+      login: vi.fn(),
+      requestLink: vi.fn(),
+      completeLink: vi.fn(),
+      logout: vi.fn(),
+    })
     render(
       <MemoryRouter>
         <RequireAuth>

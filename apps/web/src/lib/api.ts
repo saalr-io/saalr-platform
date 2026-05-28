@@ -51,3 +51,25 @@ export async function devLogin(email: string): Promise<string> {
   const data = (await res.json()) as { token: string }
   return data.token
 }
+
+export async function requestMagicLink(
+  email: string,
+): Promise<{ sent: boolean; dev_link?: string }> {
+  const res = await fetch(`${BASE}/auth/magic/request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) throw new Error(`magic request failed: ${res.status}`)
+  return (await res.json()) as { sent: boolean; dev_link?: string }
+}
+
+export async function verifyMagicLink(token: string): Promise<string> {
+  const res = await fetch(`${BASE}/auth/magic/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) throw new Error(`magic verify failed: ${res.status}`)
+  return ((await res.json()) as { token: string }).token
+}
