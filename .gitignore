@@ -1,0 +1,23 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# uv
+# (uv.lock IS committed; nothing to ignore here)
+
+# Tooling / local state
+.omc/
+
+# OS / editor
+.DS_Store
+Thumbs.db
