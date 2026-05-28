@@ -8,6 +8,7 @@ import { AppShell } from './app/AppShell'
 import { SystemStatus } from './pages/SystemStatus'
 import { PlaceholderPage } from './components/PlaceholderPage'
 import { Login } from './pages/Login'
+import { VerifyMagicLink } from './pages/VerifyMagicLink'
 import './index.css'
 
 const queryClient = new QueryClient()
@@ -19,6 +20,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/auth/verify" element={<VerifyMagicLink />} />
             <Route
               element={
                 <RequireAuth>
