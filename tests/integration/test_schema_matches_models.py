@@ -26,8 +26,8 @@ async def test_db_tables_match_models(admin_conn):
     assert model_tables <= db_tables
 
 
-async def test_representative_columns_match(admin_conn):
-    for table in ("tenants", "orders"):
+async def test_all_model_columns_match_db(admin_conn):
+    for table in Base.metadata.tables.keys():
         rows = await admin_conn.execute(
             text(
                 "SELECT column_name FROM information_schema.columns "

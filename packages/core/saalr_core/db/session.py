@@ -23,7 +23,13 @@ def create_sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]
 async def tenant_session(
     sessionmaker: async_sessionmaker[AsyncSession], tenant_id: UUID | str
 ) -> AsyncIterator[AsyncSession]:
-    """Open a transaction with app.current_tenant set for RLS, then yield the session."""
+    """Open a transaction with app.current_tenant set for RLS, then yield the session.
+
+    The GUC is set transaction-local (set_config third arg = true), so it is cleared
+    automatically at COMMIT/ROLLBACK and can never leak to the next user of a pooled
+    connection. All work must therefore happen inside this single transaction; do not
+    open a nested session.begin() on the yielded session.
+    """
     async with sessionmaker() as session:
         async with session.begin():
             await session.execute(

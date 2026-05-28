@@ -23,7 +23,7 @@ TENANT_TABLES = [
 
 @pytest.fixture(scope="session", autouse=True)
 def _migrate() -> None:
-    """Apply all migrations once before the suite (idempotent)."""
+    """Apply all migrations once before the integration suite (idempotent)."""
     subprocess.run(
         ["uv", "run", "alembic", "upgrade", "head"],
         check=True,

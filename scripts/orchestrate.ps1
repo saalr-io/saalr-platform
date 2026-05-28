@@ -199,7 +199,13 @@ def create_sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]
 async def tenant_session(
     sessionmaker: async_sessionmaker[AsyncSession], tenant_id: UUID | str
 ) -> AsyncIterator[AsyncSession]:
-    """Open a transaction with app.current_tenant set for RLS, then yield the session."""
+    """Open a transaction with app.current_tenant set for RLS, then yield the session.
+
+    The GUC is set transaction-local (set_config third arg = true), so it is cleared
+    automatically at COMMIT/ROLLBACK and can never leak to the next user of a pooled
+    connection. All work must therefore happen inside this single transaction; do not
+    open a nested session.begin() on the yielded session.
+    """
     async with sessionmaker() as session:
         async with session.begin():
             await session.execute(
@@ -701,7 +707,7 @@ def downgrade() -> None:
 
     Set-FileContent 'infra/migrations/versions/.gitkeep' ''
 
-    Set-FileContent 'tests/conftest.py' @'
+    Set-FileContent 'tests/integration/conftest.py' @'
 import os
 import subprocess
 
@@ -727,7 +733,7 @@ TENANT_TABLES = [
 
 @pytest.fixture(scope="session", autouse=True)
 def _migrate() -> None:
-    """Apply all migrations once before the suite (idempotent)."""
+    """Apply all migrations once before the integration suite (idempotent)."""
     subprocess.run(
         ["uv", "run", "alembic", "upgrade", "head"],
         check=True,
@@ -805,7 +811,7 @@ async def test_hypertables_exist(admin_conn):
         'infra/migrations/env.py',
         'infra/migrations/script.py.mako',
         'infra/migrations/versions/.gitkeep',
-        'tests/conftest.py',
+        'tests/integration/conftest.py',
         'tests/integration/test_migrations.py'
     )
 }
@@ -1181,8 +1187,12 @@ async def test_tenant_cannot_read_other_tenants_rows(app_sessionmaker):
     # Tenant B sees only its own row, even with an unfiltered SELECT.
     async with tenant_session(app_sessionmaker, tenant_b) as s:
         rows = (await s.execute(text("SELECT tenant_id FROM tenants"))).all()
-        ids = {r[0] for r in rows}
-        assert ids == {tenant_b}
+        assert {r[0] for r in rows} == {tenant_b}
+
+    # Allow-direction: tenant A still sees its own row (policy isn't blocking everyone).
+    async with tenant_session(app_sessionmaker, tenant_a) as s:
+        rows = (await s.execute(text("SELECT tenant_id FROM tenants"))).all()
+        assert {r[0] for r in rows} == {tenant_a}
 
 
 async def test_with_check_blocks_cross_tenant_insert(app_sessionmaker):
@@ -1223,8 +1233,8 @@ async def test_db_tables_match_models(admin_conn):
     assert model_tables <= db_tables
 
 
-async def test_representative_columns_match(admin_conn):
-    for table in ("tenants", "orders"):
+async def test_all_model_columns_match_db(admin_conn):
+    for table in Base.metadata.tables.keys():
         rows = await admin_conn.execute(
             text(
                 "SELECT column_name FROM information_schema.columns "
