@@ -13,7 +13,6 @@ members = [
     "saalr-ml-models",
     "saalr-ml-worker",
     "saalr-research-agent",
-    "saalr-web",
 ]
 
 [[package]]
@@ -530,11 +529,6 @@ source = { editable = "apps/ml-worker" }
 name = "saalr-research-agent"
 version = "0.0.0"
 source = { editable = "apps/research-agent" }
-
-[[package]]
-name = "saalr-web"
-version = "0.0.0"
-source = { editable = "apps/web" }
 
 [[package]]
 name = "sqlalchemy"
