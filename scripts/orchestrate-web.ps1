@@ -40,7 +40,7 @@ function Invoke-Native {
     if ($LASTEXITCODE -ne 0) { throw "Command failed ($LASTEXITCODE): $($cmd -join ' ')" }
 }
 
-function Pnpm { Invoke-Native pnpm -C $WebDir @args }
+function Invoke-Pnpm { Invoke-Native pnpm -C $WebDir @args }
 
 function Set-FileContent {
     param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][AllowEmptyString()][string]$Content)
@@ -305,8 +305,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 '@
 
-    Pnpm install
-    Pnpm build
+    Invoke-Pnpm install
+    Invoke-Pnpm build
     Invoke-Commit 'feat(web): scaffold Vite React+TS+Tailwind app (excluded from uv workspace)' @(
         'pyproject.toml', 'uv.lock', 'apps/web'
     )
@@ -363,7 +363,7 @@ describe('getHealth', () => {
 })
 '@
 
-    Pnpm test:run src/lib/api.test.ts
+    Invoke-Pnpm test:run src/lib/api.test.ts
     Invoke-Commit 'feat(web): typed health API client' @('apps/web/src/lib/api.ts', 'apps/web/src/lib/api.test.ts')
 }
 
@@ -385,7 +385,7 @@ export function useHealth() {
 }
 '@
 
-    Pnpm typecheck
+    Invoke-Pnpm typecheck
     Invoke-Commit 'feat(web): useHealth query hook (5s poll)' @('apps/web/src/hooks/useHealth.ts')
 }
 
@@ -448,7 +448,7 @@ describe('StatusDot', () => {
 })
 '@
 
-    Pnpm test:run src/components/StatusDot.test.tsx
+    Invoke-Pnpm test:run src/components/StatusDot.test.tsx
     Invoke-Commit 'feat(web): StatusDot + Panel primitives' @(
         'apps/web/src/components/StatusDot.tsx', 'apps/web/src/components/Panel.tsx', 'apps/web/src/components/StatusDot.test.tsx'
     )
@@ -582,7 +582,7 @@ export function AppShell() {
 }
 '@
 
-    Pnpm typecheck
+    Invoke-Pnpm typecheck
     Invoke-Commit 'feat(web): app shell (Topbar/Sidebar/AppShell) + PlaceholderPage' @(
         'apps/web/src/components/Sidebar.tsx', 'apps/web/src/components/Topbar.tsx',
         'apps/web/src/components/PlaceholderPage.tsx', 'apps/web/src/app/AppShell.tsx'
@@ -714,9 +714,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 '@
 
-    Pnpm test:run
-    Pnpm typecheck
-    Pnpm build
+    Invoke-Pnpm test:run
+    Invoke-Pnpm typecheck
+    Invoke-Pnpm build
     Invoke-Commit 'feat(web): router wiring + live System Status page' @(
         'apps/web/src/pages/SystemStatus.tsx', 'apps/web/src/pages/SystemStatus.test.tsx', 'apps/web/src/main.tsx'
     )
@@ -762,11 +762,11 @@ function Invoke-WebTask7 {
 # =============================================================================
 function Invoke-WebTask8 {
     Write-Step 'Web Task 8: final gate (install, typecheck, lint, test, build)'
-    Pnpm install
-    Pnpm typecheck
-    Pnpm lint
-    Pnpm test:run
-    Pnpm build
+    Invoke-Pnpm install
+    Invoke-Pnpm typecheck
+    Invoke-Pnpm lint
+    Invoke-Pnpm test:run
+    Invoke-Pnpm build
     Write-Host "`nFrontend foundation built: typecheck + lint + tests + build all green." -ForegroundColor Green
 }
 
