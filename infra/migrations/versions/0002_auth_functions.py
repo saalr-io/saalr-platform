@@ -13,6 +13,11 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # PROD REQUIREMENT: these SECURITY DEFINER functions must be owned by a role that
+    # BYPASSES RLS (a superuser in local dev, or a dedicated BYPASSRLS role in prod).
+    # The owner reads memberships/tenants which are FORCE ROW LEVEL SECURITY; if the
+    # owner is a non-BYPASSRLS role, auth_resolve_principal returns 0 rows and every
+    # login fails. Pin ownership (ALTER FUNCTION ... OWNER TO <bypassrls_role>) at deploy.
     op.execute("""
         CREATE OR REPLACE FUNCTION auth_resolve_principal(p_clerk_user_id text, p_email citext)
         RETURNS TABLE (user_id uuid, tenant_id uuid, tier text)
@@ -23,6 +28,7 @@ def upgrade() -> None:
           LEFT JOIN subscriptions s ON s.tenant_id = m.tenant_id AND s.status = 'active'
           WHERE (p_clerk_user_id IS NOT NULL AND u.clerk_user_id = p_clerk_user_id)
              OR (p_clerk_user_id IS NULL AND u.email = p_email)
+          ORDER BY m.created_at
           LIMIT 1;
         $func$;
 

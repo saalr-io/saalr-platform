@@ -79,7 +79,8 @@ class ClerkAuthProvider(AuthProvider):
                 options={"verify_aud": False, "require": ["exp", "sub"]},
             )
         except Exception as exc:  # noqa: BLE001 - any verification failure is a 401
-            raise AuthError(f"invalid clerk token: {exc}") from exc
+            # Keep the cause for server-side logging; do not leak details to the client.
+            raise AuthError("invalid clerk token") from exc
         sub = claims.get("sub")
         email = claims.get("email")
         if not sub or not email:
@@ -88,8 +89,14 @@ class ClerkAuthProvider(AuthProvider):
 
 
 def get_auth_provider(settings: Settings) -> AuthProvider:
+    # Fail closed: an unknown/typo'd value must NOT silently fall through to the
+    # trust-any-email DevAuthProvider (that would be tenant impersonation in prod).
     if settings.auth_provider == "clerk":
         if not settings.clerk_jwks_url:
             raise RuntimeError("CLERK_JWKS_URL is required when AUTH_PROVIDER=clerk")
         return ClerkAuthProvider(settings.clerk_jwks_url, settings.clerk_issuer)
-    return DevAuthProvider()
+    if settings.auth_provider == "dev":
+        return DevAuthProvider()
+    raise RuntimeError(
+        f"unknown AUTH_PROVIDER={settings.auth_provider!r}; expected 'dev' or 'clerk'"
+    )

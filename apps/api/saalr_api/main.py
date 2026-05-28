@@ -51,6 +51,11 @@ def create_app() -> FastAPI:
                 {"t": str(principal.tenant_id)},
             )
         ).first()
+        if row is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": "tenant not found"}},
+            )
         return {
             "user": {"id": str(principal.user_id), "email": principal.email},
             "tenant": {
