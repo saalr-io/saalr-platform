@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     clerk_jwks_url: str | None = None
     clerk_issuer: str | None = None
 
+    # Magic link (dev)
+    redis_url: str = "redis://localhost:6379/0"
+    magic_link_ttl_seconds: int = 900
+    web_base_url: str = "http://localhost:5174"
+
 
 def get_settings() -> Settings:
     return Settings()
