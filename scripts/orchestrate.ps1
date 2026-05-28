@@ -61,14 +61,16 @@ function Write-Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 
 function Invoke-Native {
     # Run a native exe and throw on non-zero exit.
-    param(
-        [Parameter(Mandatory)][string]$Exe,
-        [Parameter(ValueFromRemainingArguments = $true)][string[]]$Rest
-    )
-    Write-Host "> $Exe $($Rest -join ' ')" -ForegroundColor DarkGray
-    & $Exe @Rest
+    # Simple function (no param block) on purpose: dash-prefixed flags like
+    # -d / -v / -T are collected verbatim into $args instead of being parsed
+    # as parameters of this function.
+    $cmd = @($args)
+    Write-Host "> $($cmd -join ' ')" -ForegroundColor DarkGray
+    $exe = $cmd[0]
+    $rest = @($cmd | Select-Object -Skip 1)
+    & $exe @rest
     if ($LASTEXITCODE -ne 0) {
-        throw "Command failed (exit $LASTEXITCODE): $Exe $($Rest -join ' ')"
+        throw "Command failed (exit $LASTEXITCODE): $($cmd -join ' ')"
     }
 }
 
@@ -1417,26 +1419,15 @@ function Invoke-Task10 {
 }
 
 # --- Dispatch ----------------------------------------------------------------
-$Tasks = [ordered]@{
-    3  = ${function:Invoke-Task3}
-    4  = ${function:Invoke-Task4}
-    5  = ${function:Invoke-Task5}
-    6  = ${function:Invoke-Task6}
-    7  = ${function:Invoke-Task7}
-    8  = ${function:Invoke-Task8}
-    9  = ${function:Invoke-Task9}
-    10 = ${function:Invoke-Task10}
-}
-
 Start-Transcript -Path $LogFile | Out-Null
 $failed = $false
 try {
     Write-Host "Saalr orchestrator: tasks $FromTask..$ToTask  (log: $LogFile)" -ForegroundColor Green
     Write-Host "  ADMIN_DATABASE_URL = $($env:ADMIN_DATABASE_URL)"
     Write-Host "  APP_DATABASE_URL   = $($env:APP_DATABASE_URL)"
-    foreach ($n in $Tasks.Keys) {
-        if ($n -lt $FromTask -or $n -gt $ToTask) { continue }
-        & $Tasks[$n]
+    for ($n = $FromTask; $n -le $ToTask; $n++) {
+        if ($n -lt 3 -or $n -gt 10) { continue }
+        & "Invoke-Task$n"
     }
     Write-Host "`nAll requested tasks ($FromTask..$ToTask) completed successfully." -ForegroundColor Green
 }
