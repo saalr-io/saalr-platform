@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: saalr
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d saalr"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ADMIN_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/saalr
+      APP_DATABASE_URL: postgresql+asyncpg://saalr_app:saalr_app@localhost:5432/saalr
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Sync deps (pins Python 3.12 via .python-version)
+        run: uv sync
+      - name: Apply migrations
+        run: uv run alembic upgrade head
+      - name: Lint
+        run: uv run ruff check .
+      - name: Test
+        run: uv run pytest -v
