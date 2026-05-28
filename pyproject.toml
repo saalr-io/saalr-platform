@@ -9,6 +9,7 @@ package = false
 
 [tool.uv.workspace]
 members = ["packages/*", "apps/*"]
+exclude = ["apps/web"]
 
 [tool.uv.sources]
 saalr-core = { workspace = true }
