@@ -1,9 +1,15 @@
 import { useHealth } from '../hooks/useHealth'
 import { StatusDot, type HealthState } from './StatusDot'
 import { Clock } from './Clock'
+import { useAuth } from '../auth/AuthContext'
+
+function cap(s: string): string {
+  return s ? s[0].toUpperCase() + s.slice(1) : s
+}
 
 export function Topbar() {
   const q = useHealth()
+  const { me, logout } = useAuth()
   const state: HealthState = q.isError ? 'error' : q.isSuccess ? 'ok' : 'loading'
   const label =
     state === 'ok'
@@ -24,9 +30,9 @@ export function Topbar() {
 
       <div className="flex items-center gap-2 rounded-lg border border-line bg-panel px-2.5 py-1 text-xs">
         <span className="h-1.5 w-1.5 rounded-full bg-pos shadow-[0_0_8px] shadow-pos" />
-        Acme Capital
+        {me?.tenant.display_name ?? '—'}
         <span className="rounded-full border border-[#34406b] bg-accent2/20 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-[#cdbcff]">
-          Premium
+          {cap(me?.tier ?? 'free')}
         </span>
       </div>
 
@@ -43,6 +49,19 @@ export function Topbar() {
       <Clock />
       <span className="h-4 w-px bg-line" />
       <StatusDot state={state} label={label} />
+      {me && (
+        <>
+          <span className="h-4 w-px bg-line" />
+          <span className="hidden font-mono text-[11px] text-txtDim md:inline">{me.user.email}</span>
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="rounded-lg border border-line bg-panel px-2.5 py-1 text-[11px] text-txtDim transition-colors hover:text-txt"
+          >
+            Logout
+          </button>
+        </>
+      )}
     </header>
   )
 }
