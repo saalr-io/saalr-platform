@@ -1,6 +1,8 @@
+import logging
 import re
 from contextlib import asynccontextmanager
 
+import redis.asyncio as aioredis
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -11,12 +13,22 @@ from saalr_core.db.session import create_engine, create_sessionmaker
 from saalr_core.tiers import entitlements_for
 
 from .auth import Principal, get_auth_provider, get_principal
+from .auth.magic import consume_link, request_link
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_logger = logging.getLogger("saalr.auth")
 
 
 class DevLoginRequest(BaseModel):
     email: str
+
+
+class MagicRequest(BaseModel):
+    email: str
+
+
+class MagicVerify(BaseModel):
+    token: str
 
 
 def create_app() -> FastAPI:
@@ -28,7 +40,9 @@ def create_app() -> FastAPI:
         app.state.engine = engine
         app.state.sessionmaker = create_sessionmaker(engine)
         app.state.auth_provider = get_auth_provider(settings)
+        app.state.redis = aioredis.from_url(settings.redis_url, decode_responses=True)
         yield
+        await app.state.redis.aclose()
         await engine.dispose()
 
     app = FastAPI(title="Saalr API", lifespan=lifespan)
@@ -76,6 +90,35 @@ def create_app() -> FastAPI:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "VALIDATION_INVALID_EMAIL", "message": "invalid email"}},
+            )
+        return {"token": f"dev:{email}"}
+
+    @app.post("/auth/magic/request")
+    async def magic_request(body: MagicRequest) -> dict:
+        if settings.auth_provider != "dev":
+            raise HTTPException(status_code=404, detail="not found")
+        email = body.email.strip().lower()
+        if not _EMAIL_RE.match(email):
+            raise HTTPException(
+                status_code=422,
+                detail={"error": {"code": "VALIDATION_INVALID_EMAIL", "message": "invalid email"}},
+            )
+        token = await request_link(app.state.redis, email, settings.magic_link_ttl_seconds)
+        verify_url = f"{settings.web_base_url}/auth/verify?token={token}"
+        _logger.info("magic link for %s -> %s", email, verify_url)
+        return {"sent": True, "dev_link": verify_url}
+
+    @app.post("/auth/magic/verify")
+    async def magic_verify(body: MagicVerify) -> dict:
+        if settings.auth_provider != "dev":
+            raise HTTPException(status_code=404, detail="not found")
+        email = await consume_link(app.state.redis, body.token)
+        if email is None:
+            raise HTTPException(
+                status_code=410,
+                detail={
+                    "error": {"code": "AUTH_MAGIC_LINK_INVALID", "message": "link is invalid or expired"}
+                },
             )
         return {"token": f"dev:{email}"}
 
