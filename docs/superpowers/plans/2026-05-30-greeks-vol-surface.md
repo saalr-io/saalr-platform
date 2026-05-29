@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship a vendor-independent Black-Scholes-Merton options engine plus two Pro-gated API endpoints (`/v1/market/iv-surface`, `/v1/market/chain`) backed by live Polygon data and a FRED tenor-matched risk-free curve, persisting fetched chains into TimescaleDB.
+**Goal:** Ship a vendor-independent Black-Scholes-Merton options engine plus two Pro-gated API endpoints (`/v1/market/iv-surface`, `/v1/market/chain`) backed by live Massive data and a FRED tenor-matched risk-free curve, persisting fetched chains into TimescaleDB.
 
-**Architecture:** A pure-math engine (`saalr_core/pricing/`, stdlib only) computes price/Greeks/IV. A vendor-I/O layer (`saalr_core/marketdata/`) wraps Polygon (chains) and FRED (rates) behind protocols, quarantining all vendor JSON. A thin API layer (`saalr_api/market/`) authenticates, gates on the `vol_surface` entitlement, orchestrates fetch→compute→persist→cache, and shapes responses. Pure parsing/math is unit-tested offline against fixtures; live calls are exercised only by env-gated smoke tests.
+**Architecture:** A pure-math engine (`saalr_core/pricing/`, stdlib only) computes price/Greeks/IV. A vendor-I/O layer (`saalr_core/marketdata/`) wraps Massive (chains) and FRED (rates) behind protocols, quarantining all vendor JSON. A thin API layer (`saalr_api/market/`) authenticates, gates on the `vol_surface` entitlement, orchestrates fetch→compute→persist→cache, and shapes responses. Pure parsing/math is unit-tested offline against fixtures; live calls are exercised only by env-gated smoke tests.
 
 **Tech Stack:** Python 3.12, FastAPI, SQLAlchemy 2.0 async (asyncpg), Redis, httpx (new core dep), pytest/pytest-asyncio. BSM uses stdlib `math` only (no numpy/scipy).
 
@@ -26,7 +26,7 @@ packages/core/saalr_core/marketdata/
   __init__.py
   types.py               # RawContract, RawChain, YieldCurve
   provider.py            # MarketDataProvider, RiskFreeRateProvider Protocols
-  polygon.py             # parse_snapshot (pure), PolygonProvider
+  massive.py             # parse_snapshot (pure), MassiveProvider
   rates.py               # parse_observations (pure), FredRateProvider
 packages/core/saalr_core/config.py            # MODIFY: add 4 settings
 packages/core/pyproject.toml                  # MODIFY: add httpx
@@ -35,9 +35,9 @@ packages/core/tests/                          # NEW unit tests (pricing + market
   test_pricing_iv.py
   test_pricing_surface.py
   test_marketdata_rates.py
-  test_marketdata_polygon.py
-  fixtures/polygon_snapshot.json
-  fixtures/polygon_snapshot_page2.json
+  test_marketdata_massive.py
+  fixtures/massive_snapshot.json
+  fixtures/massive_snapshot_page2.json
   fixtures/fred_dgs3mo.json
 apps/api/saalr_api/market/
   __init__.py
@@ -68,7 +68,7 @@ In `packages/core/saalr_core/config.py`, add these fields to `Settings` (after `
 
 ```python
     # Market data (Greeks/vol surface slice)
-    polygon_api_key: str | None = None
+    massive_api_key: str | None = None
     fred_api_key: str | None = None
     risk_free_rate_fallback: float = 0.05
     vol_surface_cache_ttl_seconds: int = 21600  # 6h, per HLD
@@ -88,7 +88,7 @@ Append to `.env.example`:
 
 ```
 # Market data
-POLYGON_API_KEY=
+MASSIVE_API_KEY=
 FRED_API_KEY=
 RISK_FREE_RATE_FALLBACK=0.05
 VOL_SURFACE_CACHE_TTL_SECONDS=21600
@@ -1005,16 +1005,16 @@ git commit -m "feat(marketdata): FRED rate provider + curve build with fallback"
 
 ---
 
-## Task 10: Polygon provider + pure parse_snapshot
+## Task 10: Massive provider + pure parse_snapshot
 
 **Files:**
-- Create: `packages/core/saalr_core/marketdata/polygon.py`
-- Test: `packages/core/tests/test_marketdata_polygon.py`
-- Fixtures: `packages/core/tests/fixtures/polygon_snapshot.json`, `polygon_snapshot_page2.json`
+- Create: `packages/core/saalr_core/marketdata/massive.py`
+- Test: `packages/core/tests/test_marketdata_massive.py`
+- Fixtures: `packages/core/tests/fixtures/massive_snapshot.json`, `massive_snapshot_page2.json`
 
 - [ ] **Step 1: Create fixtures**
 
-Create `packages/core/tests/fixtures/polygon_snapshot.json`:
+Create `packages/core/tests/fixtures/massive_snapshot.json`:
 
 ```json
 {
@@ -1036,11 +1036,11 @@ Create `packages/core/tests/fixtures/polygon_snapshot.json`:
       "greeks": {"delta": -0.42, "gamma": 0.02, "theta": -0.04, "vega": 0.11}
     }
   ],
-  "next_url": "https://api.polygon.io/v3/snapshot/options/AAPL?cursor=PAGE2"
+  "next_url": "https://api.massive.com/v3/snapshot/options/AAPL?cursor=PAGE2"
 }
 ```
 
-Create `packages/core/tests/fixtures/polygon_snapshot_page2.json`:
+Create `packages/core/tests/fixtures/massive_snapshot_page2.json`:
 
 ```json
 {
@@ -1060,20 +1060,20 @@ Create `packages/core/tests/fixtures/polygon_snapshot_page2.json`:
 
 - [ ] **Step 2: Write failing parse tests**
 
-Create `packages/core/tests/test_marketdata_polygon.py`:
+Create `packages/core/tests/test_marketdata_massive.py`:
 
 ```python
 import json
 import pathlib
 
-from saalr_core.marketdata.polygon import parse_results
+from saalr_core.marketdata.massive import parse_results
 from saalr_core.pricing.types import OptionKind
 
 FIX = pathlib.Path(__file__).parent / "fixtures"
 
 
 def test_parse_results_maps_contracts():
-    data = json.loads((FIX / "polygon_snapshot.json").read_text())
+    data = json.loads((FIX / "massive_snapshot.json").read_text())
     contracts = parse_results(data["results"])
     assert len(contracts) == 2
     c = contracts[0]
@@ -1090,12 +1090,12 @@ def test_parse_results_maps_contracts():
 
 - [ ] **Step 3: Run to verify failure**
 
-Run: `cd packages/core && uv run pytest tests/test_marketdata_polygon.py -q`
-Expected: FAIL — `polygon` import error.
+Run: `cd packages/core && uv run pytest tests/test_marketdata_massive.py -q`
+Expected: FAIL — `massive` import error.
 
-- [ ] **Step 4: Implement polygon.py**
+- [ ] **Step 4: Implement massive.py**
 
-Create `packages/core/saalr_core/marketdata/polygon.py`:
+Create `packages/core/saalr_core/marketdata/massive.py`:
 
 ```python
 from __future__ import annotations
@@ -1109,7 +1109,7 @@ from saalr_core.pricing.types import OptionKind
 from .provider import ProviderError
 from .types import RawChain, RawContract
 
-_BASE = "https://api.polygon.io"
+_BASE = "https://api.massive.com"
 _KIND = {"call": OptionKind.CALL, "put": OptionKind.PUT}
 
 
@@ -1118,7 +1118,7 @@ def _num(d: dict | None, key: str):
 
 
 def parse_results(results: list[dict]) -> list[RawContract]:
-    """Pure: map Polygon option snapshot rows into RawContract (vendor JSON stops here)."""
+    """Pure: map Massive option snapshot rows into RawContract (vendor JSON stops here)."""
     out: list[RawContract] = []
     for row in results:
         det = row.get("details", {})
@@ -1126,7 +1126,7 @@ def parse_results(results: list[dict]) -> list[RawContract]:
         if kind is None:
             continue
         quote = row.get("last_quote", {})
-        day = row.get("day", {})
+        day = row.get("day") or row.get("session") or {}  # legacy "day" / unified "session"
         g = row.get("greeks", {})
         out.append(
             RawContract(
@@ -1148,7 +1148,7 @@ def parse_results(results: list[dict]) -> list[RawContract]:
     return out
 
 
-class PolygonProvider:
+class MassiveProvider:
     def __init__(self, api_key: str | None, *, base_url: str = _BASE) -> None:
         self._api_key = api_key
         self._base = base_url
@@ -1174,7 +1174,7 @@ class PolygonProvider:
             {"apiKey": self._api_key},
         )
         res = data.get("results", {})
-        # Polygon does not always expose spot here; fall back to snapshot last trade.
+        # Massive does not always expose spot here; fall back to snapshot last trade.
         snap = await self._get(
             client, f"{self._base}/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}",
             {"apiKey": self._api_key},
@@ -1185,7 +1185,7 @@ class PolygonProvider:
 
     async def get_option_chain(self, ticker: str, market: str) -> RawChain:
         if not self._api_key:
-            raise ProviderError("no polygon api key configured")
+            raise ProviderError("no massive api key configured")
         from datetime import datetime, timezone
 
         contracts: list[RawContract] = []
@@ -1210,7 +1210,7 @@ class PolygonProvider:
 
 - [ ] **Step 5: Run to verify pass**
 
-Run: `cd packages/core && uv run pytest tests/test_marketdata_polygon.py -q`
+Run: `cd packages/core && uv run pytest tests/test_marketdata_massive.py -q`
 Expected: passed.
 
 - [ ] **Step 6: Run the full core suite + lint**
@@ -1221,8 +1221,8 @@ Expected: all passed, ruff clean.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add packages/core/saalr_core/marketdata/polygon.py packages/core/tests/test_marketdata_polygon.py packages/core/tests/fixtures/polygon_snapshot.json packages/core/tests/fixtures/polygon_snapshot_page2.json
-git commit -m "feat(marketdata): polygon provider + pure parse_results with pagination"
+git add packages/core/saalr_core/marketdata/massive.py packages/core/tests/test_marketdata_massive.py packages/core/tests/fixtures/massive_snapshot.json packages/core/tests/fixtures/massive_snapshot_page2.json
+git commit -m "feat(marketdata): massive provider + pure parse_results with pagination"
 ```
 
 ---
@@ -1482,7 +1482,7 @@ class MarketService:
             "as_of": payload["as_of"],
             "spot": payload["spot"],
             "expiries": build_surface(contracts, as_of_date),
-            "data_provider": "polygon",
+            "data_provider": "massive",
             "model": "bsm",
             "risk_free_source": payload["risk_free_source"],
             "freshness_ms": 0 if not payload["_cache_hit"] else None,
@@ -1635,7 +1635,7 @@ async def chain(
 In `apps/api/saalr_api/main.py`, add imports near the top:
 
 ```python
-from saalr_core.marketdata.polygon import PolygonProvider
+from saalr_core.marketdata.massive import MassiveProvider
 from saalr_core.marketdata.rates import FredRateProvider
 
 from .market.router import router as market_router
@@ -1644,7 +1644,7 @@ from .market.router import router as market_router
 Inside `lifespan`, after the `app.state.redis = ...` line, add:
 
 ```python
-        app.state.market_provider = PolygonProvider(settings.polygon_api_key)
+        app.state.market_provider = MassiveProvider(settings.massive_api_key)
         app.state.rate_provider = FredRateProvider(
             settings.fred_api_key, settings.risk_free_rate_fallback
         )
@@ -1756,7 +1756,7 @@ async def test_iv_surface_shape_for_pro(app_sessionmaker, admin_engine):
     assert r.status_code == 200
     body = r.json()
     assert body["spot"] == 185.0
-    assert body["data_provider"] == "polygon"
+    assert body["data_provider"] == "massive"
     assert body["model"] == "bsm"
     exp = body["expiries"][0]
     assert exp["expiry"] == "2026-09-19"
@@ -1835,7 +1835,7 @@ import os
 import pytest
 
 from saalr_core.config import get_settings
-from saalr_core.marketdata.polygon import PolygonProvider
+from saalr_core.marketdata.massive import MassiveProvider
 from saalr_core.marketdata.rates import FredRateProvider
 
 _settings = get_settings()
@@ -1846,9 +1846,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-@pytest.mark.skipif(not _settings.polygon_api_key, reason="no POLYGON_API_KEY")
-async def test_polygon_live_chain():
-    chain = await PolygonProvider(_settings.polygon_api_key).get_option_chain("AAPL", "US")
+@pytest.mark.skipif(not _settings.massive_api_key, reason="no MASSIVE_API_KEY")
+async def test_massive_live_chain():
+    chain = await MassiveProvider(_settings.massive_api_key).get_option_chain("AAPL", "US")
     assert chain.spot > 0
     assert len(chain.contracts) > 0
 
@@ -1868,7 +1868,7 @@ Expected: 2 skipped.
 - [ ] **Step 3: (Manual, local) Run live with real keys**
 
 Run: `RUN_LIVE_SMOKE=1 uv run pytest tests/integration/test_market_smoke.py -q`
-Expected: 2 passed (requires real `POLYGON_API_KEY` with options entitlement + `FRED_API_KEY` in `.env`).
+Expected: 2 passed (requires real `MASSIVE_API_KEY` with options entitlement + `FRED_API_KEY` in `.env`).
 
 > On PowerShell: `$env:RUN_LIVE_SMOKE=1; uv run pytest tests/integration/test_market_smoke.py -q`
 
@@ -1876,7 +1876,7 @@ Expected: 2 passed (requires real `POLYGON_API_KEY` with options entitlement + `
 
 ```bash
 git add tests/integration/test_market_smoke.py
-git commit -m "test(market): env-gated live polygon + fred smoke tests"
+git commit -m "test(market): env-gated live massive + fred smoke tests"
 ```
 
 ---
@@ -1910,13 +1910,13 @@ git commit -m "chore(market): orchestrator task for greeks/vol-surface gates"
 
 ## Self-review checklist (completed)
 
-- **Spec coverage:** engine (T2–T7), Polygon adapter (T10), FRED rates (T9), persistence (T12), cache (T13), gating (T11), both endpoints (T14), §5.2 shape (T7/T13/T15), honesty fields `model`/`risk_free_source` (T13/T14), error codes 402/404/400/503 (T11/T14/T15), offline tests + env-gated live smoke (T15/T16). All present.
+- **Spec coverage:** engine (T2–T7), Massive adapter (T10), FRED rates (T9), persistence (T12), cache (T13), gating (T11), both endpoints (T14), §5.2 shape (T7/T13/T15), honesty fields `model`/`risk_free_source` (T13/T14), error codes 402/404/400/503 (T11/T14/T15), offline tests + env-gated live smoke (T15/T16). All present.
 - **Placeholders:** none — every code step is complete.
 - **Type consistency:** `OptionParams`, `Greeks`, `ContractGreeks`, `RawContract`, `RawChain`, `YieldCurve.rate_for`, `BSMModel.{price,greeks,implied_vol}`, `parse_results`, `latest_observation`/`build_curve`, `persist_chain`, `MarketService.{iv_surface,chain}`, `require_vol_surface` are used consistently across tasks.
 
 ## Known risks / notes for the implementer
 
-- **Polygon spot/dividend endpoints** (`_spot_and_div`) are best-effort; if your plan tier returns spot elsewhere, adjust the snapshot path during the live smoke test. The offline suite never calls it.
+- **Massive spot/dividend endpoints** (`_spot_and_div`) are best-effort; if your plan tier returns spot elsewhere, adjust the snapshot path during the live smoke test. The offline suite never calls it.
 - **`_compute` rebuilds `OptionParams` via `__dict__`** to inject the solved sigma — keep `OptionParams` a flat frozen dataclass for this to hold.
 - **Redis must be reachable** for integration tests (already used by magic-link). `scripts/start.ps1` brings up Postgres + Redis.
 - **options_chain_snapshots is a hypertable** with no RLS; the `TRUNCATE` in the persistence test is safe and scoped to that table.

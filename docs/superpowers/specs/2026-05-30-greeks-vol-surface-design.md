@@ -9,10 +9,10 @@
 
 Ship the first real quantitative product surface: a vendor-independent options pricing
 engine and two authenticated API endpoints that expose computed Greeks and an implied-vol
-surface for US equity options, backed by live Polygon data, with fetched chains persisted
+surface for US equity options, backed by live Massive data, with fetched chains persisted
 into the existing TimescaleDB hypertable.
 
-The value-add over Polygon's own Greeks is a **consistent, vendor-independent BSM engine**:
+The value-add over Massive's own Greeks is a **consistent, vendor-independent BSM engine**:
 our numbers are computed the same way for every contract and every (later) vendor, and the
 vendor's numbers are surfaced alongside ours for transparency. This engine is also the
 deterministic foundation that the backtest (step 8) and ingest-worker (step 5) will reuse.
@@ -21,14 +21,14 @@ deterministic foundation that the backtest (step 8) and ingest-worker (step 5) w
 
 1. **Next slice = Greeks/vol surface** (step 6), chosen over billing (step 4) — validation-first:
    ship a differentiated product surface before revenue plumbing.
-2. **Live data via real Polygon adapter** — a paid Polygon options plan is available.
+2. **Live data via real Massive adapter** — a paid Massive options plan is available.
 3. **Two endpoints:** `GET /v1/market/iv-surface` (LLD §5.2) and `GET /v1/market/chain`.
    (Single-contract and portfolio-aggregation endpoints are out of scope; portfolio Greeks
    depend on positions/OMS, step 11.)
 4. **Persist + cache:** write fetched chains (with our computed Greeks/IV) into
    `options_chain_snapshots`; serve through a Redis cache.
 5. **Model = BSM (European) behind a `PricingModel` interface**; compute our own IV via
-   Newton-Raphson with a bisection fallback; surface Polygon's IV alongside ours.
+   Newton-Raphson with a bisection fallback; surface Massive's IV alongside ours.
    American-style (Bjerksund-Stensland) is deferred and will implement the same interface.
 6. **Risk-free rate = FRED tenor-matched Treasury curve**, interpolated by each option's
    days-to-expiry, with a flat configurable fallback (0.05) when the key/source is absent.
@@ -57,7 +57,7 @@ packages/core/saalr_core/pricing/  # PURE math, no I/O, deterministic
 
 packages/core/saalr_core/marketdata/  # vendor I/O, vendor JSON quarantined here
   provider.py                      # MarketDataProvider + RiskFreeRateProvider protocols
-  polygon.py                       # PolygonProvider + pure parse_snapshot()
+  massive.py                       # MassiveProvider + pure parse_snapshot()
   rates.py                         # FredRateProvider + YieldCurve + pure parse_observations()
 ```
 
@@ -125,13 +125,13 @@ class RiskFreeRateProvider(Protocol):
 
 `RawChain` = spot + dividend yield + `list[RawContract]`
 (`expiry, strike, kind, bid, ask, last, volume, open_interest, vendor_iv, vendor_greeks,
-as_of`). Vendor-shaped but vendor-neutral; Polygon-specific JSON never leaves this module.
+as_of`). Vendor-shaped but vendor-neutral; Massive-specific JSON never leaves this module.
 
-- **`polygon.py` — `PolygonProvider`** — hits `GET /v3/snapshot/options/{underlying}`
+- **`massive.py` — `MassiveProvider`** — hits `GET /v3/snapshot/options/{underlying}`
   (paginated via `next_url`) plus ticker details for spot + dividend yield. `httpx.AsyncClient`,
   API key from config, a small throttle, a couple of retries on 429/5xx with backoff.
   `parse_snapshot(json) -> RawChain` is a **pure function** tested against a recorded fixture.
-  Maps Polygon `contract_type` call/put → `OptionKind`, `expiration_date` → `expiry`,
+  Maps Massive `contract_type` call/put → `OptionKind`, `expiration_date` → `expiry`,
   vendor greeks/iv → `vendor_*`.
 - **`rates.py` — `FredRateProvider`** — fetches constant-maturity series
   `DGS1MO, DGS3MO, DGS6MO, DGS1, DGS2` (one newest-valid observation each, skipping FRED's
@@ -144,7 +144,7 @@ as_of`). Vendor-shaped but vendor-neutral; Polygon-specific JSON never leaves th
 
 ### `market/` — API layer
 
-- **Wiring** — lifespan constructs `PolygonProvider` and `FredRateProvider` on `app.state`
+- **Wiring** — lifespan constructs `MassiveProvider` and `FredRateProvider` on `app.state`
   so tests inject fixture providers via dependency override. `create_app()` includes the
   new router; existing inline auth routes are unchanged.
 - **`gating.py` — `require_vol_surface`** — wraps `get_principal`, reads
@@ -153,7 +153,7 @@ as_of`). Vendor-shaped but vendor-neutral; Polygon-specific JSON never leaves th
 - **Endpoints (both Pro-gated):**
   - `GET /v1/market/iv-surface?ticker=AAPL&market=US` → exact §5.2 shape: `ticker, market,
     as_of, spot, expiries[]:{expiry, days_to_expiry, strikes[]:{strike, iv_call, iv_put}},
-    data_provider:"polygon", freshness_ms`, plus honesty fields `model:"bsm"` and
+    data_provider:"massive", freshness_ms`, plus honesty fields `model:"bsm"` and
     `risk_free_source:"fred"|"fallback"`.
   - `GET /v1/market/chain?ticker=AAPL&market=US&expiry=YYYY-MM-DD` (expiry optional → all
     expiries) → per-contract rows with `bid/ask/last/volume/open_interest`, **our**
@@ -166,7 +166,7 @@ as_of`). Vendor-shaped but vendor-neutral; Polygon-specific JSON never leaves th
 
 | Setting | Default | Purpose |
 |---|---|---|
-| `polygon_api_key` | `None` | Polygon options data auth |
+| `massive_api_key` | `None` | Massive options data auth |
 | `fred_api_key` | `None` | FRED Treasury series auth |
 | `risk_free_rate_fallback` | `0.05` | flat rate when FRED unavailable |
 | `vol_surface_cache_ttl_seconds` | `21600` | computed-chain Redis TTL (6h, per HLD) |
@@ -182,7 +182,7 @@ Standard `{"error": {"code", "message"}}` envelope. Codes align to LLD §10:
 | Free tier hits a gated endpoint | 402 | `ENTITLEMENT_VOL_SURFACE_REQUIRES_PRO` (new) |
 | Unknown / empty ticker | 404 | `RESOURCE_NOT_FOUND` |
 | Bad `market` / `expiry` format | 400 | `VALIDATION_INVALID_PARAMETER` |
-| Polygon unreachable after retries | 503 | `MARKET_DATA_PROVIDER_UNAVAILABLE` (new) |
+| Massive unreachable after retries | 503 | `MARKET_DATA_PROVIDER_UNAVAILABLE` (new) |
 
 ## Testing
 
@@ -196,7 +196,7 @@ Standard `{"error": {"code", "message"}}` envelope. Codes align to LLD §10:
   clamping; FRED `parse_observations` skips `"."`.
 
 **Adapter parse tests** (offline, recorded fixtures): `parse_snapshot()` against a saved
-Polygon `/v3/snapshot/options` JSON including a `next_url` pagination case; FRED observations
+Massive `/v3/snapshot/options` JSON including a `next_url` pagination case; FRED observations
 fixture → correct curve.
 
 **API integration tests** (existing Postgres+Redis `conftest`, fixture providers via
@@ -208,8 +208,8 @@ dependency override, no network):
 - Errors: unknown ticker → 404; provider raises → 503 `MARKET_DATA_PROVIDER_UNAVAILABLE`.
 
 **Live smoke tests** (env-gated `@pytest.mark.skipif` on missing keys; never run in CI):
-one real `PolygonProvider.get_option_chain("AAPL")`, one real `FredRateProvider.get_curve()`
-— proof the paid Polygon plan and FRED key work, run locally on demand.
+one real `MassiveProvider.get_option_chain("AAPL")`, one real `FredRateProvider.get_curve()`
+— proof the paid Massive plan and FRED key work, run locally on demand.
 
 **Gates:** `uv sync` → `uv run pytest` (offline-green) → `uvx ruff check`. Implementation
 runs task-by-task through an extension of `scripts/orchestrate.ps1`, a commit per task.
@@ -221,5 +221,5 @@ runs task-by-task through an extension of `scripts/orchestrate.ps1`, a commit pe
 - Treasury *intraday* rate ticking — unnecessary; the daily curve is the correct input.
 - Backfilling historical chains — this slice persists only what it fetches on demand.
 - India (`market="IN"`) chains — US-first; the `market` param is carried through but only
-  `US`/Polygon is wired.
+  `US`/Massive is wired.
 ```
