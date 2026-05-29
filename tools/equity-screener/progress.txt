@@ -1,0 +1,50 @@
+EQUITY SCREENER BACKTEST — RALPH PROGRESS
+=========================================
+
+Plan: docs/superpowers/plans/2026-05-29-equity-screener-backtest.md
+Spec: docs/superpowers/specs/2026-05-29-equity-screener-backtest-design.md
+Ethos: validation-first / honest reporting. The Sharpe value IS the finding.
+
+STATUS
+------
+US-001..US-008: DONE, verified (20 tests green, ruff clean), committed.
+US-009 (live run): DONE. See RESULT.md.
+
+FINDING (US-009) — full S&P 500, 2015-2025
+- Strategy Sharpe 0.67 (BELOW 1.5 target), CAGR 11.9%, vol 19.7%, maxDD -31.5%.
+- SPY Sharpe 0.80, CAGR 13.5% -> the screen UNDERPERFORMED the index.
+- Coverage 501 screened / 2 dropped; holdings 0 in 2015-2019, then 2020:1,2021:10,2022:24,2023:36,2024:35.
+- Effective test window is ~2020-2024 because the 11-FY history rule can't be met on free SEC XBRL (starts ~2009) for earlier rebalances -> early years hold cash.
+- Answer to the original question: NO, this screen does not yield Sharpe > 1.5 (and it trails SPY) on a survivorship-biased-toward-optimism, free-data, point-in-time setup. Reported honestly; not engineered toward a target.
+
+EXTRA WORK BEYOND THE 9 PLANNED TASKS (discovered during diagnosis, essential for a credible number)
+- _annual_points now MERGES revenue across XBRL tags per fiscal year (companies switch tags across eras; single-tag read dropped most names). Regression test added.
+- split_adjust_shares (fundamentals.py) + prices.get_splits (yfinance actions) put SEC raw share counts on a common basis so splits aren't mistaken for dilution. Unit test added. Wired in cli.run.
+- report.py shows per-year holdings + effective invested window + expanded caveats. test_report added.
+
+WHAT WAS BUILT (tools/equity-screener/, standalone, NOT in the uv workspace)
+- pyproject.toml: saalr-equity-screener, py >=3.12,<3.13, deps requests/pandas/numpy/yfinance/pyarrow, dev pytest, hatchling.
+- fundamentals.py: AnnualPoint, CompanyFundamentals (frozen dataclasses); points_as_of (point-in-time filing filter + per-FY dedup latest-filed), cagr, roce.
+- screen.py: ScreenResult, evaluate(f, price_at_t, as_of, *, lookback_years=10, market_cap_min=1e9) -> ScreenResult|None. 4 criteria: dilution (share_ratio<=1.1), sales_growth (CAGR>10%), roce (avg>10%), market_cap (>$1B). Returns None when <11 FYs filed or metrics uncomputable.
+- backtest.py: sharpe (std ddof=0 * sqrt(252)), max_drawdown, cagr_from_value (calendar-day annualization), equal_weight_value (annual rebalance walk), daily_returns.
+- edgar.py: SEC_HEADERS (User-Agent), fetch_company_facts (0.12s throttle), extract_fundamentals with XBRL tag fallbacks (Revenues->RevenueFromContract...->SalesRevenueNet; dei shares->us-gaap shares). Keeps only form=10-K & fp=FY.
+- universe.py: parse_ticker_cik_map (10-digit zero-pad), ticker_to_cik, sp500_tickers (GitHub datasets CSV).
+- prices.py: get_prices (yfinance auto_adjust close + parquet cache under .cache/prices).
+- report.py: format_report with survivorship + coverage caveats.
+- cli.py + __main__.py: run(start,end,rf,limit) + argparse (--start/--end/--rf/--limit).
+
+LEARNINGS / DEVIATIONS FROM PLAN (all are test-expectation fixes; implementations match the spec)
+1. Plan's test_quality_company_passes used shares=1000 -> $50K market cap, which correctly FAILS the spec's >$1B rule. Fixed the synthetic fixture to 1e8 shares (100M) so the real $1B default threshold is exercised. Same fix applied to test_integration's PASS/DILUTE fixtures (1e8 / 3e8).
+2. Plan's test_cagr_from_value tolerance 1e-6 too tight: calendar-day annualization (3653 days/365.25 ~ 10.0014y) differs from exact-10y by ~1e-5. Loosened to 1e-4.
+3. Plan's test_integration used as_of=date(2015,1,2): the synthetic FY2014 10-K is "filed" 2015-02-15, so at Jan 2 only 10 FYs (2004-2013) are available — one short of the 11 the 10y lookback needs, so NOTHING passes. This is CORRECT point-in-time behavior. Changed as_of to date(2015,6,1) (after FY2014 filings) to demonstrate a passer.
+4. Added .cache/ to root .gitignore for the parquet price cache.
+
+KEY POINT-IN-TIME INSIGHT FOR THE LIVE RUN (US-009)
+- The 10y lookback needs 11 filed fiscal years. SEC XBRL companyfacts generally only goes back to ~2009 (XBRL mandate). So early rebalance years (2015-2019) will have MANY names dropped for insufficient filed history; coverage should improve toward 2020+. Expect a high "dropped" count and possibly few/empty holdings in early years. This is an HONEST limitation to report, NOT something to engineer around.
+- At rebalance as_of=Jan 1 of year T, the prior-year (T-1) 10-K typically isn't filed yet (filed Feb-Mar), so the screen effectively uses FYs through T-2. Correct point-in-time.
+
+ENV NOTES
+- uv 0.11.16, CPython 3.12.13 in .venv. Installed pandas 3.0.3, numpy 2.4.6, yfinance 1.4.1.
+- ruff is NOT a project dep; run via `uvx ruff check equity_screener tests`.
+- Tests/run: `cd tools/equity-screener && uv run pytest -q`. Live run: `uv run python -m equity_screener --start 2015 --end 2025`.
+- VIRTUAL_ENV warning (points at system Python 3.13) is harmless — uv uses the project .venv (3.12).
