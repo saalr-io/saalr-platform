@@ -25,22 +25,37 @@ def fetch_company_facts(cik: str, *, session: requests.Session | None = None) ->
 
 
 def _annual_points(facts: dict, namespaces: list[str], tags: list[str]) -> list[AnnualPoint]:
-    """First tag (across given namespaces) that yields annual (10-K, FY) points."""
+    """Merge annual (10-K, FY) points across the given namespaces/tags.
+
+    A single concept (e.g. revenue) is reported under different XBRL tags across
+    eras — older filings use ``Revenues``/``SalesRevenueNet``; post-ASC-606 filings
+    use ``RevenueFromContractWithCustomer...``. Returning only the first non-empty
+    tag captures just one era (often <11 FYs), so we merge: tags are tried in
+    priority order and the first one that covers a given fiscal year claims it
+    (keeping every filing for that year so point-in-time dedup can pick the latest
+    filed on/before the as-of date).
+    """
+    chosen: dict[int, list[AnnualPoint]] = {}
     for ns in namespaces:
         for tag in tags:
             node = facts.get("facts", {}).get(ns, {}).get(tag)
             if not node:
                 continue
-            points: list[AnnualPoint] = []
+            tag_points: dict[int, list[AnnualPoint]] = {}
             for _unit, entries in node.get("units", {}).items():
                 for e in entries:
                     if e.get("form") == "10-K" and e.get("fp") == "FY" and e.get("fy") and e.get("filed"):
-                        points.append(
-                            AnnualPoint(int(e["fy"]), e["end"], e["filed"], float(e["val"]))
+                        fy = int(e["fy"])
+                        tag_points.setdefault(fy, []).append(
+                            AnnualPoint(fy, e["end"], e["filed"], float(e["val"]))
                         )
-            if points:
-                return points
-    return []
+            for fy, pts in tag_points.items():
+                if fy not in chosen:  # a higher-priority tag already covers this year
+                    chosen[fy] = pts
+    out: list[AnnualPoint] = []
+    for fy in sorted(chosen):
+        out.extend(chosen[fy])
+    return out
 
 
 def extract_fundamentals(facts: dict, cik: str, ticker: str) -> CompanyFundamentals:

@@ -1,6 +1,12 @@
 from datetime import date
 
-from equity_screener.fundamentals import AnnualPoint, cagr, points_as_of, roce
+from equity_screener.fundamentals import (
+    AnnualPoint,
+    cagr,
+    points_as_of,
+    roce,
+    split_adjust_shares,
+)
 
 
 def test_cagr_basic():
@@ -24,3 +30,17 @@ def test_points_as_of_filters_and_dedups():
     out = points_as_of(pts, date(2016, 1, 1))
     # 2015 filed 2016-02 is after as_of -> excluded; 2014 dedups to the latest filed on/before
     assert [(p.fiscal_year, p.value) for p in out] == [(2013, 10.0), (2014, 21.0)]
+
+
+def test_split_adjust_shares():
+    pts = [
+        AnnualPoint(2011, "2011-12-31", "2012-02-15", 100.0),
+        AnnualPoint(2020, "2020-12-31", "2021-02-15", 400.0),
+    ]
+    # 7:1 in 2014 and 4:1 in 2020 (the 2020 split predates the 2020-12-31 period end)
+    splits = [(date(2014, 6, 9), 7.0), (date(2020, 8, 31), 4.0)]
+    out = {p.fiscal_year: p.value for p in split_adjust_shares(pts, splits)}
+    # 2011: both splits are after its period end -> x28; 2020: no later split -> unchanged
+    assert out == {2011: 2800.0, 2020: 400.0}
+    # ratio latest/old becomes 400/2800 < 1.1 -> no longer a false "dilution"
+    assert out[2020] / out[2011] < 1.1
