@@ -1,0 +1,24 @@
+[project]
+name = "saalr-equity-screener"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "requests>=2.31",
+  "pandas>=2.2",
+  "numpy>=1.26",
+  "yfinance>=0.2.40",
+  "pyarrow>=24.0.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["equity_screener"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
