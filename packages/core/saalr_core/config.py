@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     magic_link_ttl_seconds: int = 900
     web_base_url: str = "http://localhost:5174"
 
+    # Market data (Greeks/vol surface slice)
+    massive_api_key: str | None = None
+    fred_api_key: str | None = None
+    risk_free_rate_fallback: float = 0.05
+    vol_surface_cache_ttl_seconds: int = 21600  # 6h, per HLD
+
 
 def get_settings() -> Settings:
     return Settings()
