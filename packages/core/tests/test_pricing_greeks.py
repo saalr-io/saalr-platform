@@ -1,6 +1,7 @@
 import math
+from dataclasses import replace
 
-from saalr_core.pricing.greeks import price
+from saalr_core.pricing.greeks import greeks, price
 from saalr_core.pricing.types import OptionKind, OptionParams
 
 
@@ -27,10 +28,6 @@ def test_put_call_parity():
     lhs = c - pp
     rhs = 100.0 * math.exp(-0.02 * 1.0) - 100.0 * math.exp(-0.05 * 1.0)
     assert math.isclose(lhs, rhs, abs_tol=1e-9)
-
-
-from saalr_core.pricing.greeks import greeks
-from dataclasses import replace
 
 
 def _fd(p, attr, h, fn):
