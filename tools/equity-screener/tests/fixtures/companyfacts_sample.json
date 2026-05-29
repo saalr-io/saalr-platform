@@ -1,0 +1,27 @@
+{
+  "cik": 1,
+  "entityName": "Sample Co",
+  "facts": {
+    "us-gaap": {
+      "Revenues": {"units": {"USD": [
+        {"fy": 2014, "fp": "FY", "form": "10-K", "end": "2014-12-31", "filed": "2015-02-15", "val": 1000},
+        {"fy": 2013, "fp": "FY", "form": "10-K", "end": "2013-12-31", "filed": "2014-02-15", "val": 800},
+        {"fy": 2014, "fp": "Q1", "form": "10-Q", "end": "2014-03-31", "filed": "2014-05-01", "val": 250}
+      ]}},
+      "OperatingIncomeLoss": {"units": {"USD": [
+        {"fy": 2014, "fp": "FY", "form": "10-K", "end": "2014-12-31", "filed": "2015-02-15", "val": 300}
+      ]}},
+      "Assets": {"units": {"USD": [
+        {"fy": 2014, "fp": "FY", "form": "10-K", "end": "2014-12-31", "filed": "2015-02-15", "val": 2000}
+      ]}},
+      "LiabilitiesCurrent": {"units": {"USD": [
+        {"fy": 2014, "fp": "FY", "form": "10-K", "end": "2014-12-31", "filed": "2015-02-15", "val": 500}
+      ]}}
+    },
+    "dei": {
+      "EntityCommonStockSharesOutstanding": {"units": {"shares": [
+        {"fy": 2014, "fp": "FY", "form": "10-K", "end": "2014-12-31", "filed": "2015-02-15", "val": 100}
+      ]}}
+    }
+  }
+}
