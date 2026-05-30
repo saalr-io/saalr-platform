@@ -1,6 +1,6 @@
 import { getToken, setToken } from './tokenStore'
 
-const BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
+export const BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 export interface HealthStatus {
   status: string
@@ -18,7 +18,7 @@ export interface Me {
   entitlements: Record<string, boolean | number>
 }
 
-function authHeaders(): Record<string, string> {
+export function authHeaders(): Record<string, string> {
   const t = getToken()
   return t ? { Authorization: `Bearer ${t}` } : {}
 }
