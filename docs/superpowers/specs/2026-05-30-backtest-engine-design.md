@@ -63,11 +63,13 @@ From a daily equity series and a per-cycle P&L list:
   `moneyness = strike / ref_spot` and `dte = (expiry - ref_date).days`; equity legs carry `qty`;
   cash legs carry the collateral).
 - `RelativeTemplate.from_config(config: StrategyConfig, ref_spot: float, ref_date: date)` →
-  derives the relative legs. `structure_dte` = max option-leg `dte` (single shared expiry per
-  structure; differing per-leg expiries are out of scope).
+  derives the relative legs, **preserving each leg's own `dte`** (no flattening). `cycle_dte` =
+  **min** option-leg `dte` (the front expiry — see the engine's rolling logic). This supports
+  calendars (same strike, different DTE) and diagonals (different strike *and* DTE); single-expiry
+  structures fall out naturally (all DTEs equal → front == back).
 - `instantiate(roll_date: date, spot: float, strike_increment: float = 1.0) -> list[Leg]` →
-  concrete legs: option `strike = round(spot * moneyness / inc) * inc`, `expiry = roll_date +
-  structure_dte`; equity/cash unchanged. (Reuses `strategies.types` leg types.)
+  concrete legs: option `strike = round(spot * moneyness / inc) * inc`, **`expiry = roll_date +
+  leg.dte`** (per-leg); equity/cash unchanged. (Reuses `strategies.types` leg types.)
 
 ### `saalr_core/backtest/engine.py` (pure)
 `run_backtest_engine(closes: dict[date, float], template: RelativeTemplate, params) -> BacktestResult`
@@ -76,9 +78,19 @@ commission_per_contract, slippage_per_contract, strike_increment}`.
 
 Algorithm:
 1. Trading days = sorted `closes` keys within `[start, end]`.
-2. Roll cycles from `start`: at each `roll_t`, `spot = closes[roll_t]`; `legs = template.instantiate(roll_t, spot)`; `expiry = roll_t + structure_dte` (clamped to ≤ end). Entry cost = Σ BSM(leg) at `roll_t` (σ = `realized_vol(closes up to roll_t, lookback)`, `t = dte/365`, `rate`, `q=0`) ± costs.
-3. For each trading day `d` in `(roll_t, expiry]`: position value = Σ BSM(leg, spot=closes[d], σ=realized_vol@d, t=(expiry−d)/365) (intrinsic at `d==expiry`); equity[d] = initial_capital + running_realized_pnl + (value − entry). Equity legs marked at the bar close; cash legs flat.
-4. At `expiry`: realize the cycle P&L (settle − entry − costs), append to `trade_pnls`, roll into the next cycle. Stop at `end`.
+2. Roll cycles from `start`: at each `roll_t`, `spot = closes[roll_t]`; `legs =
+   template.instantiate(roll_t, spot)` (each option leg gets `expiry = roll_t + leg.dte`);
+   `front_expiry = roll_t + cycle_dte` (the nearest leg expiry, clamped to ≤ end). Entry cost = Σ
+   BSM(leg) at `roll_t` (σ = `realized_vol(closes up to roll_t, lookback)`, **per-leg**
+   `t = leg.dte/365`, `rate`, `q=0`) ± costs.
+3. For each trading day `d` in `(roll_t, front_expiry]`: position value = Σ BSM(leg, spot=closes[d],
+   σ=realized_vol@d, **per-leg** `t = max(0, (leg.expiry − d).days)/365`) — a leg at or past its own
+   expiry is valued at intrinsic; equity[d] = initial_capital + running_realized_pnl + (value −
+   entry). Equity legs marked at the bar close; cash legs flat.
+4. At `front_expiry`: realize the cycle P&L (settle − entry − costs) — front legs settle at
+   intrinsic, longer-dated legs marked at BSM with their remaining time — append to `trade_pnls`,
+   then **close and re-open the entire structure** into the next cycle at that day's spot. Stop at
+   `end`.
 5. Build the daily equity series and daily returns; compute metrics.
 
 `BacktestResult` = `{metrics: {...§5.3 keys...}, trades: int, equity_points: int, model: "bsm",
@@ -109,9 +121,11 @@ failure; `started_at`/`completed_at`. `trade_log_uri` stays null (trade count + 
 
 ## Model assumptions (honest, surfaced in every result)
 - Option prices are **BSM-modeled**, not real marks. **IV = trailing realized vol** (`vol_lookback`,
-  default 20). **Rate is flat** (default 0.04); **dividend yield 0**. One shared expiry per
-  structure (= max leg DTE); calendars excluded. **Fixed size** (config leg qty/cycle), not
-  capital-scaled. Strikes rounded to `strike_increment` (default $1). Each result carries
+  default 20). **Rate is flat** (default 0.04); **dividend yield 0**. Per-leg expiries are
+  preserved (calendars/diagonals supported); each cycle holds to the **front** (nearest) leg expiry,
+  then **closes and re-opens the whole structure** — continuous rolling of a short leg against a
+  surviving long leg is not modeled. **Fixed size** (config leg qty/cycle), not capital-scaled.
+  Strikes rounded to `strike_increment` (default $1). Each result carries
   `model/iv_source/rate/vol_lookback/approximate`.
 
 ## Error handling
@@ -125,11 +139,13 @@ failure; `started_at`/`completed_at`. `trade_log_uri` stays null (trade count + 
 - **Pure** (`packages/core/tests/`): `metrics` (known equity/returns → expected sharpe/sortino/
   max_dd/total/annualized; win_rate/avg from a trade-pnl list; empty/zero-variance → 0.0);
   `vol` (known returns → expected annualized realized vol; insufficient data → floor); `template`
-  (config → correct `moneyness`/`dte`/`structure_dte`; `instantiate` → correct rounded strikes +
-  `roll_date+dte` expiry); **`engine`** — deterministic synthetic `closes`: a long call on a
-  **flat** underlying loses to theta (total_return < 0), on a **steadily rising** underlying
-  profits (total_return > 0); a debit spread's loss is bounded; metrics all finite; `trades` =
-  number of completed cycles.
+  (config → correct per-leg `moneyness`/`dte` + `cycle_dte` = min option DTE; `instantiate` →
+  correct rounded strikes + **per-leg** `roll_date+leg.dte` expiries, incl. a calendar with two
+  different DTEs); **`engine`** — deterministic synthetic `closes`: a long call on a **flat**
+  underlying loses to theta (total_return < 0), on a **steadily rising** underlying profits
+  (total_return > 0); a debit spread's loss is bounded; a **calendar** (short front / long back,
+  same strike) on a flat underlying is net-positive (front decays faster than back) and cycles on
+  the front expiry; metrics all finite; `trades` = number of completed cycles.
 - **Integration** (`tests/integration/test_backtest.py`, 55432): seed a tenant + a `strategies`
   row + `bars` for its underlying (via admin/`tenant_session`), `create_and_run` →
   `Backtest.status == "succeeded"` with `metrics_json` populated (incl. `model/iv_source/
@@ -140,5 +156,6 @@ failure; `started_at`/`completed_at`. `trade_log_uri` stays null (trade count + 
 
 ## Out of scope (→ 8b or later)
 - Redis queue + the worker consume loop; the §5.3 POST(202)/GET-poll API + tier gating; a separate
-  trade-log file/URI; calendar/multi-expiry structures; capital-scaled position sizing; historical
-  rate/dividend curves; transaction-cost calibration beyond a flat commission+slippage.
+  trade-log file/URI; capital-scaled position sizing; historical rate/dividend curves;
+  transaction-cost calibration beyond a flat commission+slippage; continuous short-leg rolling
+  against a surviving long leg (each front expiry closes and re-opens the full structure).
