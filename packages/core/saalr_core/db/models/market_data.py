@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import CHAR, BigInteger, Date, Numeric, Text
+from sqlalchemy import CHAR, BigInteger, Boolean, Date, Numeric, Text, func, text
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,3 +39,14 @@ class OptionsChainSnapshot(Base):
     gamma: Mapped[Decimal | None] = mapped_column(Numeric(10, 6))
     theta: Mapped[Decimal | None] = mapped_column(Numeric(10, 6))
     vega: Mapped[Decimal | None] = mapped_column(Numeric(10, 6))
+
+
+class Instrument(Base):
+    __tablename__ = "instruments"
+    symbol: Mapped[str] = mapped_column(Text, primary_key=True)
+    market: Mapped[str] = mapped_column(CHAR(2), primary_key=True)
+    name: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )

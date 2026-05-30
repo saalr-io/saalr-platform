@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     risk_free_rate_fallback: float = 0.05
     vol_surface_cache_ttl_seconds: int = 21600  # 6h, per HLD
 
+    # Market-data ingestion
+    bars_backfill_default_days: int = 1825  # ~5y, used when a symbol has no stored bars
+
 
 def get_settings() -> Settings:
     return Settings()
