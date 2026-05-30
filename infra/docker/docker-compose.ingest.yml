@@ -1,0 +1,16 @@
+# Local market-data ingest scheduler. Run together with the base stack:
+#   docker compose -f docker-compose.yml -f docker-compose.localport.yml -f docker-compose.ingest.yml up -d --build
+# Inside this network the DB host is the `postgres` service on 5432 (NOT the host-published 55432).
+services:
+  scheduler:
+    build:
+      context: ../..
+      dockerfile: apps/ingest-worker/Dockerfile
+    init: true # tini as PID 1 reaps orphans (supercronic runs with -no-reap)
+    environment:
+      APP_DATABASE_URL: postgresql+asyncpg://saalr_app:saalr_app@postgres:5432/saalr
+      MASSIVE_API_KEY: ${MASSIVE_API_KEY:-}
+      INGEST_CRON: ${INGEST_CRON:-30 21 * * *}
+    depends_on:
+      - postgres
+    restart: unless-stopped
