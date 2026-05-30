@@ -24,8 +24,8 @@ def upgrade() -> None:
         );
 
         -- The worker only SELECTs/upserts; it never TRUNCATEs (tests truncate via the admin role).
+        -- (bars is already granted to saalr_app by 0001's schema-wide grant + default privileges.)
         GRANT SELECT, INSERT, UPDATE ON instruments TO saalr_app;
-        GRANT SELECT, INSERT, UPDATE ON bars TO saalr_app;
     """)
 
 

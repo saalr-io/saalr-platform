@@ -76,7 +76,9 @@ class MassiveAggregatesProvider:
         async with httpx.AsyncClient(timeout=30.0) as client:
             url = f"{self._base}/v2/aggs/ticker/{symbol}/range/1/day/{start.isoformat()}/{end.isoformat()}"
             params: dict = {"apiKey": self._api_key, "adjusted": "true", "limit": 50000}
-            while url:
+            seen: set[str] = set()
+            while url and url not in seen:  # guard against a cyclic/echoed next_url
+                seen.add(url)
                 data = await self._get(client, url, params)
                 rows.extend(parse_aggregates(data.get("results", []) or [], symbol, market))
                 url = data.get("next_url")

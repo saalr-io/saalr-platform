@@ -2,10 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from collections.abc import Awaitable, Callable
-from datetime import date
-
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import date, datetime, timezone
 
 from saalr_core.config import get_settings
 from saalr_core.db.session import create_engine, create_sessionmaker
@@ -15,14 +12,17 @@ from saalr_core.marketdata.provider import ProviderError
 from . import repo, service
 
 
-async def _with_session(fn: Callable[[AsyncSession, object], Awaitable[None]]) -> None:
+async def _run(fn) -> None:
+    """Build an engine + sessionmaker, hand them to the command, then dispose.
+
+    Commands own their own transaction boundaries — each symbol is committed in
+    its own short transaction, so a failure on one symbol never rolls back the
+    work already persisted for earlier symbols (long backfills are resumable).
+    """
     settings = get_settings()
     engine = create_engine(settings.app_database_url)
     try:
-        sm = create_sessionmaker(engine)
-        async with sm() as session:
-            async with session.begin():
-                await fn(session, settings)
+        await fn(create_sessionmaker(engine), settings)
     finally:
         await engine.dispose()
 
@@ -53,39 +53,52 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-async def _cmd_add(args, session, settings) -> None:
-    await repo.add_instrument(session, args.symbol.upper(), args.market, args.name)
+async def _cmd_add(args, sm, settings) -> None:
+    async with sm() as session:
+        async with session.begin():
+            await repo.add_instrument(session, args.symbol.upper(), args.market, args.name)
     print(f"added {args.symbol.upper()} ({args.market})")
 
 
-async def _cmd_list(args, session, settings) -> None:
-    rows = await repo.list_active_instruments(session, args.market)
+async def _cmd_list(args, sm, settings) -> None:
+    async with sm() as session:
+        rows = await repo.list_active_instruments(session, args.market)
     for i in rows:
         print(f"{i.symbol}\t{i.market}\t{i.name or ''}")
     print(f"{len(rows)} active")
 
 
-async def _cmd_backfill(args, session, settings) -> None:
+async def _cmd_backfill(args, sm, settings) -> None:
     start, end = date.fromisoformat(args.start), date.fromisoformat(args.end)
     provider = _provider(settings)
-    symbols = (
-        [(args.symbol.upper(), args.market)]
-        if args.symbol
-        else [(i.symbol, i.market) for i in await repo.list_active_instruments(session)]
-    )
+    if args.symbol:
+        symbols = [(args.symbol.upper(), args.market)]
+    else:
+        async with sm() as session:
+            symbols = [(i.symbol, i.market) for i in await repo.list_active_instruments(session)]
     for sym, mkt in symbols:
         try:
-            n = await service.backfill_symbol(session, provider, sym, mkt, start, end)
+            async with sm() as session, session.begin():
+                n = await service.backfill_symbol(session, provider, sym, mkt, start, end)
             print(f"{sym}: {n} bars")
         except ProviderError as exc:
             print(f"{sym}: FAILED {exc}")
 
 
-async def _cmd_run(args, session, settings) -> None:
+async def _cmd_run(args, sm, settings) -> None:
     provider = _provider(settings)
-    counts = await service.run_incremental(session, provider, settings.bars_backfill_default_days)
-    for sym, n in counts.items():
-        print(f"{sym}: +{n} bars")
+    today = datetime.now(timezone.utc).date()
+    async with sm() as session:
+        instruments = await repo.list_active_instruments(session)
+    for inst in instruments:
+        try:
+            async with sm() as session, session.begin():
+                n = await service.incremental_symbol(
+                    session, provider, inst.symbol, inst.market, settings.bars_backfill_default_days, today
+                )
+            print(f"{inst.symbol}: +{n} bars")
+        except ProviderError as exc:
+            print(f"{inst.symbol}: FAILED {exc}")
 
 
 _DISPATCH = {
@@ -99,4 +112,4 @@ _DISPATCH = {
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     handler = _DISPATCH[args.cmd]
-    asyncio.run(_with_session(lambda session, settings: handler(args, session, settings)))
+    asyncio.run(_run(lambda sm, settings: handler(args, sm, settings)))
