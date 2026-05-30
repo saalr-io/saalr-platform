@@ -6,10 +6,11 @@ from ingest_worker import repo, service
 from saalr_core.marketdata.aggregates import BarRow
 
 
-async def test_instruments_table_exists_and_writable(app_sessionmaker):
+async def test_instruments_table_exists_and_writable(admin_engine, app_sessionmaker):
+    async with admin_engine.begin() as admin:
+        await admin.execute(text("TRUNCATE instruments"))
     async with app_sessionmaker() as s:
         async with s.begin():
-            await s.execute(text("TRUNCATE instruments"))
             await s.execute(
                 text("INSERT INTO instruments (symbol, market, name) VALUES ('AAPL','US','Apple')")
             )
@@ -38,10 +39,11 @@ class StubAggs:
         return out
 
 
-async def test_add_instrument_idempotent(app_sessionmaker):
+async def test_add_instrument_idempotent(admin_engine, app_sessionmaker):
+    async with admin_engine.begin() as admin:
+        await admin.execute(text("TRUNCATE instruments"))
     async with app_sessionmaker() as s:
         async with s.begin():
-            await s.execute(text("TRUNCATE instruments"))
             await repo.add_instrument(s, "MSFT", "US", "Microsoft")
             await repo.add_instrument(s, "MSFT", "US", "Microsoft Corp")
         async with s.begin():

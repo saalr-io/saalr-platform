@@ -1,9 +1,11 @@
 import os
+from datetime import date, timedelta
 
 import httpx
 import pytest
 
 from saalr_core.config import get_settings
+from saalr_core.marketdata.aggregates import MassiveAggregatesProvider
 from saalr_core.marketdata.massive import parse_results
 from saalr_core.marketdata.rates import FredRateProvider
 
@@ -35,3 +37,12 @@ async def test_fred_live_curve():
     curve = await FredRateProvider(_settings.fred_api_key, 0.05).get_curve()
     assert curve.points
     assert 0.0 < curve.rate_for(0.25) < 0.20
+
+
+@pytest.mark.skipif(not _settings.massive_api_key, reason="no MASSIVE_API_KEY")
+async def test_massive_live_daily_bars():
+    end = date.today()
+    start = end - timedelta(days=7)
+    bars = await MassiveAggregatesProvider(_settings.massive_api_key).get_daily_bars("AAPL", start, end)
+    assert len(bars) >= 1
+    assert bars[0].close > 0 and bars[0].volume > 0

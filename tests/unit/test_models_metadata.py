@@ -7,7 +7,7 @@ EXPECTED_TABLES = {
     "strategies", "backtests", "model_validation_runs",
     "broker_accounts", "orders", "executions", "positions",
     "audit_log",
-    "bars", "options_chain_snapshots",
+    "bars", "options_chain_snapshots", "instruments",
     "config_kv",
 }
 

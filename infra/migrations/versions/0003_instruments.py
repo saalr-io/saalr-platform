@@ -23,7 +23,8 @@ def upgrade() -> None:
           PRIMARY KEY (symbol, market)
         );
 
-        GRANT SELECT, INSERT, UPDATE, TRUNCATE ON instruments TO saalr_app;
+        -- The worker only SELECTs/upserts; it never TRUNCATEs (tests truncate via the admin role).
+        GRANT SELECT, INSERT, UPDATE ON instruments TO saalr_app;
         GRANT SELECT, INSERT, UPDATE ON bars TO saalr_app;
     """)
 
