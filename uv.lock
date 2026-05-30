@@ -614,6 +614,12 @@ requires-dist = [
 name = "saalr-ingest-worker"
 version = "0.0.0"
 source = { editable = "apps/ingest-worker" }
+dependencies = [
+    { name = "saalr-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "saalr-core", editable = "packages/core" }]
 
 [[package]]
 name = "saalr-ml-models"
