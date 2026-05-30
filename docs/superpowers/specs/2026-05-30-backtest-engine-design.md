@@ -131,7 +131,9 @@ failure; `started_at`/`completed_at`. `trade_log_uri` stays null (trade count + 
 ## Error handling
 - No bars for the underlying over the window, or `start`/`end` outside the bar range → the engine
   raises a clear error; `run_backtest` persists `status="failed"` + `error_message`.
-- A structure with no option legs (equity-only) → priced on bars directly (no BSM); still valid.
+- A structure with **no option legs** (pure equity) → clear error (no roll cycle to define);
+  `status="failed"`. Structures that mix equity + option legs (e.g. covered calls) are fully
+  supported — the equity leg is marked on bars while the option leg(s) drive the cycle.
 - Degenerate vol (flat history) → `realized_vol` floors at a small value so BSM is finite.
 - A cycle whose expiry exceeds `end` → truncated at `end` (settle at the last available mark).
 
