@@ -18,6 +18,7 @@ from saalr_core.marketdata.rates import FredRateProvider
 from .auth import Principal, get_auth_provider, get_principal
 from .auth.magic import consume_link, request_link
 from .market.router import router as market_router
+from .strategies.router import router as strategies_router
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _logger = logging.getLogger("saalr.auth")
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="Saalr API", lifespan=lifespan)
     app.include_router(market_router)
+    app.include_router(strategies_router)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
