@@ -1173,7 +1173,13 @@ async def test_backtest_fails_when_no_bars(app_sessionmaker, admin_engine):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/integration/test_backtest.py -v`
+> IMPORTANT — worker packages are NOT root dependencies, so they are only importable under `uv run --package saalr-backtest-worker ...` (this installs the worker editable into the run env, the same way `ingest-worker` integration tests run). Plain `uv run pytest` will `ModuleNotFoundError` on `backtest_worker`. The integration DB is the Docker container on host **55432**; export the env first:
+> ```bash
+> export ADMIN_DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:55432/saalr"
+> export APP_DATABASE_URL="postgresql+asyncpg://saalr_app:saalr_app@localhost:55432/saalr"
+> ```
+
+Run: `uv run --package saalr-backtest-worker pytest tests/integration/test_backtest.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'backtest_worker.service'`
 
 - [ ] **Step 3: Write the service**
@@ -1266,7 +1272,7 @@ async def create_and_run(
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest tests/integration/test_backtest.py -v`
+Run: `uv run --package saalr-backtest-worker pytest tests/integration/test_backtest.py -v` (with the 55432 env exported as in Step 2)
 Expected: PASS (both). If `test_backtest_succeeds_and_persists` fails on a poisoned-session error after a DB statement error inside the try, confirm the only DB call there is `load_underlying_closes` (a SELECT) and that the "insufficient bars" check is a pure Python guard on the returned dict (it is) — engine failures are pure Python and leave the session healthy.
 
 - [ ] **Step 5: Commit**
@@ -1311,7 +1317,7 @@ def test_run_subcommand_parses():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest apps/backtest-worker/tests/test_cli_parser.py -v`
+Run: `uv run --package saalr-backtest-worker pytest apps/backtest-worker/tests/test_cli_parser.py -v`
 Expected: FAIL — `ModuleNotFoundError`
 
 - [ ] **Step 3: Write the CLI**
@@ -1399,7 +1405,7 @@ def main(argv: list[str] | None = None) -> None:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest apps/backtest-worker/tests/test_cli_parser.py -v`
+Run: `uv run --package saalr-backtest-worker pytest apps/backtest-worker/tests/test_cli_parser.py -v`
 Expected: PASS (both)
 
 - [ ] **Step 5: Commit**
@@ -1415,10 +1421,22 @@ git commit -m "feat(backtest-worker): CLI (backtest create+run / run-by-id)"
 
 **Files:** none (verification only)
 
-- [ ] **Step 1: Run the full test suite**
+> Worker packages need `--package` to be importable. Export the 55432 env (as in Task 7 Step 2) for the integration runs.
 
-Run: `uv run pytest -q`
-Expected: all green (core + integration on the 55432 env; any live-only tests skipped as before)
+- [ ] **Step 1a: Core suite**
+
+Run: `uv run pytest packages/core/tests -q`
+Expected: all green (includes the new metrics/vol/template/engine/serde tests)
+
+- [ ] **Step 1b: Backtest worker — integration + CLI**
+
+Run: `uv run --package saalr-backtest-worker pytest tests/integration/test_backtest.py apps/backtest-worker/tests -q`
+Expected: all green
+
+- [ ] **Step 1c: Regression — full integration suite with both worker packages installed**
+
+Run: `uv run --package saalr-ingest-worker --package saalr-backtest-worker pytest tests/integration -q`
+Expected: all green (this proves the existing ingest + api + new backtest integration tests still co-exist). If `uv run` rejects repeated `--package`, fall back to running `tests/integration/test_backtest.py` (Step 1b) plus a separate `uv run --package saalr-ingest-worker pytest tests/integration --ignore=tests/integration/test_backtest.py -q`, and report which path you used.
 
 - [ ] **Step 2: Lint**
 
@@ -1427,7 +1445,7 @@ Expected: no errors
 
 - [ ] **Step 3: CLI smoke (no DB)**
 
-Run: `uv run python -m backtest_worker --help`
+Run: `uv run --package saalr-backtest-worker python -m backtest_worker --help`
 Expected: prints usage listing `backtest` and `run` subcommands
 
 - [ ] **Step 4: Final commit (if anything was adjusted)**
