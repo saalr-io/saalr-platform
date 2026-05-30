@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "details": {"contract_type": "call", "strike_price": 180, "expiration_date": "2026-06-21"},
+      "last_quote": {"bid": 7.1, "ask": 7.3},
+      "day": {"close": 7.2, "volume": 1200},
+      "open_interest": 3400,
+      "implied_volatility": 0.262,
+      "greeks": {"delta": 0.58, "gamma": 0.02, "theta": -0.05, "vega": 0.11}
+    },
+    {
+      "details": {"contract_type": "put", "strike_price": 180, "expiration_date": "2026-06-21"},
+      "last_quote": {"bid": 5.0, "ask": 5.2},
+      "day": {"close": 5.1, "volume": 800},
+      "open_interest": 2100,
+      "implied_volatility": 0.271,
+      "greeks": {"delta": -0.42, "gamma": 0.02, "theta": -0.04, "vega": 0.11}
+    }
+  ],
+  "next_url": "https://api.massive.com/v3/snapshot/options/AAPL?cursor=PAGE2"
+}
