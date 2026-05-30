@@ -33,17 +33,34 @@ export function Strategies() {
   const [targetDate, setTargetDate] = useState('')
   const [result, setResult] = useState<AnalyzeResult | null>(null)
   const [needUpgrade, setNeedUpgrade] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
   const analyze = useAnalyze()
   const create = useCreateStrategy()
 
+  const missingPrices =
+    !live && config.legs.some((l) => l.kind === 'option' && (l.entry_price === null || l.entry_price === undefined))
+
   function runAnalyze() {
     setNeedUpgrade(false)
+    setErrorMsg(null)
     analyze.mutate(
       { config, live, target_date: targetDate || undefined },
       {
         onSuccess: (r) => setResult(r),
-        onError: (e) => { if (e instanceof EntitlementError) setNeedUpgrade(true) },
+        onError: (e) => {
+          if (e instanceof EntitlementError) setNeedUpgrade(true)
+          else setErrorMsg(e.message || 'Analysis failed — please try again.')
+        },
       },
+    )
+  }
+
+  function save() {
+    setSaved(false)
+    create.mutate(
+      { name: `${config.underlying} strategy`, config },
+      { onSuccess: () => setSaved(true), onError: (e) => setErrorMsg(e.message || 'Save failed.') },
     )
   }
 
@@ -57,6 +74,12 @@ export function Strategies() {
       {needUpgrade && (
         <div className="rounded-md border border-yellow-700/40 bg-yellow-900/10 px-3 py-2 text-xs text-yellow-300" data-testid="upgrade-banner">
           Live Greeks, probability of profit, and the target-date curve require a Pro plan. Showing the expiry payoff from entered prices.
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="rounded-md border border-red-700/40 bg-red-900/10 px-3 py-2 text-xs text-red-300" data-testid="error-banner">
+          {errorMsg}
         </div>
       )}
 
@@ -95,10 +118,17 @@ export function Strategies() {
                   className="rounded bg-pos/20 px-4 py-1 text-xs text-pos hover:bg-pos/30">
             {analyze.isPending ? 'Analyzing…' : 'Analyze'}
           </button>
-          <button data-testid="save-btn"
-                  onClick={() => create.mutate({ name: `${config.underlying} strategy`, config })}
-                  className="rounded border border-line px-4 py-1 text-xs text-txtDim hover:text-txt">Save</button>
+          <button data-testid="save-btn" onClick={save} disabled={create.isPending}
+                  className="rounded border border-line px-4 py-1 text-xs text-txtDim hover:text-txt">
+            {create.isPending ? 'Saving…' : 'Save'}
+          </button>
+          {saved && <span className="text-xs text-pos" data-testid="saved-ok">Saved ✓</span>}
         </div>
+        {missingPrices && (
+          <div className="mt-2 text-[11px] text-txtFaint" data-testid="price-hint">
+            Some option legs have no entry price — the expiry payoff treats those as 0. Enter prices, or enable live (Pro) to auto-fill from the market.
+          </div>
+        )}
       </div>
     </div>
   )

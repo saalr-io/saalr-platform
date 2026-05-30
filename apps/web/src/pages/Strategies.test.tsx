@@ -41,4 +41,15 @@ describe('Strategies page', () => {
     fireEvent.click(screen.getByTestId('analyze-btn'))
     await waitFor(() => expect(screen.getByTestId('upgrade-banner')).toBeInTheDocument())
   })
+
+  it('surfaces a non-entitlement analyze failure', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (String(url).endsWith('/templates')) return new Response(JSON.stringify({ templates: [] }), { status: 200 })
+      if (String(url).endsWith('/v1/strategies')) return new Response(JSON.stringify({ strategies: [], next_cursor: null }), { status: 200 })
+      return new Response(JSON.stringify({ detail: { error: { code: 'INTERNAL' } } }), { status: 500 })
+    }))
+    render(wrap(<Strategies />))
+    fireEvent.click(screen.getByTestId('analyze-btn'))
+    await waitFor(() => expect(screen.getByTestId('error-banner')).toBeInTheDocument())
+  })
 })

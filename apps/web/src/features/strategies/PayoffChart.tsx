@@ -18,6 +18,7 @@ export function PayoffChart({
   spot?: number
 }) {
   const [hover, setHover] = useState<CurvePoint | null>(null)
+  if (expirationCurve.length === 0) return null
   const curves = targetDateCurve ? [expirationCurve, targetDateCurve] : [expirationCurve]
   const b = computeBounds(curves)
   const zeroY = yForPnl(0, b, DIMS)

@@ -1,4 +1,4 @@
-import type { Leg, OptionLeg, StrategyConfig } from '../../lib/strategies'
+import type { OptionLeg, StrategyConfig } from '../../lib/strategies'
 
 const FIELD = 'rounded border border-line bg-canvas px-2 py-1 text-xs text-txt'
 
@@ -8,7 +8,10 @@ function newOptionLeg(): OptionLeg {
 
 export function LegEditor({ config, onChange }: { config: StrategyConfig; onChange: (c: StrategyConfig) => void }) {
   function patchLeg(i: number, patch: Partial<OptionLeg>) {
-    const legs = config.legs.map((l, idx) => (idx === i ? { ...l, ...patch } as Leg : l))
+    const legs = config.legs.map((l, idx) => {
+      if (idx !== i || l.kind !== 'option') return l
+      return { ...l, ...patch }
+    })
     onChange({ ...config, legs })
   }
   return (
