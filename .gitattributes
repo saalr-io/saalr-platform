@@ -1,0 +1,2 @@
+# Shell scripts must stay LF so they run inside Linux containers (this is a Windows repo).
+*.sh text eol=lf
