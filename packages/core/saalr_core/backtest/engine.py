@@ -1,6 +1,7 @@
 # packages/core/saalr_core/backtest/engine.py
 from __future__ import annotations
 
+import bisect
 from dataclasses import dataclass
 from datetime import date, timedelta
 
@@ -82,13 +83,16 @@ def run_backtest_engine(
     if not closes:
         raise ValueError("no bars supplied for the underlying")
     all_dates = sorted(closes)
+    all_closes = [closes[x] for x in all_dates]
     sim_days = [d for d in all_dates if params.start <= d <= params.end]
     if len(sim_days) < 2:
         raise ValueError("need at least 2 trading days with bars in [start, end]")
 
     def vol_at(d: date) -> float:
-        series = [closes[x] for x in all_dates if x <= d]
-        return realized_vol(series, params.vol_lookback)
+        # closes up to and including d; only the last (lookback+1) are needed for the window
+        hi = bisect.bisect_right(all_dates, d)
+        lo = max(0, hi - params.vol_lookback - 1)
+        return realized_vol(all_closes[lo:hi], params.vol_lookback)
 
     equity_curve: list[float] = []
     trade_pnls: list[float] = []
