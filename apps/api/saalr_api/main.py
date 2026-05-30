@@ -12,8 +12,12 @@ from saalr_core.config import get_settings
 from saalr_core.db.session import create_engine, create_sessionmaker
 from saalr_core.tiers import entitlements_for
 
+from saalr_core.marketdata.massive import MassiveProvider
+from saalr_core.marketdata.rates import FredRateProvider
+
 from .auth import Principal, get_auth_provider, get_principal
 from .auth.magic import consume_link, request_link
+from .market.router import router as market_router
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _logger = logging.getLogger("saalr.auth")
@@ -41,11 +45,17 @@ def create_app() -> FastAPI:
         app.state.sessionmaker = create_sessionmaker(engine)
         app.state.auth_provider = get_auth_provider(settings)
         app.state.redis = aioredis.from_url(settings.redis_url, decode_responses=True)
+        app.state.market_provider = MassiveProvider(settings.massive_api_key)
+        app.state.rate_provider = FredRateProvider(
+            settings.fred_api_key, settings.risk_free_rate_fallback
+        )
+        app.state.vol_surface_ttl = settings.vol_surface_cache_ttl_seconds
         yield
         await app.state.redis.aclose()
         await engine.dispose()
 
     app = FastAPI(title="Saalr API", lifespan=lifespan)
+    app.include_router(market_router)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
