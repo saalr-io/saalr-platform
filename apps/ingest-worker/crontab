@@ -1,0 +1,4 @@
+# Default ingest schedule. The container entrypoint regenerates this from the
+# $INGEST_CRON env var, so change the cadence there (no rebuild needed).
+# Daily at 21:30 UTC (~16:30 ET, after the US close, when the settled daily bar exists).
+30 21 * * * cd /app && uv run --no-sync python -m ingest_worker run
