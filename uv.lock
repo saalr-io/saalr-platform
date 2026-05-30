@@ -6,6 +6,7 @@ requires-python = "==3.12.*"
 members = [
     "saalr",
     "saalr-api",
+    "saalr-backtest-worker",
     "saalr-brokers",
     "saalr-content",
     "saalr-core",
@@ -578,6 +579,17 @@ requires-dist = [
     { name = "saalr-core", editable = "packages/core" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29" },
 ]
+
+[[package]]
+name = "saalr-backtest-worker"
+version = "0.0.0"
+source = { editable = "apps/backtest-worker" }
+dependencies = [
+    { name = "saalr-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "saalr-core", editable = "packages/core" }]
 
 [[package]]
 name = "saalr-brokers"
