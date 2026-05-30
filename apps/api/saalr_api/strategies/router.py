@@ -63,7 +63,9 @@ async def analyze(body: AnalyzeIn, request: Request,
     s = request.app.state
     from ..market.service import MarketService
     ms = MarketService(s.market_provider, s.rate_provider, s.redis, s.vol_surface_ttl)
-    return await service.analyze_live(config, ms, session, config.underlying, "US", body.target_date)
+    return await service.analyze_live(
+        config, ms, s.rate_provider, session, config.underlying, "US", body.target_date
+    )
 
 
 @router.post("")
@@ -85,8 +87,12 @@ async def list_strategies(limit: int = Query(20, le=100), cursor: str | None = N
     session, _ = ctx
     decoded = None
     if cursor:
-        ts, sid = base64.urlsafe_b64decode(cursor.encode()).decode().split("|")
-        decoded = (datetime.fromisoformat(ts), UUID(sid))
+        try:
+            ts, sid = base64.urlsafe_b64decode(cursor.encode()).decode().split("|")
+            decoded = (datetime.fromisoformat(ts), UUID(sid))
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise HTTPException(400, {"error": {
+                "code": "VALIDATION_INVALID_PARAMETER", "message": "malformed cursor"}}) from exc
     rows = await repo.list_strategies(session, limit, decoded)
     next_cursor = None
     if len(rows) == limit:

@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from uuid import UUID
 
@@ -8,6 +8,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from saalr_core.db.base import Base
 from saalr_core.ids import new_id
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class Strategy(Base):
@@ -22,7 +26,9 @@ class Strategy(Base):
     market: Mapped[str] = mapped_column(CHAR(2), nullable=False)
     broker_account_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("broker_accounts.broker_account_id"))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=_utcnow, nullable=False
+    )
     promoted_to_live_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     paused_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     paused_reason: Mapped[str | None] = mapped_column(Text)

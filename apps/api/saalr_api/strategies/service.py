@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 from saalr_core.pricing.model import BSMModel
@@ -43,11 +44,28 @@ def _match_contract(chain_contracts: list[dict], leg: OptionLeg) -> dict | None:
     return None
 
 
-async def analyze_live(config, market_service, session, ticker, market, target_date: str | None) -> dict:
+def _atm_iv(filled_legs: list, iv_by_leg: dict[int, float], spot: float) -> float:
+    """IV of the option leg whose strike is nearest spot (true ATM), else 0.0."""
+    best_iv, best_dist = 0.0, None
+    for i, leg in enumerate(filled_legs):
+        if i in iv_by_leg:
+            dist = abs(leg.strike - spot)
+            if best_dist is None or dist < best_dist:
+                best_dist, best_iv = dist, iv_by_leg[i]
+    return best_iv
+
+
+def _years_to(expiry: str) -> float:
+    return max((date.fromisoformat(expiry) - date.today()).days, 0) / 365.0
+
+
+async def analyze_live(config, market_service, rate_provider, session, ticker, market,
+                       target_date: str | None) -> dict:
     """Pure payoff enriched with live prices, net Greeks, target-date curve, and POP."""
     chain = await market_service.chain(session, ticker, market, expiry=None)
     spot = chain["spot"]
     contracts = chain["contracts"]
+    yield_curve = await rate_provider.get_curve()
     legs = config.legs
 
     iv_by_leg: dict[int, float] = {}
@@ -59,13 +77,13 @@ async def analyze_live(config, market_service, session, ticker, market, target_d
             iv = (match or {}).get("ours", {}).get("iv")
             mid = (match or {}).get("ours", {}).get("price")
             entry = leg.entry_price if leg.entry_price is not None else (mid or 0.0)
-            from dataclasses import replace
             leg = replace(leg, entry_price=entry)
             if iv:
                 iv_by_leg[i] = iv
-                t = max((date.fromisoformat(leg.expiry) - date.today()).days, 0) / 365.0
+                t = _years_to(leg.expiry)
+                rate = yield_curve.rate_for(t) if t > 0 else 0.0
                 kind = OptionKind.CALL if leg.option_type.value == "CALL" else OptionKind.PUT
-                g = _MODEL.greeks(OptionParams(spot, leg.strike, t, 0.04, iv, 0.0, kind)) if t > 0 else None
+                g = _MODEL.greeks(OptionParams(spot, leg.strike, t, rate, iv, 0.0, kind)) if t > 0 else None
                 priced.append((leg, g))
             else:
                 priced.append((leg, None))
@@ -77,10 +95,10 @@ async def analyze_live(config, market_service, session, ticker, market, target_d
     curve = payoff.expiration_curve(filled_legs, grid)
     m = payoff.max_pl(curve)
     intervals = payoff.profit_intervals(curve)
-    atm_iv = next(iter(iv_by_leg.values()), 0.0)
-    t_exp = max((min(date.fromisoformat(leg.expiry) for leg in filled_legs if isinstance(leg, OptionLeg))
-                 - date.today()).days, 0) / 365.0
-    pop_out = pop.probability_of_profit(spot, atm_iv, t_exp, 0.04, 0.0, intervals)
+    atm_iv = _atm_iv(filled_legs, iv_by_leg, spot)
+    t_exp = min((_years_to(leg.expiry) for leg in filled_legs if isinstance(leg, OptionLeg)), default=0.0)
+    rate_exp = yield_curve.rate_for(t_exp) if t_exp > 0 else 0.0
+    pop_out = pop.probability_of_profit(spot, atm_iv, t_exp, rate_exp, 0.0, intervals)
 
     result = {
         "expiration_curve": [{"spot": s, "pnl": p} for s, p in curve],
@@ -92,12 +110,13 @@ async def analyze_live(config, market_service, session, ticker, market, target_d
         "net_greeks": net_greeks(priced),
         "probability_of_profit": pop_out,
         "spot": spot, "data_provider": "massive", "model": "bsm",
+        "risk_free_source": getattr(rate_provider, "source_name", "fred"),
     }
     if target_date:
         result["target_date_curve"] = [
             {"spot": s, "pnl": p}
             for s, p in payoff.target_date_curve(
-                filled_legs, grid, date.fromisoformat(target_date), 0.04, 0.0, iv_by_leg
+                filled_legs, grid, date.fromisoformat(target_date), rate_exp, 0.0, iv_by_leg
             )
         ]
     return result
