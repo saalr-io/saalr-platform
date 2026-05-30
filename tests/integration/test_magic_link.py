@@ -32,7 +32,7 @@ async def test_request_then_verify_issues_session_token():
             assert r.status_code == 200
             body = r.json()
             assert body["sent"] is True
-            assert "/auth/verify?token=" in body["dev_link"]
+            assert "/app/auth/verify?token=" in body["dev_link"]
             token = body["dev_link"].split("token=", 1)[1]
 
             v = await c.post("/auth/magic/verify", json={"token": token})

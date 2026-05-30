@@ -116,7 +116,7 @@ def create_app() -> FastAPI:
                 detail={"error": {"code": "VALIDATION_INVALID_EMAIL", "message": "invalid email"}},
             )
         token = await request_link(app.state.redis, email, settings.magic_link_ttl_seconds)
-        verify_url = f"{settings.web_base_url}/auth/verify?token={token}"
+        verify_url = f"{settings.web_base_url}/app/auth/verify?token={token}"
         _logger.info("magic link for %s -> %s", email, verify_url)
         return {"sent": True, "dev_link": verify_url}
 
