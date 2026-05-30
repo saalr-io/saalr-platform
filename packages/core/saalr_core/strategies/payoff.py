@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from datetime import date as _date
+
+from saalr_core.pricing.greeks import price as _bsm_price
+from saalr_core.pricing.types import OptionKind, OptionParams
+
 from .types import (
     OPTION_MULTIPLIER,
     CashLeg,
@@ -94,3 +99,49 @@ def profit_intervals(curve: list[tuple[float, float]]) -> list[tuple[float, floa
         if pnl_mid > 0:
             intervals.append((lo, hi))
     return intervals
+
+
+def _leg_pnl_at_target(leg, s, eval_date, rate, div_yield, iv):
+    if isinstance(leg, OptionLeg):
+        t_rem = (_date.fromisoformat(leg.expiry) - eval_date).days / 365.0
+        entry = leg.entry_price or 0.0
+        if t_rem <= 0 or iv is None or iv <= 0:
+            if leg.option_type is OptionType.CALL:
+                value = max(s - leg.strike, 0.0)
+            else:
+                value = max(leg.strike - s, 0.0)
+        else:
+            kind = OptionKind.CALL if leg.option_type is OptionType.CALL else OptionKind.PUT
+            value = _bsm_price(
+                OptionParams(
+                    spot=s,
+                    strike=leg.strike,
+                    t_years=t_rem,
+                    rate=rate,
+                    sigma=iv,
+                    div_yield=div_yield,
+                    kind=kind,
+                )
+            )
+        return leg.side.sign * (value - entry) * OPTION_MULTIPLIER * leg.qty
+    if isinstance(leg, EquityLeg):
+        return leg.side.sign * (s - (leg.entry_price or 0.0)) * leg.qty
+    return 0.0
+
+
+def target_date_curve(
+    legs,
+    grid,
+    eval_date,
+    rate,
+    div_yield,
+    iv_by_leg,
+) -> list[tuple[float, float]]:
+    """Theoretical P&L curve at eval_date (BSM at remaining time). iv_by_leg maps leg index -> iv."""
+    out = []
+    for s in grid:
+        total = 0.0
+        for i, leg in enumerate(legs):
+            total += _leg_pnl_at_target(leg, s, eval_date, rate, div_yield, iv_by_leg.get(i))
+        out.append((s, total))
+    return out

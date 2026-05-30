@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from datetime import date
 
 from saalr_core.strategies.payoff import (
     breakevens,
@@ -9,6 +10,7 @@ from saalr_core.strategies.payoff import (
     net_premium,
     profit_intervals,
     spot_grid,
+    target_date_curve,
 )
 from saalr_core.strategies.types import OptionLeg, OptionType, Side
 
@@ -64,3 +66,15 @@ def test_profit_intervals_long_call():
     assert len(intervals) == 1
     lo, hi = intervals[0]
     assert math.isclose(lo, 105.0, abs_tol=0.5) and hi is None
+
+
+def test_target_date_equals_expiration_at_expiry():
+    legs = [_long_call(strike=100.0, entry=5.0, expiry="2026-12-18")]
+    grid = spot_grid(legs, spot=100.0)
+    exp = expiration_curve(legs, grid)
+    tgt = target_date_curve(
+        legs, grid, eval_date=date(2026, 12, 18), rate=0.04, div_yield=0.0,
+        iv_by_leg={0: 0.25},
+    )
+    for (s_e, p_e), (s_t, p_t) in zip(exp, tgt):
+        assert math.isclose(p_e, p_t, abs_tol=1e-3)
