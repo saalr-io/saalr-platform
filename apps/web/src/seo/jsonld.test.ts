@@ -11,6 +11,7 @@ const content = {
 
 describe('jsonld', () => {
   it('articleJsonLd has TechArticle type and headline', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const j = articleJsonLd(content, 'https://saalr.com/learn/bull-call-spread') as any
     expect(j['@context']).toBe('https://schema.org')
     expect(j['@type']).toBe('TechArticle')
@@ -19,6 +20,7 @@ describe('jsonld', () => {
   })
 
   it('faqJsonLd maps each FAQ to a Question/Answer', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const j = faqJsonLd(content) as any
     expect(j['@type']).toBe('FAQPage')
     expect(j.mainEntity).toHaveLength(1)
@@ -28,6 +30,7 @@ describe('jsonld', () => {
   })
 
   it('breadcrumbJsonLd builds an itemListElement', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const j = breadcrumbJsonLd([{ name: 'Learn', url: '/learn' }, { name: 'Bull Call Spread', url: '/learn/bull-call-spread' }]) as any
     expect(j['@type']).toBe('BreadcrumbList')
     expect(j.itemListElement).toHaveLength(2)
