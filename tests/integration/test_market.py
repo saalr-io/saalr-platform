@@ -64,6 +64,7 @@ async def test_iv_surface_shape_for_pro(app_sessionmaker, admin_engine):
             h = {"Authorization": "Bearer dev:pro@x.com"}
             tid = (await c.get("/me", headers=h)).json()["tenant"]["id"]
             await _make_pro(admin_engine, tid)
+            await app.state.redis.delete("mdq:chain:v1:US:AAPL")
             r = await c.get("/v1/market/iv-surface?ticker=AAPL", headers=h)
     assert r.status_code == 200
     body = r.json()
@@ -89,7 +90,7 @@ async def test_chain_persists_and_caches(app_sessionmaker, admin_engine):
             h = {"Authorization": "Bearer dev:pro2@x.com"}
             tid = (await c.get("/me", headers=h)).json()["tenant"]["id"]
             await _make_pro(admin_engine, tid)
-            await app.state.redis.delete("mdq:chain:US:AAPL")
+            await app.state.redis.delete("mdq:chain:v1:US:AAPL")
             r1 = await c.get("/v1/market/chain?ticker=AAPL", headers=h)
             r2 = await c.get("/v1/market/chain?ticker=AAPL", headers=h)
     assert r1.status_code == 200 and r2.status_code == 200

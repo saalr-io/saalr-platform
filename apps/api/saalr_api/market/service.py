@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,11 +9,15 @@ from saalr_core.marketdata.provider import MarketDataProvider, RiskFreeRateProvi
 from saalr_core.marketdata.types import RawChain
 from saalr_core.pricing.model import BSMModel
 from saalr_core.pricing.surface import build_surface
-from saalr_core.pricing.types import ContractGreeks, OptionParams
+from saalr_core.pricing.types import ContractGreeks, Greeks, OptionKind, OptionParams
 
 from .snapshots import persist_chain
 
 _MODEL = BSMModel()
+
+
+def _now_ms() -> int:
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
 
 
 def _mid(c) -> float | None:
@@ -35,10 +39,8 @@ def _compute(chain: RawChain, rate_for, as_of_date: date) -> list[ContractGreeks
             sigma=0.0, div_yield=chain.div_yield, kind=c.kind,
         )
         mkt = _mid(c)
-        iv = _MODEL.implied_vol(mkt, base) if mkt else None
-        g = _MODEL.greeks(OptionParams(**{**base.__dict__, "sigma": iv})) if iv else None
-        from saalr_core.pricing.types import Greeks
-
+        iv = _MODEL.implied_vol(mkt, base) if mkt is not None else None
+        g = _MODEL.greeks(OptionParams(**{**base.__dict__, "sigma": iv})) if iv is not None else None
         ours = (
             Greeks(price=g.price, delta=g.delta, gamma=g.gamma, theta=g.theta,
                    vega=g.vega, rho=g.rho, iv=iv)
@@ -63,12 +65,10 @@ class MarketService:
         self._ttl = ttl
 
     async def _computed_chain(self, session: AsyncSession, ticker: str, market: str) -> dict:
-        key = f"mdq:chain:{market}:{ticker.upper()}"
+        key = f"mdq:chain:v1:{market}:{ticker.upper()}"  # bump v on payload-schema change
         cached = await self._redis.get(key)
         if cached:
-            payload = json.loads(cached)
-            payload["_cache_hit"] = True
-            return payload
+            return json.loads(cached)
 
         chain = await self._provider.get_option_chain(ticker, market)
         curve = await self._rates.get_curve()
@@ -83,7 +83,7 @@ class MarketService:
             "spot": chain.spot,
             "risk_free_source": getattr(self._rates, "source_name", "fred"),
             "contracts": [_contract_json(c) for c in contracts],
-            "_cache_hit": False,
+            "computed_at_ms": _now_ms(),
         }
         await self._redis.set(key, json.dumps(payload), ex=self._ttl)
         return payload
@@ -101,7 +101,7 @@ class MarketService:
             "data_provider": "massive",
             "model": "bsm",
             "risk_free_source": payload["risk_free_source"],
-            "freshness_ms": 0 if not payload["_cache_hit"] else None,
+            "freshness_ms": max(0, _now_ms() - payload["computed_at_ms"]),
         }
 
     async def chain(self, session, ticker, market, expiry: str | None) -> dict:
@@ -137,8 +137,6 @@ def _contract_json(c: ContractGreeks) -> dict:
 
 
 def _contract_from_json(d: dict) -> ContractGreeks:
-    from saalr_core.pricing.types import Greeks, OptionKind
-
     o = d["ours"]
     return ContractGreeks(
         expiry=d["expiry"], strike=d["strike"], kind=OptionKind(d["type"]),

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 
 import httpx
 
@@ -11,6 +12,7 @@ from .types import RawChain, RawContract
 
 _BASE = "https://api.massive.com"
 _KIND = {"call": OptionKind.CALL, "put": OptionKind.PUT}
+_RETRYABLE = frozenset({429, 500, 502, 503, 504})
 
 
 def _num(d: dict | None, key: str):
@@ -57,12 +59,16 @@ class MassiveProvider:
         for attempt in range(3):
             try:
                 r = await client.get(url, params=params)
-                if r.status_code in (429, 500, 502, 503):
-                    await asyncio.sleep(0.5 * (attempt + 1))
-                    continue
+                if r.status_code in _RETRYABLE:
+                    if attempt < 2:
+                        await asyncio.sleep(0.5 * (attempt + 1))
+                        continue
+                    raise ProviderError(f"massive returned {r.status_code} after retries")
                 r.raise_for_status()
                 return r.json()
-            except httpx.HTTPError as exc:
+            except httpx.HTTPStatusError as exc:
+                raise ProviderError(str(exc)) from exc  # non-retryable 4xx — fail fast
+            except httpx.HTTPError as exc:  # transport error (timeout/connect) — retry
                 if attempt == 2:
                     raise ProviderError(str(exc)) from exc
                 await asyncio.sleep(0.5 * (attempt + 1))
@@ -85,7 +91,6 @@ class MassiveProvider:
     async def get_option_chain(self, ticker: str, market: str) -> RawChain:
         if not self._api_key:
             raise ProviderError("no massive api key configured")
-        from datetime import datetime, timezone
 
         contracts: list[RawContract] = []
         async with httpx.AsyncClient(timeout=20.0) as client:
