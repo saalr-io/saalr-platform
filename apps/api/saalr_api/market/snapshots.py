@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+from datetime import date, datetime
+from decimal import Decimal
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from saalr_core.pricing.types import ContractGreeks
+
+
+def _dec(value: float | None) -> Decimal | None:
+    """asyncpg binds NUMERIC columns from Decimal, not float."""
+    return None if value is None else Decimal(str(value))
 
 _UPSERT = text(
     """
@@ -29,24 +37,25 @@ async def persist_chain(
     """Upsert our computed chain into the shared (non-tenant) options_chain_snapshots table."""
     if not contracts:
         return
+    ts_dt = datetime.fromisoformat(ts)
     rows = [
         {
-            "ts": ts,
+            "ts": ts_dt,
             "underlying": underlying,
             "market": market,
-            "expiry": c.expiry,
-            "strike": c.strike,
+            "expiry": date.fromisoformat(c.expiry),
+            "strike": _dec(c.strike),
             "option_type": c.kind.value,  # 'CALL' / 'PUT' (allowed by CHECK)
-            "bid": c.bid,
-            "ask": c.ask,
-            "last": c.last,
+            "bid": _dec(c.bid),
+            "ask": _dec(c.ask),
+            "last": _dec(c.last),
             "volume": c.volume,
             "open_interest": c.open_interest,
-            "iv": c.ours.iv,
-            "delta": c.ours.delta,
-            "gamma": c.ours.gamma,
-            "theta": c.ours.theta,
-            "vega": c.ours.vega,
+            "iv": _dec(c.ours.iv),
+            "delta": _dec(c.ours.delta),
+            "gamma": _dec(c.ours.gamma),
+            "theta": _dec(c.ours.theta),
+            "vega": _dec(c.ours.vega),
         }
         for c in contracts
     ]
