@@ -7,6 +7,7 @@ import { RequireAuth } from './components/RequireAuth'
 import { AppShell } from './app/AppShell'
 import { SystemStatus } from './pages/SystemStatus'
 import { PlaceholderPage } from './components/PlaceholderPage'
+import { Strategies } from './pages/Strategies'
 import { Login } from './pages/Login'
 import { VerifyMagicLink } from './pages/VerifyMagicLink'
 import './index.css'
@@ -30,7 +31,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             >
               <Route index element={<PlaceholderPage title="Dashboard" />} />
               <Route path="markets" element={<PlaceholderPage title="Markets & Vol" />} />
-              <Route path="strategies" element={<PlaceholderPage title="Strategies" />} />
+              <Route path="strategies" element={<Strategies />} />
               <Route path="models" element={<PlaceholderPage title="Models" />} />
               <Route path="research" element={<PlaceholderPage title="Research Agent" />} />
               <Route path="education" element={<PlaceholderPage title="OptionsAcademy" />} />

@@ -1,0 +1,105 @@
+import { useState } from 'react'
+import { LegEditor } from '../features/strategies/LegEditor'
+import { TemplatePicker } from '../features/strategies/TemplatePicker'
+import { SavedList } from '../features/strategies/SavedList'
+import { PayoffChart } from '../features/strategies/PayoffChart'
+import { StatsPanel } from '../features/strategies/StatsPanel'
+import { useAnalyze, useCreateStrategy } from '../features/strategies/hooks'
+import { EntitlementError, type AnalyzeResult, type StrategyConfig } from '../lib/strategies'
+
+type Tab = 'ready' | 'build' | 'saved'
+
+const INITIAL: StrategyConfig = {
+  underlying: 'AAPL',
+  legs: [
+    { kind: 'option', option_type: 'CALL', side: 'BUY', strike: 100, expiry: '2026-12-18', qty: 1, entry_price: 6 },
+    { kind: 'option', option_type: 'CALL', side: 'SELL', strike: 110, expiry: '2026-12-18', qty: 1, entry_price: 2 },
+  ],
+}
+
+function atmStrike(c: StrategyConfig): number {
+  const s = c.legs.flatMap((l) => (l.kind === 'option' ? [l.strike] : []))
+  return s.length ? s.reduce((a, b) => a + b, 0) / s.length : 100
+}
+function firstExpiry(c: StrategyConfig): string {
+  const o = c.legs.find((l) => l.kind === 'option')
+  return o && o.kind === 'option' ? o.expiry : '2026-12-18'
+}
+
+export function Strategies() {
+  const [tab, setTab] = useState<Tab>('build')
+  const [config, setConfig] = useState<StrategyConfig>(INITIAL)
+  const [live, setLive] = useState(false)
+  const [targetDate, setTargetDate] = useState('')
+  const [result, setResult] = useState<AnalyzeResult | null>(null)
+  const [needUpgrade, setNeedUpgrade] = useState(false)
+  const analyze = useAnalyze()
+  const create = useCreateStrategy()
+
+  function runAnalyze() {
+    setNeedUpgrade(false)
+    analyze.mutate(
+      { config, live, target_date: targetDate || undefined },
+      {
+        onSuccess: (r) => setResult(r),
+        onError: (e) => { if (e instanceof EntitlementError) setNeedUpgrade(true) },
+      },
+    )
+  }
+
+  return (
+    <div className="animate-fadeUp space-y-4">
+      <div className="flex items-baseline gap-3">
+        <h2 className="text-xl font-semibold tracking-tight">Strategy Builder</h2>
+        <span className="font-mono text-[10px] uppercase tracking-wider text-txtFaint">payoff · greeks · POP</span>
+      </div>
+
+      {needUpgrade && (
+        <div className="rounded-md border border-yellow-700/40 bg-yellow-900/10 px-3 py-2 text-xs text-yellow-300" data-testid="upgrade-banner">
+          Live Greeks, probability of profit, and the target-date curve require a Pro plan. Showing the expiry payoff from entered prices.
+        </div>
+      )}
+
+      {result && (
+        <>
+          <PayoffChart expirationCurve={result.expiration_curve} targetDateCurve={result.target_date_curve}
+                       breakevens={result.breakevens} spot={result.spot} />
+          <StatsPanel result={result} />
+        </>
+      )}
+
+      <div className="rounded-lg border border-line bg-panel/30 p-3">
+        <div className="mb-3 flex gap-2">
+          {(['ready', 'build', 'saved'] as Tab[]).map((t) => (
+            <button key={t} data-testid={`tab-${t}`} onClick={() => setTab(t)}
+                    className={`rounded px-3 py-1 text-xs ${tab === t ? 'bg-pos/20 text-pos' : 'text-txtDim hover:text-txt'}`}>
+              {t === 'ready' ? 'Ready-made' : t === 'build' ? 'Build your own' : 'Saved'}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'ready' && (
+          <TemplatePicker underlying={config.underlying} expiry={firstExpiry(config)} atmStrike={atmStrike(config)}
+                          onApply={(c) => { setConfig(c); setTab('build') }} />
+        )}
+        {tab === 'build' && <LegEditor config={config} onChange={setConfig} />}
+        {tab === 'saved' && <SavedList onLoad={(s) => { setConfig(s.config); setTab('build') }} />}
+
+        <div className="mt-3 flex items-center gap-3">
+          <label className="flex items-center gap-1 text-[11px] text-txtDim">
+            <input type="checkbox" data-testid="live-toggle" checked={live} onChange={(e) => setLive(e.target.checked)} /> live
+          </label>
+          <input type="date" className="rounded border border-line bg-canvas px-2 py-1 text-xs text-txt"
+                 data-testid="target-date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} disabled={!live} />
+          <button data-testid="analyze-btn" onClick={runAnalyze} disabled={analyze.isPending}
+                  className="rounded bg-pos/20 px-4 py-1 text-xs text-pos hover:bg-pos/30">
+            {analyze.isPending ? 'Analyzing…' : 'Analyze'}
+          </button>
+          <button data-testid="save-btn"
+                  onClick={() => create.mutate({ name: `${config.underlying} strategy`, config })}
+                  className="rounded border border-line px-4 py-1 text-xs text-txtDim hover:text-txt">Save</button>
+        </div>
+      </div>
+    </div>
+  )
+}
