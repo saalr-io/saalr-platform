@@ -76,6 +76,12 @@ Prefix-less router with full paths; registered in `main.py` via `app.include_rou
 `include_costs: bool = True`. A model validator rejects `end_date <= start_date` (422). (Pydantic
 parses `date` from `YYYY-MM-DD` strings.)
 
+> **Group-creation ordering (important):** a consumer group created with start id `$` only receives
+> messages `XADD`ed *after* the group exists. So the group must exist before the first `enqueue`, or
+> that first job is silently lost. Therefore the **API lifespan startup** calls `ensure_group(redis)`
+> (in `main.py`, right after creating `app.state.redis`), and the worker also calls it on start. Both
+> are idempotent (swallow `BUSYGROUP`).
+
 ### `POST /v1/strategies/{strategy_id}/backtest`
 1. `get_principal` → `(session, principal)` (RLS tenant set).
 2. Load the strategy via the existing `saalr_api.strategies.repo.get_strategy(session, strategy_id)`
@@ -85,11 +91,14 @@ parses `date` from `YYYY-MM-DD` strings.)
    returns an id → load that `Backtest` row and return **202** with its *current* status + `poll_url`
    (idempotent replay; no new row, no re-enqueue).
 4. Otherwise build `params = {start_date, end_date, initial_capital, include_costs}` and
-   `config_snapshot = {config: strat.config_json, params, engine_version: ENGINE_VERSION}`;
-   `create_backtest(session, tenant_id, strategy_id, start, end, config_snapshot)` (committed in the
-   request transaction).
-5. `enqueue(redis, tenant_id, backtest_id)`. If `Idempotency-Key` was supplied,
-   `redis.set("saalr:idem:bt:{tenant}:{key}", backtest_id, nx=True, ex=86400)`.
+   `config_snapshot = {config: strat.config_json, params, engine_version: ENGINE_VERSION}`, then
+   create the row in a **separate, committed** `tenant_session(app.state.sessionmaker, tenant_id)`
+   (NOT the `get_principal` session — that one commits only *after* the handler returns, so enqueuing
+   on it would let the worker read the row before it exists). This mirrors 8a's `create_and_run`
+   (create-commits-then-run).
+5. `enqueue(redis, tenant_id, backtest_id)` — now guaranteed after the row is committed. If
+   `Idempotency-Key` was supplied, `redis.set("saalr:idem:bt:{tenant}:{key}", backtest_id, nx=True,
+   ex=86400)`.
 6. Return **202** `{backtest_id, status:"queued", estimated_duration_seconds, poll_url:
    "/v1/backtests/{backtest_id}"}`. `estimated_duration_seconds = min(120, max(5, (end-start).days //
    7))`.
