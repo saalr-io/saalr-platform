@@ -15,8 +15,11 @@ from saalr_core.tiers import entitlements_for
 from saalr_core.marketdata.massive import MassiveProvider
 from saalr_core.marketdata.rates import FredRateProvider
 
+from saalr_core.queue.backtest_queue import ensure_group
+
 from .auth import Principal, get_auth_provider, get_principal
 from .auth.magic import consume_link, request_link
+from .backtests.router import router as backtests_router
 from .market.router import router as market_router
 from .strategies.router import router as strategies_router
 
@@ -46,6 +49,7 @@ def create_app() -> FastAPI:
         app.state.sessionmaker = create_sessionmaker(engine)
         app.state.auth_provider = get_auth_provider(settings)
         app.state.redis = aioredis.from_url(settings.redis_url, decode_responses=True)
+        await ensure_group(app.state.redis)
         app.state.market_provider = MassiveProvider(settings.massive_api_key)
         app.state.rate_provider = FredRateProvider(
             settings.fred_api_key, settings.risk_free_rate_fallback
@@ -58,6 +62,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Saalr API", lifespan=lifespan)
     app.include_router(market_router)
     app.include_router(strategies_router)
+    app.include_router(backtests_router)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
