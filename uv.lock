@@ -609,6 +609,7 @@ dependencies = [
     { name = "asyncpg" },
     { name = "httpx" },
     { name = "pydantic-settings" },
+    { name = "redis" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "uuid-utils" },
 ]
@@ -618,6 +619,7 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.29" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "pydantic-settings", specifier = ">=2.2" },
+    { name = "redis", specifier = ">=5" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.30" },
     { name = "uuid-utils", specifier = ">=0.9" },
 ]

@@ -8,6 +8,7 @@ dependencies = [
   "pydantic-settings>=2.2",
   "uuid-utils>=0.9",
   "httpx>=0.27",
+  "redis>=5",
 ]
 
 [build-system]
