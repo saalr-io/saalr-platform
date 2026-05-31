@@ -71,15 +71,23 @@ async def create_backtest_run(
             create_session, principal.tenant_id, strategy_id, body.start_date, body.end_date, snapshot
         )
 
+    # Bind the idempotency key BEFORE enqueuing so a retry can't slip through and
+    # create a second row. If the enqueue then fails we delete the key (best-effort)
+    # so the retry isn't pinned to a row that was never queued — it re-creates cleanly.
+    if idempotency_key:
+        await redis.set(_idem_key(principal.tenant_id, idempotency_key), str(backtest_id), nx=True, ex=86400)
+
     try:
         await enqueue(redis, principal.tenant_id, backtest_id)
     except Exception as exc:  # noqa: BLE001 - row stays 'queued', reclaimable; surface 503
+        if idempotency_key:
+            try:
+                await redis.delete(_idem_key(principal.tenant_id, idempotency_key))
+            except Exception:  # noqa: BLE001 - compensation is best-effort
+                pass
         raise HTTPException(
             503, {"error": {"code": "BACKTEST_ENQUEUE_FAILED", "message": "could not enqueue job"}}
         ) from exc
-
-    if idempotency_key:
-        await redis.set(_idem_key(principal.tenant_id, idempotency_key), str(backtest_id), nx=True, ex=86400)
 
     return _accepted(backtest_id, body.start_date, body.end_date, "queued")
 

@@ -43,6 +43,8 @@ async def create_backtest(
 
 async def mark_running(session: AsyncSession, backtest_id: UUID) -> None:
     bt = await get_backtest(session, backtest_id)
+    if bt is None:  # row vanished (e.g. deleted) — nothing to update
+        return
     bt.status = "running"
     bt.started_at = _utcnow()
 
@@ -55,6 +57,8 @@ async def save_result(
     error: str | None = None,
 ) -> None:
     bt = await get_backtest(session, backtest_id)
+    if bt is None:  # row vanished — nothing to persist (the job gets acked/dropped)
+        return
     bt.status = status
     bt.metrics_json = metrics_json
     bt.error_message = error

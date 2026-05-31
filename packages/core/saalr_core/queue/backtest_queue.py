@@ -68,9 +68,18 @@ async def ack(redis, msg_id: str, stream: str = STREAM, group: str = GROUP) -> N
 async def claim_stale(
     redis, consumer: str, min_idle_ms: int, count: int, stream: str = STREAM, group: str = GROUP
 ) -> list[Job]:
-    result = await redis.xautoclaim(
-        stream, group, consumer, min_idle_ms, start_id="0-0", count=count
-    )
-    # redis-py returns [next_cursor, claimed_entries, deleted_ids]; older builds omit the 3rd.
-    entries = result[1] if len(result) > 1 else []
-    return _parse(entries)
+    # Page through the pending-entries list until the cursor wraps to "0-0"; a single
+    # XAUTOCLAIM returns at most `count` entries, so without this loop a crash that left
+    # more than `count` jobs pending would only reclaim the first batch.
+    jobs: list[Job] = []
+    cursor = "0-0"
+    while True:
+        result = await redis.xautoclaim(
+            stream, group, consumer, min_idle_ms, start_id=cursor, count=count
+        )
+        # redis-py returns [next_cursor, claimed_entries, deleted_ids]; older builds omit the 3rd.
+        cursor = result[0]
+        entries = result[1] if len(result) > 1 else []
+        jobs.extend(_parse(entries))
+        if not entries or cursor in ("0-0", "0"):
+            return jobs
