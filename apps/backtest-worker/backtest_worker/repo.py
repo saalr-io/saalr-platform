@@ -1,27 +1,24 @@
+# apps/backtest-worker/backtest_worker/repo.py
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 from uuid import UUID
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from saalr_core.db.models.trading import Backtest, Strategy
-
-
-def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+from saalr_core.backtest.repo import (  # noqa: F401 - re-exported for the worker's service/CLI
+    create_backtest,
+    get_backtest,
+    mark_running,
+    save_result,
+)
+from saalr_core.db.models.trading import Strategy
 
 
 async def get_strategy(session: AsyncSession, strategy_id: UUID) -> Strategy | None:
     return (
         await session.execute(select(Strategy).where(Strategy.strategy_id == strategy_id))
-    ).scalar_one_or_none()
-
-
-async def get_backtest(session: AsyncSession, backtest_id: UUID) -> Backtest | None:
-    return (
-        await session.execute(select(Backtest).where(Backtest.backtest_id == backtest_id))
     ).scalar_one_or_none()
 
 
@@ -45,44 +42,3 @@ async def load_underlying_closes(
         )
     ).all()
     return {r.ts.date(): float(r.close) for r in rows}
-
-
-async def create_backtest(
-    session: AsyncSession,
-    tenant_id: UUID,
-    strategy_id: UUID,
-    start: date,
-    end: date,
-    config_snapshot: dict,
-) -> UUID:
-    row = Backtest(
-        tenant_id=tenant_id,
-        strategy_id=strategy_id,
-        start_date=start,
-        end_date=end,
-        status="queued",
-        config_snapshot=config_snapshot,
-    )
-    session.add(row)
-    await session.flush()
-    return row.backtest_id
-
-
-async def mark_running(session: AsyncSession, backtest_id: UUID) -> None:
-    bt = await get_backtest(session, backtest_id)
-    bt.status = "running"
-    bt.started_at = _utcnow()
-
-
-async def save_result(
-    session: AsyncSession,
-    backtest_id: UUID,
-    metrics_json: dict | None,
-    status: str,
-    error: str | None = None,
-) -> None:
-    bt = await get_backtest(session, backtest_id)
-    bt.status = status
-    bt.metrics_json = metrics_json
-    bt.error_message = error
-    bt.completed_at = _utcnow()
