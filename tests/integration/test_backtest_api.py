@@ -9,6 +9,8 @@ import redis.asyncio as aioredis
 from sqlalchemy import text
 
 from saalr_api.main import create_app
+from saalr_core.db.session import create_engine, create_sessionmaker
+from backtest_worker.consumer import run_consumer
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
@@ -106,3 +108,63 @@ async def test_get_other_tenant_backtest_is_404(app_sessionmaker, admin_engine):
             # tenant B must not see tenant A's backtest
             other = await c.get(f"/v1/backtests/{bt_id}", headers=hb)
             assert other.status_code == 404
+
+
+async def _run_worker_once():
+    settings_url = os.environ["APP_DATABASE_URL"]
+    engine = create_engine(settings_url)
+    redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+    try:
+        await run_consumer(redis, create_sessionmaker(engine), "test-consumer",
+                           block_ms=1000, count=10, once=True)
+    finally:
+        await redis.aclose()
+        await engine.dispose()
+
+
+async def test_end_to_end_post_consume_poll_succeeds(app_sessionmaker, admin_engine):
+    r0 = aioredis.from_url(REDIS_URL, decode_responses=True)
+    await r0.delete("saalr:bt:jobs:v1")
+    await r0.aclose()
+    await _seed_bars(admin_engine, "AAPL", datetime(2025, 1, 1, tzinfo=timezone.utc),
+                     [100.0 + i * 0.3 for i in range(80)])
+
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:bt-e2e@x.com"}
+            sid = await _make_strategy(c, h)
+            r = await c.post(f"/v1/strategies/{sid}/backtest",
+                             json={"start_date": "2025-02-01", "end_date": "2025-03-10",
+                                   "include_costs": False}, headers=h)
+            poll_url = r.json()["poll_url"]
+
+            await _run_worker_once()
+
+            done = await c.get(poll_url, headers=h)
+            assert done.status_code == 200
+            data = done.json()
+            assert data["status"] == "succeeded", data
+            assert "sharpe" in data["metrics"]
+            assert data["trade_log_url"] is None
+
+
+async def test_end_to_end_failed_when_no_bars(app_sessionmaker, admin_engine):
+    r0 = aioredis.from_url(REDIS_URL, decode_responses=True)
+    await r0.delete("saalr:bt:jobs:v1")
+    await r0.aclose()
+
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:bt-e2e-fail@x.com"}
+            sid = await _make_strategy(c, h, underlying="ZZZZ")  # no bars
+            r = await c.post(f"/v1/strategies/{sid}/backtest",
+                             json={"start_date": "2025-02-01", "end_date": "2025-03-10"}, headers=h)
+            poll_url = r.json()["poll_url"]
+
+            await _run_worker_once()
+
+            done = await c.get(poll_url, headers=h)
+            assert done.json()["status"] == "failed"
+            assert done.json()["error"]["code"] == "BACKTEST_FAILED"

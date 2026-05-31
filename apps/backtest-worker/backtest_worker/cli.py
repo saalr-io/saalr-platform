@@ -3,12 +3,16 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import socket
 from uuid import UUID
+
+import redis.asyncio as aioredis
 
 from saalr_core.config import get_settings
 from saalr_core.db.session import create_engine, create_sessionmaker
 
 from . import service
+from .consumer import run_consumer
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -28,6 +32,12 @@ def build_parser() -> argparse.ArgumentParser:
     rn = sub.add_parser("run", help="run an existing (queued) backtest by id")
     rn.add_argument("--tenant", required=True)
     rn.add_argument("backtest_id")
+
+    cn = sub.add_parser("consume", help="run the Redis-Streams backtest consume loop")
+    cn.add_argument("--block-ms", type=int, default=5000, dest="block_ms")
+    cn.add_argument("--count", type=int, default=10)
+    cn.add_argument("--once", action="store_true")
+    cn.add_argument("--consumer", default=None)
     return p
 
 
@@ -69,7 +79,22 @@ async def _cmd_run(args) -> None:
     print(f"backtest {args.backtest_id}: {outcome['status']}")
 
 
-_DISPATCH = {"backtest": _cmd_backtest, "run": _cmd_run}
+async def _cmd_consume(args) -> None:
+    settings = get_settings()
+    engine = create_engine(settings.app_database_url)
+    redis = aioredis.from_url(settings.redis_url, decode_responses=True)
+    consumer = args.consumer or f"bt-{socket.gethostname()}"
+    try:
+        await run_consumer(
+            redis, create_sessionmaker(engine), consumer,
+            block_ms=args.block_ms, count=args.count, once=args.once,
+        )
+    finally:
+        await redis.aclose()
+        await engine.dispose()
+
+
+_DISPATCH = {"backtest": _cmd_backtest, "run": _cmd_run, "consume": _cmd_consume}
 
 
 def main(argv: list[str] | None = None) -> None:
