@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +10,9 @@ from saalr_core.ids import new_id
 
 
 async def save_sentiment(session: AsyncSession, symbol: str, market: str, agg: dict) -> None:
+    as_of = datetime.fromisoformat(agg["as_of"])
+    if as_of.tzinfo is None:  # the as_of=TIMESTAMPTZ column rejects naive datetimes (asyncpg)
+        as_of = as_of.replace(tzinfo=timezone.utc)
     session.add(
         NewsSentiment(
             sentiment_id=new_id(),
@@ -20,7 +23,7 @@ async def save_sentiment(session: AsyncSession, symbol: str, market: str, agg: d
             confident=bool(agg["confident"]),
             n_headlines=int(agg["n_headlines"]),
             total_weight=float(agg["total_weight"]),
-            as_of=datetime.fromisoformat(agg["as_of"]),
+            as_of=as_of,
         )
     )
     await session.flush()
