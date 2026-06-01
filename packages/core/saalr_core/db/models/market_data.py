@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 from datetime import date, datetime
 from decimal import Decimal
+from uuid import UUID
 
-from sqlalchemy import CHAR, BigInteger, Boolean, Date, Numeric, Text, func, text
+from sqlalchemy import CHAR, BigInteger, Boolean, Date, Float, Integer, Numeric, Text, func, text
 from sqlalchemy.dialects.postgresql import TIMESTAMP
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from saalr_core.db.base import Base
+from saalr_core.ids import new_id
 
 
 class Bar(Base):
@@ -48,5 +53,21 @@ class Instrument(Base):
     name: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class NewsSentiment(Base):
+    __tablename__ = "news_sentiment"
+    sentiment_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=new_id)
+    symbol: Mapped[str] = mapped_column(Text, nullable=False)
+    market: Mapped[str] = mapped_column(CHAR(2), nullable=False)
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    label: Mapped[str] = mapped_column(Text, nullable=False)
+    confident: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    n_headlines: Mapped[int] = mapped_column(Integer, nullable=False)
+    total_weight: Mapped[float] = mapped_column(Float, nullable=False)
+    as_of: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    computed_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
