@@ -105,7 +105,7 @@ def _leg_pnl_at_target(leg, s, eval_date, rate, div_yield, iv):
     if isinstance(leg, OptionLeg):
         t_rem = (_date.fromisoformat(leg.expiry) - eval_date).days / 365.0
         entry = leg.entry_price or 0.0
-        if t_rem <= 0 or iv is None or iv <= 0:
+        if t_rem <= 0 or iv is None or iv <= 0 or s <= 0:  # s<=0: BSM log(s/strike) undefined -> intrinsic
             if leg.option_type is OptionType.CALL:
                 value = max(s - leg.strike, 0.0)
             else:
