@@ -20,6 +20,7 @@ from saalr_core.queue.backtest_queue import ensure_group
 from .auth import Principal, get_auth_provider, get_principal
 from .auth.magic import consume_link, request_link
 from .backtests.router import router as backtests_router
+from .forecast.router import router as forecast_router
 from .market.router import router as market_router
 from .strategies.router import router as strategies_router
 
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
             settings.fred_api_key, settings.risk_free_rate_fallback
         )
         app.state.vol_surface_ttl = settings.vol_surface_cache_ttl_seconds
+        app.state.vol_forecast_ttl = settings.vol_forecast_cache_ttl_seconds
         yield
         await app.state.redis.aclose()
         await engine.dispose()
@@ -63,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(market_router)
     app.include_router(strategies_router)
     app.include_router(backtests_router)
+    app.include_router(forecast_router)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:

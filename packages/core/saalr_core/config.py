@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     fred_api_key: str | None = None
     risk_free_rate_fallback: float = 0.05
     vol_surface_cache_ttl_seconds: int = 21600  # 6h, per HLD
+    vol_forecast_cache_ttl_seconds: int = 21600  # 6h
 
     # Market-data ingestion
     bars_backfill_default_days: int = 1825  # ~5y, used when a symbol has no stored bars

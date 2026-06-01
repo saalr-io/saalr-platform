@@ -4,6 +4,7 @@ version = "0.0.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "saalr-core",
+  "saalr-ml",
   "fastapi>=0.110",
   "uvicorn[standard]>=0.29",
   "pyjwt[crypto]>=2.9",
@@ -19,3 +20,4 @@ packages = ["saalr_api"]
 
 [tool.uv.sources]
 saalr-core = { workspace = true }
+saalr-ml = { workspace = true }

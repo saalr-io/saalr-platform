@@ -590,6 +590,7 @@ dependencies = [
     { name = "pyjwt", extra = ["crypto"] },
     { name = "redis" },
     { name = "saalr-core" },
+    { name = "saalr-ml" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -599,6 +600,7 @@ requires-dist = [
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.9" },
     { name = "redis", specifier = ">=5" },
     { name = "saalr-core", editable = "packages/core" },
+    { name = "saalr-ml", editable = "packages/ml" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29" },
 ]
 
