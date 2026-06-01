@@ -7,6 +7,7 @@ import pytest
 from saalr_core.config import get_settings
 from saalr_core.marketdata.aggregates import MassiveAggregatesProvider
 from saalr_core.marketdata.massive import parse_results
+from saalr_core.marketdata.news import MassiveNewsProvider
 from saalr_core.marketdata.rates import FredRateProvider
 
 _settings = get_settings()
@@ -46,3 +47,9 @@ async def test_massive_live_daily_bars():
     bars = await MassiveAggregatesProvider(_settings.massive_api_key).get_daily_bars("AAPL", start, end)
     assert len(bars) >= 1
     assert bars[0].close > 0 and bars[0].volume > 0
+
+
+@pytest.mark.skipif(not _settings.massive_api_key, reason="no MASSIVE_API_KEY")
+async def test_massive_news_live():
+    rows = await MassiveNewsProvider(_settings.massive_api_key).get_news("AAPL", limit=5)
+    assert len(rows) >= 1 and rows[0].title
