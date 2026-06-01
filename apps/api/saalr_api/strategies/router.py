@@ -1,21 +1,31 @@
 from __future__ import annotations
 
 import base64
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from saalr_core.ids import new_id
 from saalr_core.strategies import templates
+from saalr_core.strategies.promotion import evaluate_promotion
 from saalr_core.strategies.state import IllegalTransition, StrategyState, transition
 from saalr_core.tiers import entitlements_for
 
 from ..auth import Principal, get_principal
 from . import repo, service
 from .schemas import AnalyzeIn, StrategyCreate, StrategyUpdate, TransitionIn
+from .stepup import issue_step_up, verify_step_up
 
 router = APIRouter(prefix="/v1/strategies", tags=["strategies"])
+
+_PROMO_STATUS = {
+    "STRATEGY_NOT_IN_PAPER": 409,
+    "ENTITLEMENT_LIVE_TRADING_REQUIRES_PRO": 402,
+    "STRATEGY_INSUFFICIENT_PAPER_HISTORY": 409,
+    "AUTH_MFA_REQUIRED": 401,
+}
 
 
 def _out(row) -> dict:
@@ -142,12 +152,56 @@ async def do_transition(strategy_id: UUID, body: TransitionIn,
     if row is None:
         raise _not_found()
     try:
-        new_state = transition(StrategyState(row.state), StrategyState(body.target_state))
-    except IllegalTransition as exc:
-        raise HTTPException(409, {"error": {"code": "STRATEGY_ILLEGAL_TRANSITION", "message": str(exc)}})
+        current = StrategyState(row.state)
+        target = StrategyState(body.target_state)
     except ValueError as exc:
         raise HTTPException(400, {"error": {"code": "VALIDATION_INVALID_PARAMETER", "message": str(exc)}})
+    if current == StrategyState.PAPER and target == StrategyState.LIVE:
+        raise HTTPException(409, {"error": {"code": "STRATEGY_USE_PROMOTE_ENDPOINT",
+                                            "message": "promote paper->live via POST /promote"}})
+    try:
+        new_state = transition(current, target)
+    except IllegalTransition as exc:
+        raise HTTPException(409, {"error": {"code": "STRATEGY_ILLEGAL_TRANSITION", "message": str(exc)}})
     await repo.update_strategy(session, row, state=new_state.value)
+    return _out(row)
+
+
+@router.post("/{strategy_id}/promote/challenge")
+async def promote_challenge(strategy_id: UUID, request: Request,
+                            ctx: tuple[AsyncSession, Principal] = Depends(get_principal)) -> dict:
+    session, principal = ctx
+    row = await repo.get_strategy(session, strategy_id)
+    if row is None:
+        raise _not_found()
+    token = await issue_step_up(request.app.state.redis, principal.user_id)
+    return {"step_up_token": token, "expires_in": 300}
+
+
+@router.post("/{strategy_id}/promote")
+async def promote(strategy_id: UUID, request: Request,
+                  x_step_up_token: str | None = Header(default=None, alias="X-Step-Up-Token"),
+                  ctx: tuple[AsyncSession, Principal] = Depends(get_principal)) -> dict:
+    session, principal = ctx
+    row = await repo.get_strategy(session, strategy_id)
+    if row is None:
+        raise _not_found()
+    step_up_ok = await verify_step_up(request.app.state.redis, principal.user_id, x_step_up_token)
+    first = await repo.first_paper_order_at(session, strategy_id)
+    brokers = entitlements_for(principal.tier)["brokers"]
+    now = datetime.now(timezone.utc)
+    decision = evaluate_promotion(row.state, brokers, first, now, step_up_ok)
+    if not decision.ok:
+        err: dict = {"code": decision.code, "message": decision.message}
+        if decision.details:
+            err["details"] = decision.details
+        raise HTTPException(_PROMO_STATUS.get(decision.code, 409), {"error": err})
+    request_id = request.headers.get("X-Request-Id") or str(new_id())
+    await repo.record_promotion(session, row, now)
+    await repo.write_strategy_audit(session, tenant_id=principal.tenant_id, user_id=principal.user_id,
+                                    strategy_id=strategy_id, action="strategy.promoted",
+                                    before={"state": "paper"}, after={"state": "live"},
+                                    request_id=request_id)
     return _out(row)
 
 
