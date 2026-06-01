@@ -903,6 +903,7 @@ version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "saalr-api" },
+    { name = "saalr-brokers" },
     { name = "saalr-core" },
     { name = "saalr-ml" },
 ]
@@ -921,6 +922,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "saalr-api", editable = "apps/api" },
+    { name = "saalr-brokers", editable = "packages/brokers" },
     { name = "saalr-core", editable = "packages/core" },
     { name = "saalr-ml", editable = "packages/ml" },
 ]

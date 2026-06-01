@@ -2,7 +2,7 @@
 name = "saalr"
 version = "0.0.0"
 requires-python = ">=3.12,<3.13"
-dependencies = ["saalr-core", "saalr-api", "saalr-ml"]
+dependencies = ["saalr-core", "saalr-api", "saalr-ml", "saalr-brokers"]
 
 [tool.uv]
 package = false
@@ -15,6 +15,7 @@ exclude = ["apps/web"]
 saalr-core = { workspace = true }
 saalr-api = { workspace = true }
 saalr-ml = { workspace = true }
+saalr-brokers = { workspace = true }
 
 [dependency-groups]
 dev = [
