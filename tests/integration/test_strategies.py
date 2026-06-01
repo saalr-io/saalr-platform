@@ -90,6 +90,9 @@ async def test_analyze_pure_free_and_live_gating(app_sessionmaker, admin_engine)
     async with app.router.lifespan_context(app):
         app.state.market_provider = StubProvider()
         app.state.rate_provider = StubRates()
+        # Force the live chain to recompute from the stub (not a chain another test cached
+        # in Redis), so this test is hermetic + deterministic rather than cache-order-dependent.
+        await app.state.redis.delete("mdq:chain:v1:US:AAPL")
         async with _client(app) as c:
             h = {"Authorization": "Bearer dev:s4@x.com"}
             cfg = {"config": {"underlying": "AAPL", "legs": [_OPTION]}, "live": False}
