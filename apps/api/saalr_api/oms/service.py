@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import UUID
@@ -8,6 +9,8 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from saalr_brokers.alpaca import BrokerError
+from saalr_brokers.credentials import CredentialError
 from saalr_brokers.paper import PaperBrokerAdapter
 from saalr_brokers.types import BrokerOrder
 from saalr_core.config import get_settings
@@ -22,6 +25,7 @@ from .marks import NoMarketData, model_mark
 from .schemas import OrderCreate
 
 _MULT = 100
+_logger = logging.getLogger("saalr.oms")
 
 
 def _err(code: str, msg: str, status: int = 422, details: dict | None = None) -> HTTPException:
@@ -55,7 +59,8 @@ def _out(order) -> dict:
     }
 
 
-async def place_order(session: AsyncSession, principal, body: OrderCreate, idempotency_key, request_id) -> dict:
+async def place_order(session: AsyncSession, principal, body: OrderCreate, idempotency_key,
+                      request_id, adapter_factory=None) -> dict:
     tenant_id, user_id = principal.tenant_id, principal.user_id
     settings = get_settings()
 
@@ -68,6 +73,19 @@ async def place_order(session: AsyncSession, principal, body: OrderCreate, idemp
         raise _err("RESOURCE_NOT_FOUND", "broker account not found", 404)
     if account.status != "active":
         raise _err("BROKER_ACCOUNT_INACTIVE", "broker account is not active", 409)
+    if account.broker not in ("paper", "alpaca"):
+        raise _err("BROKER_NOT_SUPPORTED", f"broker {account.broker} not yet supported", 400)
+    is_alpaca = account.broker == "alpaca"
+
+    # Resolve the alpaca adapter up front so a credential failure happens before any row insert.
+    adapter = None
+    if is_alpaca:
+        if adapter_factory is None:
+            raise _err("BROKER_UNAVAILABLE", "no alpaca adapter configured", 502)
+        try:
+            adapter = adapter_factory(account)
+        except CredentialError as exc:
+            raise _err("BROKER_CREDENTIALS_UNAVAILABLE", "broker credentials unavailable", 502) from exc
 
     today = datetime.now(timezone.utc).date()
     try:
@@ -75,19 +93,28 @@ async def place_order(session: AsyncSession, principal, body: OrderCreate, idemp
                                 option_type=body.option_type, strike=body.strike,
                                 expiry=body.expiry, today=today)
     except NoMarketData as exc:
-        order = await repo.insert_order(session, tenant_id=tenant_id, user_id=user_id, body=body,
-                                        status="rejected", reject_reason_code="RISK_NO_MARKET_DATA",
-                                        idempotency_key=idempotency_key)
-        await repo.write_audit(session, tenant_id=tenant_id, user_id=user_id, action="order.rejected",
-                               target_type="order", target_id=order.order_id, before=None,
-                               after={"status": "rejected", "code": "RISK_NO_MARKET_DATA"},
-                               request_id=request_id)
-        raise _err("RISK_NO_MARKET_DATA", str(exc)) from exc
+        if not is_alpaca:
+            order = await repo.insert_order(session, tenant_id=tenant_id, user_id=user_id, body=body,
+                                            status="rejected", reject_reason_code="RISK_NO_MARKET_DATA",
+                                            idempotency_key=idempotency_key)
+            await repo.write_audit(session, tenant_id=tenant_id, user_id=user_id, action="order.rejected",
+                                   target_type="order", target_id=order.order_id, before=None,
+                                   after={"status": "rejected", "code": "RISK_NO_MARKET_DATA"},
+                                   request_id=request_id)
+            raise _err("RISK_NO_MARKET_DATA", str(exc)) from exc
+        mark = None  # alpaca: the broker enforces; a missing model mark must not block submission
 
     req = _to_request(body)
-    est_cost = estimate_cost(req, mark)
-    balance = await repo.account_balance(session, account.broker_account_id,
-                                         Decimal(str(settings.paper_starting_cash)), tenant_id)
+    est_cost = estimate_cost(req, mark) if mark is not None else Decimal(0)
+    if is_alpaca:
+        try:
+            balance = await adapter.get_account_balance()
+        except BrokerError as exc:
+            raise _err("BROKER_UNAVAILABLE", "broker unavailable", 502) from exc
+    else:
+        balance = await repo.account_balance(session, account.broker_account_id,
+                                             Decimal(str(settings.paper_starting_cash)), tenant_id)
+
     strategy_state = None
     if body.strategy_id:
         strat = await strat_repo.get_strategy(session, UUID(body.strategy_id))
@@ -112,12 +139,14 @@ async def place_order(session: AsyncSession, principal, body: OrderCreate, idemp
         raise _err("ORDER_DUPLICATE_IN_FLIGHT",
                    "a duplicate order is in flight; retry to read the result", 409) from exc
 
-    if account.broker != "paper":
-        raise _err("BROKER_NOT_SUPPORTED", f"broker {account.broker} not yet supported", 400)
+    now = datetime.now(timezone.utc)
+    if is_alpaca:
+        return await _submit_alpaca(session, order, body, adapter, idempotency_key,
+                                    tenant_id, user_id, request_id, now)
+
     adapter = PaperBrokerAdapter(balance, lambda o: mark)
     result = await adapter.submit_order(_to_broker_order(body), idempotency_key or str(order.order_id))
     book = (await adapter.get_orders())[0]
-    now = datetime.now(timezone.utc)
 
     transition(OrderStatus(order.status), OrderStatus.SUBMITTED)
     await repo.update_order(session, order, status="submitted", broker_order_id=result.broker_order_id, submitted_at=now)
@@ -158,12 +187,46 @@ async def place_order(session: AsyncSession, principal, body: OrderCreate, idemp
     return _out(order)
 
 
-async def cancel_order(session, principal, order_id, request_id) -> dict:
+async def _submit_alpaca(session, order, body, adapter, idempotency_key, tenant_id, user_id,
+                         request_id, now) -> dict:
+    """Alpaca submit: the order rests 'submitted' (async fills come via reconciliation)."""
+    try:
+        result = await adapter.submit_order(_to_broker_order(body), idempotency_key or str(order.order_id))
+    except BrokerError as exc:
+        raise _err("BROKER_UNAVAILABLE", "broker unavailable", 502) from exc
+
+    if result.status == "rejected":
+        transition(OrderStatus(order.status), OrderStatus.REJECTED)
+        await repo.update_order(session, order, status="rejected", reject_reason_code="BROKER_REJECTED")
+        await repo.write_audit(session, tenant_id=tenant_id, user_id=user_id, action="order.rejected",
+                               target_type="order", target_id=order.order_id, before={"status": "pending"},
+                               after={"status": "rejected", "code": "BROKER_REJECTED"}, request_id=request_id)
+        raise _err("BROKER_REJECTED", result.rejected_reason or "broker rejected the order")
+
+    transition(OrderStatus(order.status), OrderStatus.SUBMITTED)
+    await repo.update_order(session, order, status="submitted",
+                            broker_order_id=result.broker_order_id, submitted_at=now)
+    await repo.write_audit(session, tenant_id=tenant_id, user_id=user_id, action="order.submitted",
+                           target_type="order", target_id=order.order_id, before={"status": "pending"},
+                           after={"status": "submitted"}, request_id=request_id)
+    return _out(order)
+
+
+async def cancel_order(session, principal, order_id, request_id, adapter_factory=None) -> dict:
     order = await repo.get_order(session, UUID(order_id))
     if order is None:
         raise _err("RESOURCE_NOT_FOUND", "order not found", 404)
     if order.status not in ("pending", "submitted"):
         raise _err("ORDER_NOT_CANCELLABLE", f"cannot cancel a {order.status} order", 409)
+
+    account = await repo.get_broker_account(session, order.broker_account_id)
+    if (account is not None and account.broker == "alpaca" and order.broker_order_id
+            and adapter_factory is not None):
+        try:
+            await adapter_factory(account).cancel_order(order.broker_order_id)
+        except (CredentialError, BrokerError) as exc:  # best-effort; reconciliation confirms terminal state
+            _logger.warning("alpaca cancel failed for order %s: %s", order_id, exc)
+
     transition(OrderStatus(order.status), OrderStatus.CANCELLED)
     await repo.update_order(session, order, status="cancelled")
     await repo.write_audit(session, tenant_id=principal.tenant_id, user_id=principal.user_id,

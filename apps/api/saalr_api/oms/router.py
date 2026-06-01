@@ -69,7 +69,9 @@ async def place(body: OrderCreate, request: Request,
                 idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
                 ctx: tuple[AsyncSession, Principal] = Depends(get_principal)) -> dict:
     session, principal = ctx
-    return await service.place_order(session, principal, body, idempotency_key, _request_id(request))
+    factory = getattr(request.app.state, "alpaca_adapter_factory", None)
+    return await service.place_order(session, principal, body, idempotency_key,
+                                     _request_id(request), factory)
 
 
 @router.get("/v1/orders")
@@ -104,7 +106,8 @@ async def get_one(order_id: UUID, ctx: tuple[AsyncSession, Principal] = Depends(
 async def cancel(order_id: UUID, request: Request,
                  ctx: tuple[AsyncSession, Principal] = Depends(get_principal)) -> dict:
     session, principal = ctx
-    return await service.cancel_order(session, principal, str(order_id), _request_id(request))
+    factory = getattr(request.app.state, "alpaca_adapter_factory", None)
+    return await service.cancel_order(session, principal, str(order_id), _request_id(request), factory)
 
 
 @router.get("/v1/positions")

@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 from contextlib import asynccontextmanager
 
@@ -8,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from saalr_brokers.credentials import EnvCredentialResolver, build_alpaca_adapter
 from saalr_core.config import get_settings
 from saalr_core.db.session import create_engine, create_sessionmaker
 from saalr_core.tiers import entitlements_for
@@ -60,6 +62,9 @@ def create_app() -> FastAPI:
         )
         app.state.vol_surface_ttl = settings.vol_surface_cache_ttl_seconds
         app.state.vol_forecast_ttl = settings.vol_forecast_cache_ttl_seconds
+        app.state.alpaca_adapter_factory = lambda account: build_alpaca_adapter(
+            account.credential_ref, account.is_paper, EnvCredentialResolver(os.environ)
+        )
         yield
         await app.state.redis.aclose()
         await engine.dispose()
