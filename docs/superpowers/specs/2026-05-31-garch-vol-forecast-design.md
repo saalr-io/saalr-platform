@@ -84,8 +84,10 @@ Helper `annualize_vol(daily_var) -> float = sqrt(daily_var * 252) / 100` (de-sca
 - Fit GARCH on the **full** returns; `garch_path = annualize(forecast_var(..., horizon))`;
   `garch_ci = simulate_ci(...)`.
 - `hv21_val = hv21(returns)`; `hv21_path = [hv21_val] * horizon`.
-- Assemble the result dict (see API response), tagging the `primary`/`alternative` from `wf.primary`
-  and each alternative's `status` (`"primary"` / `"underperforming_baseline"`) + `delta_mae_vs_baseline`.
+- Assemble the result dict (see API response), tagging the `primary`/`alternative` from `wf.primary`.
+  The alternative's `status` is honest about *why* it's secondary: `"baseline"` when the alternative
+  is HV21 shown for reference (GARCH won), or `"underperforming_baseline"` when the alternative is
+  GARCH because it lost to its baseline (HV21 won). Plus `delta_mae_vs_baseline`.
 - Raise `ValueError("insufficient history")` if `len(closes) < 250` (need a real train + holdout).
 
 ## API (`apps/api/saalr_api/forecast/`)
@@ -121,7 +123,7 @@ Response:
   "primary_ci_95": [[18.0, 26.5], …],
   "alternative_models": [
     { "model": "hv21", "forecast": [20.3, 20.3, …],
-      "status": "underperforming_baseline", "delta_mae_vs_baseline": -0.0012 }
+      "status": "baseline", "delta_mae_vs_baseline": -0.0012 }
   ],
   "validation": { "holdout_days": 40, "garch_mae": …, "hv21_mae": …, "lift": 0.08 },
   "model": "garch(1,1)", "iv_source": "realized_returns", "approximate": true }

@@ -21,6 +21,8 @@ def walk_forward(returns: np.ndarray, holdout_days: int = 40) -> WalkForward:
     GARCH vs HV21 one-step-ahead variance forecasts against the realized-variance proxy r^2."""
     returns = np.asarray(returns, dtype=float)
     n = len(returns)
+    if n < holdout_days + 21:  # need ≥21 training returns before the first holdout day for HV21
+        raise ValueError("series too short for the requested holdout")
     train = returns[:-holdout_days]
     params = fit_garch11(train)
 

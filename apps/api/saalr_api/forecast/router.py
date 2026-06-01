@@ -57,15 +57,19 @@ async def vol_forecast_endpoint(
         **result,
     }
 
-    await repo.record_validation(
-        session,
-        model_name="garch",
-        market=market,
-        cohort_label=f"{ticker}:{repo.today_str()}",
-        baseline_name="hv21",
-        status="passed" if result["primary_model"] == "garch" else "failed",
-        metric_summary_json={**result["validation"], "params": result["params"]},
-    )
+    # Persist the validation row in its OWN committed session BEFORE caching, so a
+    # commit failure can't leave the cache populated for the whole TTL with no audit
+    # row. model_validation_runs is non-RLS, so a plain session (no tenant GUC) is fine.
+    async with request.app.state.sessionmaker() as vsession, vsession.begin():
+        await repo.record_validation(
+            vsession,
+            model_name="garch",
+            market=market,
+            cohort_label=f"{ticker}:{repo.today_str()}",
+            baseline_name="hv21",
+            status="passed" if result["primary_model"] == "garch" else "failed",
+            metric_summary_json={**result["validation"], "params": result["params"]},
+        )
 
     await redis.set(key, json.dumps(payload), ex=ttl)
     return payload
