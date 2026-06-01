@@ -62,7 +62,7 @@ async def test_crud_lifecycle_and_rls(app_sessionmaker, admin_engine):
             bad = await c.post(f"/v1/strategies/{sid}/transition",
                                json={"target_state": "live"}, headers=h)
             assert bad.status_code == 409
-            assert bad.json()["error"]["code"] == "STRATEGY_ILLEGAL_TRANSITION"
+            assert bad.json()["detail"]["error"]["code"] == "STRATEGY_ILLEGAL_TRANSITION"
 
             patch = await c.patch(f"/v1/strategies/{sid}", json={"name": "x"}, headers=h)
             assert patch.status_code == 409

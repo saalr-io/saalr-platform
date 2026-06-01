@@ -77,7 +77,7 @@ async def test_insufficient_buying_power_rejected(app_sessionmaker, admin_engine
             r = await c.post("/v1/orders", json=_order(acct, qty=100000),
                              headers={**h, "Idempotency-Key": "k"})
             assert r.status_code == 422
-            assert r.json()["error"]["code"] == "RISK_INSUFFICIENT_BUYING_POWER"
+            assert r.json()["detail"]["error"]["code"] == "RISK_INSUFFICIENT_BUYING_POWER"
 
 
 async def test_no_market_data_rejected(app_sessionmaker, admin_engine):
@@ -90,7 +90,7 @@ async def test_no_market_data_rejected(app_sessionmaker, admin_engine):
                 await conn.execute(text("DELETE FROM bars WHERE symbol='ZZZZ'"))
             r = await c.post("/v1/orders", json=_order(acct, symbol="ZZZZ"),
                              headers={**h, "Idempotency-Key": "k"})
-            assert r.status_code == 422 and r.json()["error"]["code"] == "RISK_NO_MARKET_DATA"
+            assert r.status_code == 422 and r.json()["detail"]["error"]["code"] == "RISK_NO_MARKET_DATA"
 
 
 async def test_non_marketable_limit_rests_and_cancels(app_sessionmaker, admin_engine):

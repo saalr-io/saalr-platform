@@ -3,8 +3,7 @@ import re
 from contextlib import asynccontextmanager
 
 import redis.asyncio as aioredis
-from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,12 +65,6 @@ def create_app() -> FastAPI:
         await engine.dispose()
 
     app = FastAPI(title="Saalr API", lifespan=lifespan)
-
-    @app.exception_handler(HTTPException)
-    async def http_exception_handler(request: Request, exc: HTTPException):
-        detail = exc.detail
-        body = detail if isinstance(detail, dict) else {"detail": detail}
-        return JSONResponse(status_code=exc.status_code, content=body)
 
     app.include_router(market_router)
     app.include_router(strategies_router)
