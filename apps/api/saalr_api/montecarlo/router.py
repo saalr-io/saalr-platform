@@ -7,13 +7,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from saalr_core.strategies.types import OptionLeg
-from saalr_ml.montecarlo import monte_carlo_pop
+from saalr_core.sentiment import repo as sentiment_repo
+from saalr_ml.montecarlo import monte_carlo_pop, sentiment_adjusted_drift
 
 from ..auth import Principal
 from ..forecast import repo as forecast_repo
 from ..forecast import service as forecast_service
 from ..forecast.gating import require_ml_forecast
 from .schemas import MonteCarloRequest
+
+SENTIMENT_MAX_AGE_HOURS = 168
 
 router = APIRouter(prefix="/v1/strategies", tags=["montecarlo"])
 
@@ -73,7 +76,28 @@ async def montecarlo(
     curve = await request.app.state.rate_provider.get_curve()
     rate = curve.rate_for(t_years) if t_years > 0 else 0.0
 
-    result = monte_carlo_pop(legs, spot, t_years, sigma, rate, paths=body.paths, seed=body.seed)
+    drift_adjust = 0.0
+    sentiment_out: dict = {"applied": False, "reason": "not_requested"}
+    if body.use_sentiment:
+        sent = await sentiment_repo.latest_sentiment(session, underlying, market)
+        if sent is None:
+            sentiment_out = {"applied": False, "reason": "no_data"}
+        elif not sent["confident"]:
+            sentiment_out = {"applied": False, "reason": "low_confidence"}
+        else:
+            age_h = (datetime.now(timezone.utc) - sent["computed_at"]).total_seconds() / 3600.0
+            if age_h > SENTIMENT_MAX_AGE_HOURS:
+                sentiment_out = {"applied": False, "reason": "stale"}
+            else:
+                drift_adjust = sentiment_adjusted_drift(sent["score"], sigma, t_years)
+                sentiment_out = {
+                    "applied": True, "score": sent["score"], "label": sent["label"],
+                    "computed_at": sent["computed_at"].isoformat(),
+                }
+
+    result = monte_carlo_pop(
+        legs, spot, t_years, sigma, rate, drift_adjust=drift_adjust, paths=body.paths, seed=body.seed
+    )
     return {
         **result,
         "underlying": underlying,
@@ -83,4 +107,5 @@ async def montecarlo(
         "sigma_source": sigma_source,
         "horizon_days": days,
         "rate": rate,
+        "sentiment": sentiment_out,
     }

@@ -122,3 +122,60 @@ async def test_montecarlo_no_bars_422(app_sessionmaker, admin_engine):
             )
             assert r.status_code == 422
             assert r.json()["detail"]["error"]["code"] == "INSUFFICIENT_HISTORY"
+
+
+async def _seed_bull_sentiment(admin_engine, symbol):
+    async with admin_engine.begin() as conn:
+        await conn.execute(text("DELETE FROM news_sentiment WHERE symbol=:s"), {"s": symbol})
+        await conn.execute(
+            text(
+                """INSERT INTO news_sentiment
+                   (sentiment_id, symbol, market, score, label, confident, n_headlines,
+                    total_weight, as_of, computed_at)
+                   VALUES (gen_random_uuid(), :s, 'US', 0.8, 'bullish', true, 6, 4.0, now(), now())"""
+            ),
+            {"s": symbol},
+        )
+
+
+async def test_montecarlo_sentiment_raises_call_pop(app_sessionmaker, admin_engine):
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:mc-sent@x.com"}
+            tid = (await c.get("/me", headers=h)).json()["tenant"]["id"]
+            await _make_pro(admin_engine, tid)
+            await _seed_bars(admin_engine, "AAPL", n=300)
+            await _seed_bull_sentiment(admin_engine, "AAPL")
+
+            base = await c.post(
+                "/v1/strategies/montecarlo",
+                json={"config": _long_call_config(), "use_sentiment": False}, headers=h,
+            )
+            withs = await c.post(
+                "/v1/strategies/montecarlo",
+                json={"config": _long_call_config(), "use_sentiment": True}, headers=h,
+            )
+            assert base.status_code == 200 and withs.status_code == 200
+            assert withs.json()["sentiment"]["applied"] is True
+            assert base.json()["sentiment"]["applied"] is False
+            # bullish drift shifts terminal prices up -> a long call's POP rises
+            assert withs.json()["pop"] > base.json()["pop"]
+
+
+async def test_montecarlo_sentiment_no_data(app_sessionmaker, admin_engine):
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:mc-sent2@x.com"}
+            tid = (await c.get("/me", headers=h)).json()["tenant"]["id"]
+            await _make_pro(admin_engine, tid)
+            await _seed_bars(admin_engine, "AAPL", n=300)
+            async with admin_engine.begin() as conn:
+                await conn.execute(text("DELETE FROM news_sentiment WHERE symbol='AAPL'"))
+            r = await c.post(
+                "/v1/strategies/montecarlo",
+                json={"config": _long_call_config(), "use_sentiment": True}, headers=h,
+            )
+            assert r.status_code == 200
+            assert r.json()["sentiment"] == {"applied": False, "reason": "no_data"}
