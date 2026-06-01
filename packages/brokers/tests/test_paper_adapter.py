@@ -82,3 +82,15 @@ async def test_buy_then_partial_sell_nets_position_and_cash():
     pos = await a.get_positions()
     assert pos[0].qty == 6 and pos[0].avg_price == Decimal("50")
     assert await a.get_account_balance() == Decimal("100000") - Decimal("500") + Decimal("200")
+
+
+async def test_position_flip_through_zero_resets_basis():
+    # long 5 @ 50, then sell 8 at mark 60 -> short 3 whose basis is the 60 fill, not 50
+    a = PaperBrokerAdapter(Decimal("100000"), _mark(50))
+    await a.submit_order(_eq(side="buy", qty=5), "k1")
+    a._mark = lambda order: Decimal("60")  # noqa: SLF001 - test drives the mark
+    await a.submit_order(_eq(side="sell", qty=8), "k2")
+    pos = await a.get_positions()
+    assert pos[0].qty == -3 and pos[0].avg_price == Decimal("60")
+    # short 3 at basis 60, mark 60 -> unrealized pnl is 0 (not (60-50)*-3)
+    assert pos[0].unrealized_pnl == Decimal("0")

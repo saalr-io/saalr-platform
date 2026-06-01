@@ -86,6 +86,9 @@ class PaperBrokerAdapter(BrokerAdapter):
         if old == 0 or (old > 0) == (signed_qty > 0):  # opening/adding same direction
             total = pos["avg_price"] * abs(old) + price * abs(signed_qty)
             pos["avg_price"] = total / abs(new) if new != 0 else Decimal(0)
+        elif new != 0 and (old > 0) != (new > 0):  # crossed through zero -> new leg basis = this fill
+            pos["avg_price"] = price
+        # else: partial close in the same direction -> avg_price unchanged
         pos["qty"] = new
         if new == 0:
             self._positions.pop(key, None)
