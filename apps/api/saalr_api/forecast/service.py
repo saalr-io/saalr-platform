@@ -11,18 +11,24 @@ from . import repo
 
 
 async def get_or_compute_forecast(
-    redis, sessionmaker, session, ticker: str, market: str, horizon: int, ttl: int
+    redis, sessionmaker, session, ticker: str, market: str, horizon: int, ttl: int,
+    *, closes: list[float] | None = None
 ) -> dict:
     """Return the GARCH vol-forecast payload for (ticker, market, horizon): a Redis cache
     read, else compute via vol_forecast (raises ValueError on <250 closes — the caller maps
     it to 422), persist a model_validation_runs row in its own committed session, and cache.
-    Shared by the forecast endpoint and the Monte-Carlo endpoint."""
+    Shared by the forecast endpoint and the Monte-Carlo endpoint.
+
+    `closes` may be supplied by a caller that already loaded them (e.g. the MC endpoint,
+    which reads the last close for spot) to avoid a redundant bars round-trip and to keep
+    spot and sigma drawn from the same snapshot."""
     key = f"mdq:volfc:v1:{market}:{ticker}:{horizon}"
     cached = await redis.get(key)
     if cached:
         return json.loads(cached)
 
-    closes = await repo.load_closes(session, ticker, market)
+    if closes is None:
+        closes = await repo.load_closes(session, ticker, market)
     result = vol_forecast(np.asarray(closes, dtype=float), horizon)
 
     payload = {

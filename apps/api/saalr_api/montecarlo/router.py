@@ -63,6 +63,7 @@ async def montecarlo(
                 market,
                 days,
                 request.app.state.vol_forecast_ttl,
+                closes=closes,  # reuse the spot load; keeps spot + sigma on one snapshot
             )
         except ValueError as exc:
             raise _err("INSUFFICIENT_HISTORY", str(exc)) from exc
