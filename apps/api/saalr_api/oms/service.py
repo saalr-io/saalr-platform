@@ -5,6 +5,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from saalr_brokers.paper import PaperBrokerAdapter
@@ -85,7 +86,8 @@ async def place_order(session: AsyncSession, principal, body: OrderCreate, idemp
 
     req = _to_request(body)
     est_cost = estimate_cost(req, mark)
-    balance = await repo.account_balance(session, account.broker_account_id, Decimal(str(settings.paper_starting_cash)))
+    balance = await repo.account_balance(session, account.broker_account_id,
+                                         Decimal(str(settings.paper_starting_cash)), tenant_id)
     strategy_state = None
     if body.strategy_id:
         strat = await strat_repo.get_strategy(session, UUID(body.strategy_id))
@@ -103,8 +105,12 @@ async def place_order(session: AsyncSession, principal, body: OrderCreate, idemp
                                after={"status": "rejected", "code": decision.code}, request_id=request_id)
         raise _err(decision.code, decision.message or decision.code)
 
-    order = await repo.insert_order(session, tenant_id=tenant_id, user_id=user_id, body=body,
-                                    status="pending", idempotency_key=idempotency_key)
+    try:
+        order = await repo.insert_order(session, tenant_id=tenant_id, user_id=user_id, body=body,
+                                        status="pending", idempotency_key=idempotency_key)
+    except IntegrityError as exc:  # a concurrent request with the same Idempotency-Key won the race
+        raise _err("ORDER_DUPLICATE_IN_FLIGHT",
+                   "a duplicate order is in flight; retry to read the result", 409) from exc
 
     if account.broker != "paper":
         raise _err("BROKER_NOT_SUPPORTED", f"broker {account.broker} not yet supported", 400)
@@ -121,6 +127,8 @@ async def place_order(session: AsyncSession, principal, body: OrderCreate, idemp
 
     if book["status"] == "filled":
         fill_price = book["fill_price"]
+        if fill_price is None:  # invariant: a filled order always has a fill price
+            raise _err("INTERNAL", "adapter returned filled with no fill price", 500)
         await repo.insert_execution(session, tenant_id=tenant_id, order_id=order.order_id,
                                     broker_account_id=account.broker_account_id, qty=body.qty,
                                     price=fill_price, commission=Decimal(0),

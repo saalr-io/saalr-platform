@@ -42,3 +42,12 @@ async def test_no_bars_raises(app_sessionmaker, admin_engine):
         with pytest.raises(NoMarketData):
             await model_mark(s, symbol="ZZZZ", market="US", option_type=None,
                              strike=None, expiry=None, today=date(2025, 6, 1))
+
+
+async def test_option_nonpositive_strike_raises(app_sessionmaker, admin_engine):
+    # a 0/negative strike would blow up BSM's log(spot/strike) -> must be a clean NoMarketData
+    await _seed_bars(admin_engine, "AAPL", [100.0] * 40)
+    async with app_sessionmaker() as s:
+        with pytest.raises(NoMarketData):
+            await model_mark(s, symbol="AAPL", market="US", option_type="CALL",
+                             strike=Decimal("0"), expiry=date(2025, 4, 1), today=date(2025, 3, 1))

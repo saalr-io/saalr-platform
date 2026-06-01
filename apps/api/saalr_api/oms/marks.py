@@ -49,8 +49,12 @@ async def model_mark(
     if not closes:
         raise NoMarketData(f"no bars for {symbol}")
     spot = closes[-1]
+    if spot <= 0:
+        raise NoMarketData(f"non-positive spot for {symbol}")
     if option_type is None:
         return Decimal(str(spot))
+    if strike is None or strike <= 0:  # guard log(spot/strike) -> ValueError in BSM
+        raise NoMarketData("option order requires a positive strike")
     if expiry is None:
         raise NoMarketData("option order missing expiry")
     t = (expiry - today).days / 365.0

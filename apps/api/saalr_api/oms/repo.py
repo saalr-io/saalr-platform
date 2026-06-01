@@ -78,7 +78,7 @@ async def insert_execution(session, *, tenant_id, order_id, broker_account_id, q
     await session.flush()
 
 
-async def account_balance(session, broker_account_id, starting_cash: Decimal) -> Decimal:
+async def account_balance(session, broker_account_id, starting_cash: Decimal, tenant_id) -> Decimal:
     total = (
         await session.execute(
             text("""
@@ -88,9 +88,9 @@ async def account_balance(session, broker_account_id, starting_cash: Decimal) ->
                     - e.commission
                 ), 0)
                 FROM executions e JOIN orders o ON o.order_id = e.order_id
-                WHERE e.broker_account_id = :acct
+                WHERE e.broker_account_id = :acct AND e.tenant_id = :tenant
             """),
-            {"acct": str(broker_account_id)},
+            {"acct": str(broker_account_id), "tenant": str(tenant_id)},
         )
     ).scalar_one()
     return starting_cash + Decimal(str(total))
