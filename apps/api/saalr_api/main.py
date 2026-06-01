@@ -23,6 +23,7 @@ from .backtests.router import router as backtests_router
 from .forecast.router import router as forecast_router
 from .market.router import router as market_router
 from .montecarlo.router import router as montecarlo_router
+from .sentiment.router import router as sentiment_router
 from .strategies.router import router as strategies_router
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(backtests_router)
     app.include_router(forecast_router)
     app.include_router(montecarlo_router)
+    app.include_router(sentiment_router)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
