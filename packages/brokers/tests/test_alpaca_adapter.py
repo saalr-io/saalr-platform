@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 import pytest
@@ -46,6 +46,7 @@ class _StubClient:
         self._orders = orders if orders is not None else [self._order]
         self.last_req = None
         self.cancelled = None
+        self.orders_req = None
 
     def submit_order(self, req):
         self.last_req = req
@@ -54,7 +55,8 @@ class _StubClient:
     def cancel_order_by_id(self, oid):
         self.cancelled = oid
 
-    def get_orders(self):
+    def get_orders(self, req=None):
+        self.orders_req = req
         return self._orders
 
     def get_all_positions(self):
@@ -113,6 +115,17 @@ async def test_get_orders_normalizes_and_maps_status():
     rows = await _adapter(stub).get_orders()
     assert rows[0]["broker_order_id"] == "al-2" and rows[0]["status"] == "filled"
     assert rows[0]["filled_avg_price"] == Decimal("50.25") and rows[0]["filled_qty"] == 10
+
+
+async def test_get_orders_passes_since_and_all_status():
+    from alpaca.trading.enums import QueryOrderStatus
+
+    stub = _StubClient(orders=[])
+    since = datetime(2026, 6, 1, 12, 0, tzinfo=timezone.utc)
+    await _adapter(stub).get_orders(since)
+    # reconciliation needs status=ALL (closed orders too) + incremental after=since
+    assert stub.orders_req.status == QueryOrderStatus.ALL
+    assert stub.orders_req.after == since
 
 
 async def test_get_positions_and_balance():

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date
+from collections.abc import AsyncIterator
+from datetime import date, datetime
 from decimal import Decimal
 
 from .base import BrokerAdapter
-from .types import BrokerOrder, BrokerOrderResult, BrokerPosition
+from .types import BrokerFill, BrokerOrder, BrokerOrderResult, BrokerPosition
 
 
 class BrokerError(Exception):
@@ -15,17 +16,19 @@ class BrokerError(Exception):
 def occ_symbol(root: str, expiry: date, option_type: str, strike: float | Decimal) -> str:
     """OCC option symbol: ROOT + YYMMDD + C/P + strike*1000 zero-padded to 8 digits."""
     cp = "C" if option_type.upper() in ("CALL", "CE") else "P"
-    strike_milli = int(round(float(strike) * 1000))
+    strike_milli = int((Decimal(str(strike)) * 1000).to_integral_value())  # Decimal-native: no float drift
     return f"{root.upper()}{expiry:%y%m%d}{cp}{strike_milli:08d}"
 
 
 _ALPACA_STATUS: dict[str, str] = {
     "new": "submitted", "accepted": "submitted", "pending_new": "submitted",
-    "accepted_for_bidding": "submitted",
+    "accepted_for_bidding": "submitted", "held": "submitted", "calculated": "submitted",
     "partially_filled": "partial",
     "filled": "filled",
     "canceled": "cancelled", "expired": "cancelled", "done_for_day": "cancelled",
     "pending_cancel": "cancelled",
+    # 'replaced' is terminal (superseded by a new order) -> must NOT default to 'submitted'
+    "replaced": "cancelled", "pending_replace": "cancelled",
     "rejected": "rejected", "suspended": "rejected", "stopped": "rejected",
 }
 
@@ -56,13 +59,16 @@ class AlpacaAdapter(BrokerAdapter):
         return self._client
 
     def _build_request(self, order: BrokerOrder, idempotency_key: str):
-        from alpaca.trading.enums import OrderSide, TimeInForce
-        from alpaca.trading.requests import (
-            LimitOrderRequest,
-            MarketOrderRequest,
-            StopLimitOrderRequest,
-            StopOrderRequest,
-        )
+        try:
+            from alpaca.trading.enums import OrderSide, TimeInForce
+            from alpaca.trading.requests import (
+                LimitOrderRequest,
+                MarketOrderRequest,
+                StopLimitOrderRequest,
+                StopOrderRequest,
+            )
+        except ImportError as exc:  # pragma: no cover - exercised only without the extra
+            raise BrokerError("alpaca-py not installed (pip install alpaca-py)") from exc
 
         symbol = (
             occ_symbol(order.symbol, order.expiry, order.option_type, order.strike)
@@ -87,9 +93,11 @@ class AlpacaAdapter(BrokerAdapter):
         raise BrokerError(f"unsupported order_type {t!r}")
 
     async def submit_order(self, order: BrokerOrder, idempotency_key: str) -> BrokerOrderResult:
-        req = self._build_request(order, idempotency_key)
+        def _work():  # build the request + submit off the event loop (Pydantic + network)
+            return self._trading().submit_order(self._build_request(order, idempotency_key))
+
         try:
-            o = await asyncio.to_thread(self._trading().submit_order, req)
+            o = await asyncio.to_thread(_work)
         except BrokerError:
             raise
         except Exception as exc:
@@ -106,9 +114,18 @@ class AlpacaAdapter(BrokerAdapter):
         except Exception:
             return False
 
-    async def get_orders(self, since=None) -> list[dict]:
+    async def get_orders(self, since: datetime | None = None) -> list[dict]:
+        def _work():
+            from alpaca.trading.enums import QueryOrderStatus
+            from alpaca.trading.requests import GetOrdersRequest
+
+            # status=ALL so reconciliation sees closed/filled orders, not just open ones;
+            # after=since lets the OMS-3b reconciliation poll incrementally.
+            req = GetOrdersRequest(status=QueryOrderStatus.ALL, after=since)
+            return self._trading().get_orders(req)
+
         try:
-            orders = await asyncio.to_thread(self._trading().get_orders)
+            orders = await asyncio.to_thread(_work)
         except Exception as exc:
             raise BrokerError(str(exc)) from exc
         out: list[dict] = []
@@ -146,6 +163,6 @@ class AlpacaAdapter(BrokerAdapter):
             raise BrokerError(str(exc)) from exc
         return Decimal(str(acct.buying_power))
 
-    async def stream_executions(self):
+    async def stream_executions(self) -> AsyncIterator[BrokerFill]:
         raise NotImplementedError("reconcile via get_orders polling (OMS-3b)")
         yield  # unreachable; makes this an async generator so it satisfies the ABC contract

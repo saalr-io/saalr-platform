@@ -26,6 +26,14 @@ def test_map_status_known_and_unknown():
     assert map_status("something_new") == "submitted"  # conservative default
 
 
+def test_map_status_replace_and_held_states():
+    # 'replaced' is terminal (superseded) -> must NOT fall through to 'submitted'
+    assert map_status("replaced") == "cancelled"
+    assert map_status("pending_replace") == "cancelled"
+    assert map_status("held") == "submitted"
+    assert map_status("calculated") == "submitted"
+
+
 def test_map_status_handles_enum_like():
     class _S:
         value = "FILLED"
