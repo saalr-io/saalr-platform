@@ -42,10 +42,19 @@ def _order_out(o) -> dict:
 async def create_account(body: BrokerAccountCreate,
                          ctx: tuple[AsyncSession, Principal] = Depends(get_principal)) -> dict:
     session, principal = ctx
-    if body.broker != "paper":
-        raise HTTPException(400, {"error": {"code": "BROKER_NOT_SUPPORTED", "message": "only paper accounts are supported"}})
-    a = await repo.create_broker_account(session, principal.tenant_id, principal.user_id,
-                                         "paper", body.account_label, True)
+    if body.broker not in ("paper", "alpaca"):
+        raise HTTPException(400, {"error": {"code": "BROKER_NOT_SUPPORTED",
+                                            "message": "broker not supported"}})
+    if body.broker == "alpaca":
+        if not body.credential_ref:
+            raise HTTPException(422, {"error": {"code": "VALIDATION_MISSING_CREDENTIAL_REF",
+                                                "message": "credential_ref is required for alpaca"}})
+        a = await repo.create_broker_account(session, principal.tenant_id, principal.user_id,
+                                             "alpaca", body.account_label, body.is_paper,
+                                             body.credential_ref)
+    else:
+        a = await repo.create_broker_account(session, principal.tenant_id, principal.user_id,
+                                             "paper", body.account_label, True)
     return _acct_out(a)
 
 

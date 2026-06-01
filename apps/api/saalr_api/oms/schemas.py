@@ -10,6 +10,7 @@ class BrokerAccountCreate(BaseModel):
     broker: str = "paper"
     account_label: str = Field(min_length=1)
     is_paper: bool = True
+    credential_ref: str | None = None
 
 
 class OrderCreate(BaseModel):

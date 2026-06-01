@@ -18,10 +18,11 @@ from saalr_core.oms.repo import (  # noqa: F401 — re-exported so existing call
 
 
 # --- broker accounts ---
-async def create_broker_account(session, tenant_id, user_id, broker, label, is_paper) -> BrokerAccount:
+async def create_broker_account(session, tenant_id, user_id, broker, label, is_paper,
+                                credential_ref="paper:local") -> BrokerAccount:
     row = BrokerAccount(
         broker_account_id=new_id(), tenant_id=tenant_id, user_id=user_id, broker=broker,
-        account_label=label, credential_ref="paper:local", is_paper=is_paper, status="active",
+        account_label=label, credential_ref=credential_ref, is_paper=is_paper, status="active",
     )
     session.add(row)
     await session.flush()
