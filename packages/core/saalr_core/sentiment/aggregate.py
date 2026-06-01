@@ -20,7 +20,9 @@ def aggregate_sentiment(
     total_score = 0.0
     total_weight = 0.0
     for h in scored:
-        age_hours = (as_of - h.published_at).total_seconds() / 3600.0
+        # Floor age at 0: a future-dated headline (clock skew / wire-service timestamps)
+        # must not get time_weight > 1 and outweigh present news.
+        age_hours = max(0.0, (as_of - h.published_at).total_seconds() / 3600.0)
         time_weight = 0.5 ** (age_hours / half_life_hours)
         weight = time_weight * h.confidence
         total_score += h.score * weight

@@ -33,6 +33,15 @@ def test_strong_bullish_set_is_labeled_bullish():
     assert out["confident"] is True and out["score"] > 0 and out["label"] == "bullish"
 
 
+def test_future_dated_headline_is_not_amplified():
+    # a headline 48h in the "future" (clock skew) must not outweigh a present one
+    future = _sh(-0.9, 1.0, -48)  # negative age = future
+    present = _sh(0.9, 1.0, 0)
+    out = aggregate_sentiment([future, present], _NOW)
+    # both capped at age 0 -> equal weight -> the two cancel to ~neutral, NOT bearish-dominated
+    assert abs(out["score"]) < 0.05
+
+
 class _StubScorer:
     """Deterministic keyword scorer implementing SentimentScorer (no torch)."""
 

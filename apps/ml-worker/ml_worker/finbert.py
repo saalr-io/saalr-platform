@@ -32,6 +32,11 @@ class FinBertScorer:
         pipe = self._pipeline()
         texts = [f"{h.title}. {h.description}".strip() for h in headlines]
         results = pipe(texts, truncation=True, max_length=512)
+        # transformers collapses the outer list for a single-element input in some
+        # versions, returning list[dict] instead of list[list[dict]] — re-wrap so the
+        # zip below iterates per-headline, not per-class.
+        if results and isinstance(results[0], dict):
+            results = [results]
         out: list[ScoredHeadline] = []
         for h, res in zip(headlines, results):
             probs = {r["label"].lower(): float(r["score"]) for r in res}
