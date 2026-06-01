@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     # Market-data ingestion
     bars_backfill_default_days: int = 1825  # ~5y, used when a symbol has no stored bars
 
+    # Paper trading
+    paper_starting_cash: float = 100000.0
+
 
 def get_settings() -> Settings:
     return Settings()
