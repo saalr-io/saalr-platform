@@ -976,6 +976,12 @@ requires-dist = [{ name = "saalr-core", editable = "packages/core" }]
 name = "saalr-brokers"
 version = "0.0.0"
 source = { editable = "packages/brokers" }
+dependencies = [
+    { name = "saalr-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "saalr-core", editable = "packages/core" }]
 
 [[package]]
 name = "saalr-content"

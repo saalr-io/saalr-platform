@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
+from saalr_core.oms.positions import net_position
+
 from .base import BrokerAdapter
 from .types import BrokerFill, BrokerOrder, BrokerOrderResult, BrokerPosition
 
@@ -81,16 +83,9 @@ class PaperBrokerAdapter(BrokerAdapter):
     def _add_position(self, order: BrokerOrder, signed_qty: int, price: Decimal) -> None:
         key = self._key(order)
         pos = self._positions.get(key, {"qty": 0, "avg_price": Decimal(0), "order": order})
-        old = pos["qty"]
-        new = old + signed_qty
-        if old == 0 or (old > 0) == (signed_qty > 0):  # opening/adding same direction
-            total = pos["avg_price"] * abs(old) + price * abs(signed_qty)
-            pos["avg_price"] = total / abs(new) if new != 0 else Decimal(0)
-        elif new != 0 and (old > 0) != (new > 0):  # crossed through zero -> new leg basis = this fill
-            pos["avg_price"] = price
-        # else: partial close in the same direction -> avg_price unchanged
-        pos["qty"] = new
-        if new == 0:
+        new_qty, new_avg = net_position(pos["qty"], pos["avg_price"], signed_qty, price)
+        pos["qty"], pos["avg_price"] = new_qty, new_avg
+        if new_qty == 0:
             self._positions.pop(key, None)
         else:
             self._positions[key] = pos
