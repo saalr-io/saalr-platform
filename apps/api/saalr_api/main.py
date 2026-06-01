@@ -3,7 +3,8 @@ import re
 from contextlib import asynccontextmanager
 
 import redis.asyncio as aioredis
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +24,7 @@ from .backtests.router import router as backtests_router
 from .forecast.router import router as forecast_router
 from .market.router import router as market_router
 from .montecarlo.router import router as montecarlo_router
+from .oms.router import router as oms_router
 from .sentiment.router import router as sentiment_router
 from .strategies.router import router as strategies_router
 
@@ -64,12 +66,20 @@ def create_app() -> FastAPI:
         await engine.dispose()
 
     app = FastAPI(title="Saalr API", lifespan=lifespan)
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException):
+        detail = exc.detail
+        body = detail if isinstance(detail, dict) else {"detail": detail}
+        return JSONResponse(status_code=exc.status_code, content=body)
+
     app.include_router(market_router)
     app.include_router(strategies_router)
     app.include_router(backtests_router)
     app.include_router(forecast_router)
     app.include_router(montecarlo_router)
     app.include_router(sentiment_router)
+    app.include_router(oms_router)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
