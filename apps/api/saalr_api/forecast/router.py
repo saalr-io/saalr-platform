@@ -1,16 +1,10 @@
 from __future__ import annotations
 
-import json
-from datetime import datetime, timezone
-
-import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from saalr_ml.forecast import vol_forecast
-
 from ..auth import Principal
-from . import repo
+from . import service
 from .gating import require_ml_forecast
 
 router = APIRouter(prefix="/v1/market", tags=["forecast"])
@@ -34,42 +28,17 @@ async def vol_forecast_endpoint(
     _validate(ticker, market)
     ticker = ticker.upper()
     session, _principal = ctx
-    redis = request.app.state.redis
-    ttl = request.app.state.vol_forecast_ttl
-    key = f"mdq:volfc:v1:{market}:{ticker}:{horizon}"
-
-    cached = await redis.get(key)
-    if cached:
-        return json.loads(cached)
-
-    closes = await repo.load_closes(session, ticker, market)
     try:
-        result = vol_forecast(np.asarray(closes, dtype=float), horizon)
+        return await service.get_or_compute_forecast(
+            request.app.state.redis,
+            request.app.state.sessionmaker,
+            session,
+            ticker,
+            market,
+            horizon,
+            request.app.state.vol_forecast_ttl,
+        )
     except ValueError as exc:
         raise HTTPException(
             422, {"error": {"code": "INSUFFICIENT_HISTORY", "message": str(exc)}}
         ) from exc
-
-    payload = {
-        "ticker": ticker,
-        "market": market,
-        "as_of": datetime.now(timezone.utc).isoformat(),
-        **result,
-    }
-
-    # Persist the validation row in its OWN committed session BEFORE caching, so a
-    # commit failure can't leave the cache populated for the whole TTL with no audit
-    # row. model_validation_runs is non-RLS, so a plain session (no tenant GUC) is fine.
-    async with request.app.state.sessionmaker() as vsession, vsession.begin():
-        await repo.record_validation(
-            vsession,
-            model_name="garch",
-            market=market,
-            cohort_label=f"{ticker}:{repo.today_str()}",
-            baseline_name="hv21",
-            status="passed" if result["primary_model"] == "garch" else "failed",
-            metric_summary_json={**result["validation"], "params": result["params"]},
-        )
-
-    await redis.set(key, json.dumps(payload), ex=ttl)
-    return payload
