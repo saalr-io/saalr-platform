@@ -1,1 +1,1 @@
-from . import audit, billing, config, content, market_data, tenancy, trading  # noqa: F401
+from . import audit, billing, config, content, market_data, research, tenancy, trading  # noqa: F401
