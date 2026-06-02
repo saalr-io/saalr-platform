@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     # Paper trading
     paper_starting_cash: float = 100000.0
 
+    # RAG / embeddings (research-agent band)
+    openai_api_key: str | None = None
+    embedding_model: str = "text-embedding-3-small"
+
 
 def get_settings() -> Settings:
     return Settings()
