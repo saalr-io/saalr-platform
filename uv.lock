@@ -1069,6 +1069,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "redis" },
+    { name = "saalr-content" },
     { name = "saalr-core" },
     { name = "saalr-ml" },
     { name = "uvicorn", extra = ["standard"] },
@@ -1079,6 +1080,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.9" },
     { name = "redis", specifier = ">=5" },
+    { name = "saalr-content", editable = "packages/content" },
     { name = "saalr-core", editable = "packages/core" },
     { name = "saalr-ml", editable = "packages/ml" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29" },
@@ -1119,6 +1121,16 @@ provides-extras = ["alpaca"]
 name = "saalr-content"
 version = "0.0.0"
 source = { editable = "packages/content" }
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8.0" }]
 
 [[package]]
 name = "saalr-core"

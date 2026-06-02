@@ -10,6 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from saalr_brokers.credentials import EnvCredentialResolver, build_alpaca_adapter
+from saalr_content.loader import load_catalog
 from saalr_core.config import get_settings
 from saalr_core.db.session import create_engine, create_sessionmaker
 from saalr_core.tiers import entitlements_for
@@ -22,6 +23,7 @@ from saalr_core.queue.backtest_queue import ensure_group
 from .auth import Principal, get_auth_provider, get_principal
 from .auth.magic import consume_link, request_link
 from .backtests.router import router as backtests_router
+from .content.router import router as content_router
 from .forecast.router import router as forecast_router
 from .market.router import router as market_router
 from .montecarlo.router import router as montecarlo_router
@@ -65,6 +67,7 @@ def create_app() -> FastAPI:
         app.state.alpaca_adapter_factory = lambda account: build_alpaca_adapter(
             account.credential_ref, account.is_paper, EnvCredentialResolver(os.environ)
         )
+        app.state.catalog = load_catalog()
         yield
         await app.state.redis.aclose()
         await engine.dispose()
@@ -78,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(montecarlo_router)
     app.include_router(sentiment_router)
     app.include_router(oms_router)
+    app.include_router(content_router)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
