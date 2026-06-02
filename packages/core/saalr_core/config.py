@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     # RAG / embeddings (research-agent band)
     openai_api_key: str | None = None
     embedding_model: str = "text-embedding-3-small"
+    chat_model: str = "gpt-4o-mini"
 
 
 def get_settings() -> Settings:
