@@ -19,6 +19,7 @@ from saalr_core.marketdata.massive import MassiveProvider
 from saalr_core.marketdata.rates import FredRateProvider
 
 from saalr_core.queue.backtest_queue import ensure_group
+from saalr_core.rag.embeddings import make_embedding_provider
 
 from .auth import Principal, get_auth_provider, get_principal
 from .auth.magic import consume_link, request_link
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
             account.credential_ref, account.is_paper, EnvCredentialResolver(os.environ)
         )
         app.state.catalog = load_catalog()
+        app.state.embedding_provider = make_embedding_provider(settings)
         yield
         await app.state.redis.aclose()
         await engine.dispose()

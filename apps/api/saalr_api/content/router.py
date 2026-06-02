@@ -1,14 +1,23 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from saalr_core.rag.embeddings import EmbeddingError
+from saalr_core.rag.fusion import reciprocal_rank_fusion
+from saalr_core.rag.index import semantic_search
 
 from ..auth import Principal, get_principal
 from . import repo
 
 router = APIRouter(prefix="/content", tags=["content"])
+
+_logger = logging.getLogger("saalr.content")
+_SEARCH_MODES = {"keyword", "semantic", "hybrid"}
 
 _TIER_RANK = {"free": 0, "pro": 1, "premium": 2}
 
@@ -49,18 +58,57 @@ async def list_modules(request: Request,
 
 
 @router.get("/search")
-async def search(request: Request, q: str = Query(default=""),
+async def search(request: Request, q: str = Query(default=""), mode: str = Query(default="hybrid"),
+                 limit: int = Query(default=10, ge=1, le=50),
                  ctx: tuple[AsyncSession, Principal] = Depends(get_principal)) -> dict:
-    _, principal = ctx
+    session, principal = ctx
     if not q.strip():
         raise HTTPException(400, {"error": {"code": "VALIDATION_INVALID_PARAMETER",
                                             "message": "q is required"}})
+    if mode not in _SEARCH_MODES:
+        raise HTTPException(400, {"error": {"code": "VALIDATION_INVALID_PARAMETER",
+                                            "message": f"mode must be one of {sorted(_SEARCH_MODES)}"}})
     catalog = request.app.state.catalog
-    return {"results": [
-        {"slug": h.module.slug, "title": h.module.title, "snippet": h.snippet, "score": h.score,
-         "locked": _locked(principal.tier, h.module)}
-        for h in catalog.search(q)
-    ]}
+    keyword_hits = catalog.search(q)
+    keyword_slugs = [h.module.slug for h in keyword_hits]
+    snippet_by = {h.module.slug: h.snippet for h in keyword_hits}
+    keyword_score = {h.module.slug: float(h.score) for h in keyword_hits}
+
+    semantic_slugs: list[str] = []
+    if mode in ("semantic", "hybrid"):
+        provider = getattr(request.app.state, "embedding_provider", None)
+        if provider is not None:
+            try:
+                vectors = await provider.embed([q])
+                if len(vectors) != 1:
+                    raise EmbeddingError("embedding provider returned no/extra vectors")
+                sem = await semantic_search(session, vectors[0], model=provider.model_name, limit=limit)
+                semantic_slugs = [slug for slug, _distance in sem]
+            except (EmbeddingError, SQLAlchemyError) as exc:
+                # embedding or vector-search infra failure -> degrade to keyword (never a 500)
+                _logger.warning("semantic search failed, keyword fallback: %s", exc)
+                semantic_slugs = []
+
+    if mode == "keyword" or not semantic_slugs:
+        ordered, scores = keyword_slugs, keyword_score
+    elif mode == "semantic":
+        ordered = semantic_slugs
+        scores = {slug: round(1.0 / (i + 1), 6) for i, slug in enumerate(semantic_slugs)}
+    else:  # hybrid
+        fused = reciprocal_rank_fusion([keyword_slugs, semantic_slugs])
+        ordered = [slug for slug, _ in fused]
+        scores = {slug: round(score, 6) for slug, score in fused}
+
+    results = []
+    for slug in ordered[:limit]:
+        module = catalog.by_slug(slug)
+        if module is None:
+            continue  # stale index row not in the current catalog
+        results.append({"slug": module.slug, "title": module.title,
+                        "snippet": snippet_by.get(slug) or module.summary,
+                        "score": scores.get(slug, 0.0),
+                        "locked": _locked(principal.tier, module)})
+    return {"results": results}
 
 
 @router.get("/progress")
