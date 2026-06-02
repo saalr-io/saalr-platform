@@ -30,6 +30,7 @@ from .forecast.router import router as forecast_router
 from .market.router import router as market_router
 from .montecarlo.router import router as montecarlo_router
 from .oms.router import router as oms_router
+from .research.router import router as research_router
 from .sentiment.router import router as sentiment_router
 from .strategies.router import router as strategies_router
 
@@ -86,6 +87,7 @@ def create_app() -> FastAPI:
     app.include_router(sentiment_router)
     app.include_router(oms_router)
     app.include_router(content_router)
+    app.include_router(research_router)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
