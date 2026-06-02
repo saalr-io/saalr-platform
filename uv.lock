@@ -14,6 +14,7 @@ members = [
     "saalr-backtest-worker",
     "saalr-brokers",
     "saalr-content",
+    "saalr-content-worker",
     "saalr-core",
     "saalr-ingest-worker",
     "saalr-ml",
@@ -1194,6 +1195,33 @@ dev = [
 ]
 
 [package.metadata]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8.0" }]
+
+[[package]]
+name = "saalr-content-worker"
+version = "0.0.0"
+source = { editable = "apps/content-worker" }
+dependencies = [
+    { name = "asyncpg" },
+    { name = "saalr-content" },
+    { name = "saalr-core", extra = ["openai"] },
+    { name = "sqlalchemy" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "asyncpg", specifier = ">=0.29" },
+    { name = "saalr-content", editable = "packages/content" },
+    { name = "saalr-core", extras = ["openai"], editable = "packages/core" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]
