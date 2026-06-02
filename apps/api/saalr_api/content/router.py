@@ -7,12 +7,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from saalr_core.rag.chat import ChatError
 from saalr_core.rag.embeddings import EmbeddingError
 from saalr_core.rag.fusion import reciprocal_rank_fusion
 from saalr_core.rag.index import semantic_search
+from saalr_core.rag.qa import build_qa_prompt, retrieve_context
 
 from ..auth import Principal, get_principal
+from ..forecast.gating import require_ml_forecast
 from . import repo
+from .schemas import AskRequest
 
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -109,6 +113,54 @@ async def search(request: Request, q: str = Query(default=""), mode: str = Query
                         "score": scores.get(slug, 0.0),
                         "locked": _locked(principal.tier, module)})
     return {"results": results}
+
+
+@router.post("/ask")
+async def ask(body: AskRequest, request: Request,
+              ctx: tuple[AsyncSession, Principal] = Depends(require_ml_forecast)) -> dict:
+    session, _principal = ctx
+    question = body.question.strip()
+    if not question:
+        raise HTTPException(400, {"error": {"code": "VALIDATION_INVALID_PARAMETER",
+                                            "message": "question is required"}})
+    chat = getattr(request.app.state, "chat_provider", None)
+    embed = getattr(request.app.state, "embedding_provider", None)
+    if chat is None or embed is None:
+        raise HTTPException(503, {"error": {"code": "FEATURE_UNAVAILABLE",
+                                            "message": "the assistant is not configured"}})
+    try:
+        vectors = await embed.embed([question])
+        if len(vectors) != 1:
+            raise EmbeddingError("embedding provider returned no/extra vectors")
+        chunks = await retrieve_context(session, vectors[0], model=embed.model_name, k=body.k)
+    except (EmbeddingError, SQLAlchemyError) as exc:
+        _logger.warning("ask embedding/retrieval failed: %s", exc)
+        raise HTTPException(502, {"error": {"code": "LLM_UNAVAILABLE",
+                                            "message": "the assistant is temporarily unavailable"}}) from exc
+    if not chunks:
+        return {"answer": "I couldn't find relevant OptionsAcademy material for that question.",
+                "citations": [], "model": chat.model_name,
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0}}
+    system, user = build_qa_prompt(question, chunks)
+    try:
+        result = await chat.complete(system, user)
+    except ChatError as exc:
+        _logger.warning("ask chat failed: %s", exc)
+        raise HTTPException(502, {"error": {"code": "LLM_UNAVAILABLE",
+                                            "message": "the assistant is temporarily unavailable"}}) from exc
+    catalog = request.app.state.catalog
+    citations: list[dict] = []
+    seen: set[str] = set()
+    for chunk in chunks:
+        if chunk.module_slug in seen:
+            continue
+        seen.add(chunk.module_slug)
+        module = catalog.by_slug(chunk.module_slug)
+        if module is not None:
+            citations.append({"slug": module.slug, "title": module.title})
+    return {"answer": result.text, "citations": citations, "model": chat.model_name,
+            "usage": {"prompt_tokens": result.prompt_tokens,
+                      "completion_tokens": result.completion_tokens}}
 
 
 @router.get("/progress")

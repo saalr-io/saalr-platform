@@ -19,6 +19,7 @@ from saalr_core.marketdata.massive import MassiveProvider
 from saalr_core.marketdata.rates import FredRateProvider
 
 from saalr_core.queue.backtest_queue import ensure_group
+from saalr_core.rag.chat import make_chat_provider
 from saalr_core.rag.embeddings import make_embedding_provider
 
 from .auth import Principal, get_auth_provider, get_principal
@@ -70,6 +71,7 @@ def create_app() -> FastAPI:
         )
         app.state.catalog = load_catalog()
         app.state.embedding_provider = make_embedding_provider(settings)
+        app.state.chat_provider = make_chat_provider(settings)
         yield
         await app.state.redis.aclose()
         await engine.dispose()
