@@ -17,6 +17,10 @@ class UnknownTenantError(Exception):
     """A signature-valid webhook whose customer maps to no tenant."""
 
 
+class WebhookVerificationError(Exception):
+    """The webhook signature/payload could not be verified or parsed."""
+
+
 def _price_map(settings) -> dict[str, str]:
     out = {}
     if settings.stripe_price_pro:
@@ -67,7 +71,10 @@ async def open_portal(session: AsyncSession, provider: PaymentProvider, settings
 async def _resolve_tenant(session: AsyncSession, obj: dict) -> UUID | None:
     meta_tid = (obj.get("metadata") or {}).get("tenant_id")
     if meta_tid:
-        return UUID(meta_tid)
+        try:
+            return UUID(meta_tid)
+        except ValueError:
+            pass  # malformed metadata -> fall back to the authoritative customer lookup
     customer = obj.get("customer")
     if not customer:
         return None
@@ -78,7 +85,13 @@ async def _resolve_tenant(session: AsyncSession, obj: dict) -> UUID | None:
 
 async def handle_webhook(sm: async_sessionmaker[AsyncSession], provider: PaymentProvider,
                          price_to_tier: dict[str, str], payload: bytes, sig_header: str) -> dict:
-    event = provider.verify_webhook(payload=payload, sig_header=sig_header)  # raises on bad sig
+    # Verification/parse failures are client errors (400). Anything raised AFTER this
+    # (DB/infra) must propagate as 5xx so Stripe retries — and the idempotency gate makes
+    # the retry safe. Don't collapse infra faults into a 400 (Stripe would not retry).
+    try:
+        event = provider.verify_webhook(payload=payload, sig_header=sig_header)
+    except Exception as exc:  # noqa: BLE001 - any verify/parse failure is a bad webhook
+        raise WebhookVerificationError(str(exc)) from exc
     obj = (event.get("data") or {}).get("object") or {}
 
     # Resolve the tenant pre-context: metadata, else a definer customer->tenant lookup.

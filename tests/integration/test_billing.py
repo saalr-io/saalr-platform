@@ -235,3 +235,31 @@ async def test_webhook_bad_signature_is_400():
             r = await c.post("/webhooks/stripe", content=b'{"id":"e"}',
                              headers={"Stripe-Signature": "wrong"})
     assert r.status_code == 400
+
+
+async def test_webhook_infra_error_is_not_swallowed_as_400():
+    """A DB/infra failure in the handler must NOT become a 400 (Stripe would never retry);
+    it propagates as a server error so Stripe redelivers and the idempotency gate replays."""
+    import pytest
+
+    import saalr_api.billing.service as billing_service
+
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        provider = StubProvider()
+        app.state.payment_provider = provider
+        payload, sig = provider.sign(
+            {"id": "evt_boom", "type": "invoice.paid", "data": {"object": {"customer": "cus_z"}}})
+
+        async def _boom(*a, **k):
+            raise RuntimeError("db down")
+
+        original = billing_service.handle_webhook
+        billing_service.handle_webhook = _boom
+        try:
+            with pytest.raises(RuntimeError):  # propagates (default ASGI raise_app_exceptions)
+                async with _client(app) as c:
+                    await c.post("/webhooks/stripe", content=payload,
+                                 headers={"Stripe-Signature": sig})
+        finally:
+            billing_service.handle_webhook = original

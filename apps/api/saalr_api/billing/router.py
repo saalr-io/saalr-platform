@@ -75,12 +75,15 @@ async def stripe_webhook(request: Request,
     sm = request.app.state.sessionmaker
     payload = await request.body()  # raw body is required for signature verification
     price_to_tier = service._price_map(settings)
+    # Only bad-webhook / unknown-tenant are client 400s. Infra errors (DB down, bugs)
+    # propagate as 5xx so Stripe retries and the idempotency gate replays cleanly —
+    # collapsing them into a 400 would make Stripe drop the event permanently.
     try:
         return await service.handle_webhook(sm, provider, price_to_tier, payload,
                                             stripe_signature or "")
     except service.UnknownTenantError as exc:
         raise HTTPException(400, {"error": {"code": "BILLING_UNKNOWN_TENANT",
                                             "message": "no tenant for this event"}}) from exc
-    except Exception as exc:  # noqa: BLE001 - bad signature / malformed -> 400
+    except service.WebhookVerificationError as exc:
         raise HTTPException(400, {"error": {"code": "VALIDATION_INVALID_PARAMETER",
                                             "message": "invalid webhook"}}) from exc
