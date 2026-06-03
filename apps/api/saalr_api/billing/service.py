@@ -60,7 +60,7 @@ async def open_portal(session: AsyncSession, provider: PaymentProvider, settings
         # nothing to manage yet; surfaced as 409 by the router
         raise UnknownTenantError("no stripe customer for tenant")
     url = await provider.create_portal_session(
-        customer_id=customer_id, return_url=settings.billing_success_url)
+        customer_id=customer_id, return_url=settings.billing_portal_return_url)
     return {"portal_url": url}
 
 
@@ -98,6 +98,10 @@ async def handle_webhook(sm: async_sessionmaker[AsyncSession], provider: Payment
         if not recorded:
             return {"received": True}  # idempotent duplicate
         current = await repo.get_subscription(session, tenant_id)
+        if current is None:
+            # Invariant: auth_bootstrap seeds one entitled row per tenant. If it's somehow
+            # absent we can't apply state; the event is already recorded for audit.
+            return {"received": True}
         cur_state = SubscriptionState(
             tier=current.tier, status=current.status, provider=current.provider,
             provider_subscription_id=current.provider_subscription_id,

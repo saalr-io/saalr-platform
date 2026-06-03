@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     stripe_price_premium: str | None = None
     billing_success_url: str = "http://localhost:5174/app/billing/success"
     billing_cancel_url: str = "http://localhost:5174/app/billing/cancel"
+    billing_portal_return_url: str = "http://localhost:5174/app/billing"
 
 
 def get_settings() -> Settings:

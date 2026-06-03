@@ -150,3 +150,33 @@ async def test_handle_webhook_unknown_tenant_raises(app_sessionmaker):
         assert False, "expected UnknownTenant"
     except service.UnknownTenantError:
         pass
+
+
+async def test_dunning_roundtrip_past_due_then_recovers(admin_engine, app_sessionmaker):
+    tenant_id = await _seed_free_tenant(admin_engine, "dun@acme.com")
+    provider = StubProvider()
+    async with tenant_session(app_sessionmaker, tenant_id) as s:
+        await repo.set_customer_id(s, tenant_id, "cus_dun")
+        # promote to active pro directly
+        from saalr_api.billing.reducer import SubscriptionState as _S
+        from datetime import datetime, timezone
+        await repo.upsert_subscription(s, tenant_id, _S(
+            tier="pro", status="active", provider="stripe", provider_subscription_id="sub_d",
+            current_period_start=datetime(2026, 6, 1, tzinfo=timezone.utc),
+            current_period_end=datetime(2026, 7, 1, tzinfo=timezone.utc),
+            cancel_at_period_end=False))
+
+    def _evt(eid, etype):
+        return {"id": eid, "type": etype, "data": {"object": {"customer": "cus_dun"}}}
+
+    pf_payload, pf_sig = provider.sign(_evt("evt_pf", "invoice.payment_failed"))
+    await service.handle_webhook(app_sessionmaker, provider, _price_map(), pf_payload, pf_sig)
+    async with tenant_session(app_sessionmaker, tenant_id) as s:
+        row = await repo.get_subscription(s, tenant_id)
+        assert row is not None and row.status == "past_due"   # still addressable
+
+    pd_payload, pd_sig = provider.sign(_evt("evt_pd", "invoice.paid"))
+    await service.handle_webhook(app_sessionmaker, provider, _price_map(), pd_payload, pd_sig)
+    async with tenant_session(app_sessionmaker, tenant_id) as s:
+        row = await repo.get_subscription(s, tenant_id)
+        assert row is not None and row.status == "active" and row.tier == "pro"  # recovered

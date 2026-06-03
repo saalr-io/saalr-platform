@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from saalr_api.billing.reducer import SubscriptionState, apply_subscription_event
+from saalr_api.billing.reducer import SubscriptionState, apply_subscription_event, _FAR_FUTURE
 
 PRICE_TO_TIER = {"price_pro": "pro", "price_premium": "premium"}
 
@@ -64,6 +64,7 @@ def test_subscription_deleted_reverts_to_free():
     assert out.status == "active"
     assert out.provider == "manual"
     assert out.provider_subscription_id is None
+    assert out.current_period_end == _FAR_FUTURE
 
 
 def test_invoice_payment_failed_is_past_due():
