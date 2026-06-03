@@ -7,13 +7,14 @@ from uuid import UUID
 
 from saalr_core.db.session import tenant_session
 from saalr_core.llm import repo as llm_repo
-from saalr_core.llm.cost import BudgetExceeded, budget_exceeded, estimate_cost, month_start
+from saalr_core.llm.cost import BudgetExceeded, budget_exceeded, month_start
 from saalr_core.marketdata.bars import load_closes
 from saalr_core.rag.chat import ChatError
 from saalr_core.rag.embeddings import EmbeddingError
 from saalr_core.rag.qa import retrieve_context
 from saalr_core.research import repo
-from saalr_core.research.note import ResearchInputs, build_research_prompt
+from saalr_core.research.graph import run_agent_graph
+from saalr_core.research.note import ResearchInputs
 from saalr_core.sentiment.repo import latest_sentiment
 from saalr_ml.forecast import vol_forecast
 
@@ -99,7 +100,7 @@ async def run_research_job(sessionmaker, tenant_id: UUID, note_id: UUID, *,
     except Exception as exc:  # noqa: BLE001 - persisted as failed in a fresh tx
         return await _fail(sessionmaker, tenant_id, note_id, "RESEARCH_GENERATION_FAILED", exc)
 
-    # Phase 2 — compute (DB reads close before the LLM call; provider calls hold no tx).
+    # Phase 2 — compute: gather signals, then run the multi-agent graph (each call metered).
     try:
         async with tenant_session(sessionmaker, tenant_id) as session:
             inputs = await gather_inputs(
@@ -107,30 +108,26 @@ async def run_research_job(sessionmaker, tenant_id: UUID, note_id: UUID, *,
                 ticker=ticker, market=market)
         if chat_provider is None:
             raise ChatError("no chat provider configured")
-        system, user = build_research_prompt(inputs)
-        result = await chat_provider.complete(system, user)
+        graph = await run_agent_graph(
+            sessionmaker, tenant_id, user_id, inputs=inputs, gateway=chat_provider,
+            cap=cap, note_id=note_id)
     except NoPriceData as exc:
         return await _fail(sessionmaker, tenant_id, note_id, "RESEARCH_NO_PRICE_DATA", exc)
+    except BudgetExceeded as exc:
+        return await _fail(sessionmaker, tenant_id, note_id, "RESEARCH_BUDGET_EXCEEDED", exc)
     except (ChatError, EmbeddingError) as exc:
         return await _fail(sessionmaker, tenant_id, note_id, "RESEARCH_LLM_UNAVAILABLE", exc)
     except Exception as exc:  # noqa: BLE001
         return await _fail(sessionmaker, tenant_id, note_id, "RESEARCH_GENERATION_FAILED", exc)
 
-    # Phase 3 — persist success + record the LLM cost (one transaction).
+    # Phase 3 — persist the synthesis with summed usage (the graph already recorded each call).
     signals = {"spot": inputs.spot, "vol_forecast": inputs.vol_forecast, "sentiment": inputs.sentiment}
     sources = [{"slug": slug, "title": title} for slug, title, _c in inputs.content_excerpts]
-    model = result.model or chat_provider.model_name
-    provider = result.provider or getattr(chat_provider, "name", "unknown")
-    cost = estimate_cost(model, result.prompt_tokens, result.completion_tokens)
     async with tenant_session(sessionmaker, tenant_id) as session:
         await repo.save_succeeded(
-            session, note_id, summary=result.text, signals=signals, sources=sources,
-            model=model, prompt_tokens=result.prompt_tokens,
-            completion_tokens=result.completion_tokens, cost_usd=cost)
-        await llm_repo.record_usage(
-            session, tenant_id=tenant_id, user_id=user_id, provider=provider, model=model,
-            prompt_tokens=result.prompt_tokens, completion_tokens=result.completion_tokens,
-            cost_usd=cost, purpose="research_note", note_id=note_id)
+            session, note_id, summary=graph.note_markdown, signals=signals, sources=sources,
+            model=graph.model, prompt_tokens=graph.prompt_tokens,
+            completion_tokens=graph.completion_tokens, cost_usd=graph.cost_usd)
     return {"status": "succeeded"}
 
 

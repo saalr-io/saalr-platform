@@ -13,11 +13,13 @@ from saalr_content.loader import load_catalog
 from saalr_core.db.session import create_engine, create_sessionmaker, tenant_session
 from saalr_core.llm import repo as llm_repo
 from saalr_core.llm.gateway import ChatGateway
-from saalr_core.rag.chat import ChatError, StubChatProvider
+from saalr_core.rag.chat import ChatError, ChatResult, StubChatProvider
 from saalr_core.rag.embeddings import HashEmbeddingProvider
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 _CAP = Decimal("10")
+_EXPECTED_PURPOSES = {f"research_agent:{r}" for r in
+                      ("fundamentals", "sentiment", "technical", "risk", "trader", "pm")}
 
 
 def _client(app):
@@ -63,6 +65,15 @@ class _FailChat:
         raise ChatError("boom")
 
 
+class _CostlyChat:
+    """Each call costs ~$0.15 (gpt-4o-mini rate on 1M prompt tokens) so a low cap trips mid-graph."""
+    name = "costly"
+    model_name = "gpt-4o-mini"
+
+    async def complete(self, system, user):
+        return ChatResult("memo", prompt_tokens=1_000_000, completion_tokens=0)
+
+
 async def _run_worker_once(*, chat, cap=_CAP):
     engine = create_engine(os.environ["APP_DATABASE_URL"])
     redis = aioredis.from_url(REDIS_URL, decode_responses=True)
@@ -79,7 +90,13 @@ async def _post(c, h, ticker="AAPL"):
     return (await c.post("/research/run", json={"ticker": ticker}, headers=h)).json()["poll_url"]
 
 
-async def test_e2e_succeeds_and_records_usage(app_sessionmaker, admin_engine):
+async def _usage_rows(admin_engine, tid):
+    async with admin_engine.begin() as conn:
+        return (await conn.execute(
+            text("SELECT purpose FROM llm_usage WHERE tenant_id=:t"), {"t": str(tid)})).all()
+
+
+async def test_e2e_six_agents_succeed_and_record(app_sessionmaker, admin_engine):
     await _clean_stream()
     await _seed_bars(admin_engine, "AAPL", n=40)
     app = create_app()
@@ -92,15 +109,9 @@ async def test_e2e_succeeds_and_records_usage(app_sessionmaker, admin_engine):
             await _run_worker_once(chat=ChatGateway([StubChatProvider()]))
             done = (await c.get(poll, headers=h)).json()
             assert done["status"] == "succeeded", done
-            assert done["model"] == "stub-chat"
-            # a usage row was recorded, stamped with the gateway-resolved provider + model
-            async with admin_engine.begin() as conn:
-                row = (await conn.execute(
-                    text("SELECT provider, model, purpose FROM llm_usage WHERE tenant_id=:t"),
-                    {"t": str(tid)})).first()
-            assert row is not None
-            assert row.provider == "stub" and row.model == "stub-chat"
-            assert row.purpose == "research_note"
+            assert done["summary"] and done["model"] == "stub-chat"
+            rows = await _usage_rows(admin_engine, tid)
+            assert {r.purpose for r in rows} == _EXPECTED_PURPOSES
 
 
 async def test_e2e_fallback_to_second_provider(app_sessionmaker, admin_engine):
@@ -114,12 +125,10 @@ async def test_e2e_fallback_to_second_provider(app_sessionmaker, admin_engine):
             await _tier(admin_engine, str(tid), "premium")
             poll = await _post(c, h)
             await _run_worker_once(chat=ChatGateway([_FailChat(), StubChatProvider()]))
-            done = (await c.get(poll, headers=h)).json()
-            assert done["status"] == "succeeded"
-            assert done["model"] == "stub-chat"
+            assert (await c.get(poll, headers=h)).json()["status"] == "succeeded"
 
 
-async def test_e2e_budget_exceeded_fails(app_sessionmaker, admin_engine):
+async def test_e2e_budget_exceeded_at_start_fails(app_sessionmaker, admin_engine):
     await _clean_stream()
     await _seed_bars(admin_engine, "AAPL", n=40)
     app = create_app()
@@ -128,15 +137,36 @@ async def test_e2e_budget_exceeded_fails(app_sessionmaker, admin_engine):
             h = {"Authorization": "Bearer dev:rw3@x.com"}
             tid, uid = await _me(c, h)
             await _tier(admin_engine, str(tid), "premium")
+            # Enqueue while still under cap, THEN push spend over the cap so the worker's
+            # phase-1 budget guard (not the route pre-check) is what trips this run.
+            poll = await _post(c, h)
             async with tenant_session(app.state.sessionmaker, tid) as s:
                 await llm_repo.record_usage(s, tenant_id=tid, user_id=uid, provider="openai",
                                             model="gpt-4o-mini", prompt_tokens=1, completion_tokens=1,
-                                            cost_usd=Decimal("11"), purpose="research_note")
-            poll = await _post(c, h)
+                                            cost_usd=Decimal("11"), purpose="seed")
             await _run_worker_once(chat=ChatGateway([StubChatProvider()]))
             done = (await c.get(poll, headers=h)).json()
             assert done["status"] == "failed"
             assert done["error"]["code"] == "RESEARCH_BUDGET_EXCEEDED"
+
+
+async def test_e2e_budget_tips_mid_graph(app_sessionmaker, admin_engine):
+    await _clean_stream()
+    await _seed_bars(admin_engine, "AAPL", n=40)
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:rw4@x.com"}
+            tid, _ = await _me(c, h)
+            await _tier(admin_engine, str(tid), "premium")
+            poll = await _post(c, h)
+            # cap $0.10; each _CostlyChat call records $0.15 -> the 2nd call's pre-check trips
+            await _run_worker_once(chat=ChatGateway([_CostlyChat()]), cap=Decimal("0.10"))
+            done = (await c.get(poll, headers=h)).json()
+            assert done["status"] == "failed"
+            assert done["error"]["code"] == "RESEARCH_BUDGET_EXCEEDED"
+            rows = await _usage_rows(admin_engine, tid)
+            assert len(rows) == 1  # only the first (fundamentals) call recorded before the trip
 
 
 async def test_e2e_graceful_degradation(app_sessionmaker, admin_engine):
@@ -145,7 +175,7 @@ async def test_e2e_graceful_degradation(app_sessionmaker, admin_engine):
     app = create_app()
     async with app.router.lifespan_context(app):
         async with _client(app) as c:
-            h = {"Authorization": "Bearer dev:rw4@x.com"}
+            h = {"Authorization": "Bearer dev:rw5@x.com"}
             tid, _ = await _me(c, h)
             await _tier(admin_engine, str(tid), "premium")
             poll = await _post(c, h)
@@ -161,7 +191,7 @@ async def test_e2e_no_bars_failed(app_sessionmaker, admin_engine):
     app = create_app()
     async with app.router.lifespan_context(app):
         async with _client(app) as c:
-            h = {"Authorization": "Bearer dev:rw5@x.com"}
+            h = {"Authorization": "Bearer dev:rw6@x.com"}
             tid, _ = await _me(c, h)
             await _tier(admin_engine, str(tid), "premium")
             poll = await _post(c, h, ticker="ZZZZ")
@@ -177,7 +207,7 @@ async def test_e2e_all_providers_down_failed(app_sessionmaker, admin_engine):
     app = create_app()
     async with app.router.lifespan_context(app):
         async with _client(app) as c:
-            h = {"Authorization": "Bearer dev:rw6@x.com"}
+            h = {"Authorization": "Bearer dev:rw7@x.com"}
             tid, _ = await _me(c, h)
             await _tier(admin_engine, str(tid), "premium")
             poll = await _post(c, h)
