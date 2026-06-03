@@ -1,8 +1,9 @@
 # Frontends + public surface — band design
 
-**Status:** FE-1, FE-2, FE-3 DONE (committed on `feat/scaffold-data-layer`, not pushed) — autonomous
-`/ralph` run, 2026-06-03, with a `/frontend-design` aesthetic pass. FE-4 (public academy SSG) deferred
-to its own short design pass (it carries a Pro-content-leak decision; see the note at the end of FE-4).
+**Status:** FE-1, FE-2, FE-3, FE-4 ALL DONE (committed on `feat/scaffold-data-layer`, not pushed) —
+autonomous `/ralph` run, 2026-06-03, with a `/frontend-design` aesthetic pass. The whole band is
+complete. Out of band (separate follow-on): the `/app/{markets,models,portfolio}`/dashboard analytics
+placeholders, which need market-data/OMS clients.
 
 ## Context
 
