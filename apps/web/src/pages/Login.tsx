@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
+import { Logo } from '../components/Logo'
 
 export function Login() {
   const { requestLink } = useAuth()
@@ -24,15 +25,8 @@ export function Login() {
     }
   }
 
-  const brand = (
-    <div className="flex items-center gap-2.5">
-      <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-pos to-accent text-sm font-extrabold text-[#04110d]">
-        S
-      </span>
-      <span className="font-semibold tracking-tight">Saalr</span>
-      <span className="font-mono text-[9px] tracking-[2.5px] text-txtFaint">RESEARCH&nbsp;TERMINAL</span>
-    </div>
-  )
+  const brand = <Logo size={24} descriptor />
+
 
   if (sent) {
     return (

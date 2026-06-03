@@ -9,7 +9,7 @@ export default function Head() {
   const module = ACADEMY_MODULES.find((m) => m.slug === slug && m.body !== null)
   if (!module) return null
   const meta = pageMeta({
-    title: `${module.title} — Saalr`,
+    title: `${module.title} — SAALR`,
     description: module.summary,
     canonical: `${ORIGIN}/academy/${module.slug}`,
   })

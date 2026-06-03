@@ -3,7 +3,7 @@ import { ORIGIN } from '../../src/seo/origin'
 
 export default function Head() {
   const meta = pageMeta({
-    title: 'Saalr — Research-grade options analytics',
+    title: 'SAALR — Research-grade options analytics',
     description:
       'Build and price multi-leg options strategies, study volatility, run backtests, and read multi-agent research notes — from one fast terminal.',
     canonical: `${ORIGIN}/`,

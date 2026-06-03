@@ -9,7 +9,7 @@ export default function Head() {
   const content = EXPLAINERS.find((e) => e.slug === slug)
   if (!content) return null
   const meta = pageMeta({
-    title: `${content.title} — Saalr`,
+    title: `${content.title} — SAALR`,
     description: content.summary,
     canonical: `${ORIGIN}/learn/${content.slug}`,
   })

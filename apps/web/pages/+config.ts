@@ -6,6 +6,6 @@ import vikeReact from 'vike-react/config'
 export default {
   extends: [vikeReact],
   prerender: true,
-  title: 'Saalr',
+  title: 'SAALR',
   favicon: '/favicon.svg',
 } satisfies Config

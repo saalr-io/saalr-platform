@@ -1,7 +1,7 @@
 import { pageMeta } from '../../src/seo/meta'
 import { ORIGIN } from '../../src/seo/origin'
 
-const TITLE = 'OptionsAcademy — Saalr'
+const TITLE = 'OptionsAcademy — SAALR'
 const DESC = 'Free, plain-English lessons on options — from what an option is to how volatility is priced in.'
 
 export default function Head() {
