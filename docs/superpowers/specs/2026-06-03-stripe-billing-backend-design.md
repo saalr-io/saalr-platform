@@ -19,7 +19,8 @@ gets updated — flipping the tenant's entitlements with **zero changes to gatin
 - The `subscriptions` + `billing_events` tables already exist as SQLAlchemy models
   (`packages/core/saalr_core/db/models/billing.py`), matching LLD §3.2.
 - HLD §4 already specs the endpoints (`/subscription`, `/subscription/upgrade`,
-  `/subscription/cancel`, `/webhooks/stripe`) and the **idempotent-webhook** requirement.
+  `/subscription/cancel`, `/webhooks/stripe`) and the **idempotent-webhook** requirement. (B1
+  consolidates the HLD's `/subscription/cancel` into the Stripe-hosted Billing Portal — see Endpoints.)
 
 So B1's job is: drive that one subscription row from Stripe, idempotently.
 
@@ -63,8 +64,9 @@ entitlements for the trial window, then `invoice.paid`/`subscription.updated` mo
   - `ensure_customer(tenant_id, email, existing_id) -> customer_id`
   - `create_checkout_session(customer_id, price_id, *, tenant_id, trial_days, success_url, cancel_url) -> url`
   - `create_portal_session(customer_id, return_url) -> url`
-  - `cancel_at_period_end(provider_subscription_id) -> None`
   - `verify_webhook(payload: bytes, sig_header: str) -> dict` (raises on bad signature)
+
+  (No explicit cancel method — cancellation is handled inside the Stripe-hosted Billing Portal.)
 
   `StripeProvider` wraps the **sync** `stripe` SDK via `asyncio.to_thread` (same pattern as the
   sync-boto3 AWS adapters). `stripe` is **lazy-imported** inside the methods so importing the
@@ -75,12 +77,13 @@ entitlements for the trial window, then `invoice.paid`/`subscription.updated` mo
   `apply_subscription_event(current: SubscriptionState | None, event: dict) -> SubscriptionState`.
   Maps each Stripe event to the new row state. No I/O, no Stripe import — fully unit-testable.
   Price→tier comes from an injected `{price_id: tier}` map (built from config). Handled events:
-  - `checkout.session.completed` → set `provider_subscription_id`, `stripe_customer_id`, `tier`
-    (from the line-item price), `status` (`trialing` if a trial is present else `active`), periods.
+  - `checkout.session.completed` → set `provider_subscription_id`, `tier` (from the line-item
+    price), `status` (`trialing` if a trial is present else `active`), periods. (The Stripe customer
+    id lives on `tenants`, not the subscription row — persisted at upgrade time, below.)
   - `customer.subscription.updated` → refresh `status`, `current_period_*`, `cancel_at_period_end`,
     and `tier` (in case of plan change).
   - `customer.subscription.deleted` → revert to `tier='free'`, `status='active'`,
-    `provider='manual'`, clear `provider_subscription_id` (keep `stripe_customer_id`).
+    `provider='manual'`, clear `provider_subscription_id` (the tenant's `stripe_customer_id` stays).
   - `invoice.payment_failed` → `status='past_due'`.
   - `invoice.paid` → `status='active'`.
   - any other type → returns `current` unchanged (caller will still record the event + 200).
@@ -88,7 +91,7 @@ entitlements for the trial window, then `invoice.paid`/`subscription.updated` mo
 - **`repo.py`** —
   - `get_subscription(session, tenant_id)` (the single row).
   - `upsert_subscription(session, tenant_id, state)` (updates the existing entitled row in place).
-  - `get/set_customer_id(session, tenant_id)`.
+  - `get/set_customer_id(session, tenant_id)` — reads/writes `tenants.stripe_customer_id`.
   - `record_billing_event(session, tenant_id, subscription_id, event) -> bool` — inserts with the
     unique `provider_event_id`; returns `False` (no-op) if the event was already recorded.
 
@@ -100,16 +103,16 @@ entitlements for the trial window, then `invoice.paid`/`subscription.updated` mo
     success/cancel URLs, and `tenant_id` stamped as **both** the checkout-session `metadata` **and**
     `subscription_data.metadata` (so every later subscription/invoice event also carries it) →
     `{checkout_url}`.
-  - `cancel(...)` → `cancel_at_period_end` on the Stripe sub; reflect on the row.
-  - `portal(...)` → `{portal_url}`.
+  - `portal(...)` → `{portal_url}` (the tenant's customer id → a Billing Portal session; this is
+    where the user changes card, cancels, or switches plan).
   - `handle_webhook(payload, sig_header)` → verify → resolve tenant (`metadata.tenant_id`, else the
-    stored `stripe_customer_id`) → open a `tenant_session` → **one transaction**:
+    `tenants.stripe_customer_id` lookup) → open a `tenant_session` → **one transaction**:
     `record_billing_event` (idempotency gate) **and** `upsert_subscription(reduce(...))`. Duplicate
-    event ⇒ commit nothing, return 200.
+    event ⇒ commit nothing, return 200. **Unknown tenant ⇒ 400** (see Error handling).
 
-- **`router.py`** — the 5 endpoints. `/subscription*` use `get_principal` (all tiers may read;
-  upgrade/cancel/portal require an authed tenant). `/webhooks/stripe` is **unauthenticated** and
-  signature-verified; it reads the raw request body (not parsed JSON) for signature validation.
+- **`router.py`** — the 4 endpoints. `/subscription*` use `get_principal` (any authed tenant may
+  read/upgrade/open the portal). `/webhooks/stripe` is **unauthenticated** and signature-verified;
+  it reads the raw request body (not parsed JSON) for signature validation.
 
 ## Endpoints
 
@@ -117,8 +120,7 @@ entitlements for the trial window, then `invoice.paid`/`subscription.updated` mo
 |---|---|---|---|
 | GET | `/subscription` | principal | `{tier, status, current_period_end, cancel_at_period_end, entitlements}` |
 | POST | `/subscription/upgrade` | principal | `{checkout_url}` (body `{tier: 'pro'\|'premium'}`); honours `Idempotency-Key` |
-| POST | `/subscription/cancel` | principal | `{status, cancel_at_period_end: true}` |
-| POST | `/subscription/portal` | principal | `{portal_url}` |
+| POST | `/subscription/portal` | principal | `{portal_url}` (manage card / cancel / switch plan — Stripe-hosted) |
 | POST | `/webhooks/stripe` | signature | `{received: true}` (always 200 on a valid sig, even for ignored/duplicate events) |
 
 ## Config / secrets
@@ -133,8 +135,11 @@ Add to `config.py` (read from `.env`, gitignored): `stripe_secret_key`, `stripe_
 - Missing billing config → **503** `FEATURE_UNAVAILABLE`.
 - Stripe API error (network/declined-at-API) → **502** `BILLING_UNAVAILABLE` (never a 500).
 - Bad/absent webhook signature → **400** `VALIDATION_INVALID_PARAMETER` (no state change).
-- Webhook for an unknown tenant (no matching metadata/customer) → record nothing, **200** (Stripe
-  shouldn't retry forever on our 4xx); log a warning.
+- Webhook for an unknown tenant (no matching `metadata.tenant_id` and no `tenants.stripe_customer_id`
+  match) → **400** `BILLING_UNKNOWN_TENANT` + log a warning. We deliberately surface this as a 4xx so
+  it shows up as a failed delivery in the Stripe dashboard (Stripe will retry per its schedule);
+  silently swallowing it would hide a real misconfiguration. (A valid signature is still required
+  first, so this only fires for genuinely unresolvable-but-authentic events.)
 - Unhandled event type → **200**, event still recorded for audit, row unchanged.
 - The event-record + state-update happen in **one transaction**, so a mid-write failure leaves the
   event *not* recorded; Stripe retries → reprocessed idempotently.
@@ -158,10 +163,15 @@ Add to `config.py` (read from `.env`, gitignored): `stripe_secret_key`, `stripe_
 
 `infra/migrations/versions/<next>_billing_stripe.py` (the next sequential number after the current
 head — confirm during planning, `0011` is the latest known):
-1. `ALTER TABLE subscriptions ADD COLUMN stripe_customer_id TEXT;` + an index on it.
+1. `ALTER TABLE tenants ADD COLUMN stripe_customer_id TEXT;` + a (unique) index on it for the
+   webhook customer→tenant lookup. (On `tenants`, not `subscriptions`: the Stripe customer is a
+   per-tenant identity that outlives any single subscription row.)
 2. `CREATE OR REPLACE FUNCTION auth_resolve_principal(...)` with `status IN ('active','trialing')`.
 3. Drop + recreate `idx_subscriptions_tenant_active` as `WHERE status IN ('active','trialing')`.
 Downgrade reverses all three (restore the `= 'active'` function/index, drop the column).
+Note: `tenants` is non-RLS-readable by the `auth_*` SECURITY DEFINER functions; the webhook writes
+`stripe_customer_id` under a `tenant_session`, and the `saalr_app` role needs UPDATE on the new
+column (covered by the existing table grant — verify during planning).
 
 ## Out of scope (later)
 
