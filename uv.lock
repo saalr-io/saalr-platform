@@ -1353,6 +1353,36 @@ dev = [
 name = "saalr-research-agent"
 version = "0.0.0"
 source = { editable = "apps/research-agent" }
+dependencies = [
+    { name = "asyncpg" },
+    { name = "saalr-content" },
+    { name = "saalr-core", extra = ["openai"] },
+    { name = "saalr-ml" },
+    { name = "sqlalchemy" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "httpx" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "asyncpg", specifier = ">=0.29" },
+    { name = "saalr-content", editable = "packages/content" },
+    { name = "saalr-core", extras = ["openai"], editable = "packages/core" },
+    { name = "saalr-ml", editable = "packages/ml" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "pytest-asyncio", specifier = ">=0.23" },
+]
 
 [[package]]
 name = "safetensors"
