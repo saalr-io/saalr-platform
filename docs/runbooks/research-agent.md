@@ -82,3 +82,22 @@ The budget is checked **before every call** (not just at run start), so a run ca
 fail `RESEARCH_BUDGET_EXCEEDED` partway through with the already-completed calls'
 cost recorded. (At-least-once redelivery of a crashed run re-runs the graph and
 may double-count `llm_usage` rows — an accepted over-count, dedup deferred.)
+
+## Transcripts (RA-3c)
+
+Each succeeded run's six agent memos are persisted to `research_transcripts`
+(one JSONB row keyed by `note_id`, `transcript_json` = `[{role, memo}, …]` in
+graph order). The write is **best-effort** in worker phase 3: a failure logs but
+does NOT fail the (already generated + paid-for) note, so a succeeded note can
+lack a transcript. The `note_id UNIQUE` constraint + the best-effort catch absorb
+at-least-once redelivery (a re-run can't create a second transcript row).
+
+Read it at `GET /research/notes/{id}/transcript` (Premium) — it loads the memos
+from the store and merges each agent's `provider`/`model`/tokens/`cost_usd` from
+`llm_usage` (joined by `note_id` + `purpose="research_agent:<role>"`), so cost is
+not duplicated in the transcript. The poll/list endpoints are unchanged.
+
+The store is **pluggable** (`TranscriptStore` Protocol, injected on
+`app.state.transcript_store` and threaded into the worker): `DbTranscriptStore`
+today; an `S3TranscriptStore` drops in when the AWS-foundation slice lands, with
+no caller change.
