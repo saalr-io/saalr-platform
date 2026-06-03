@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
+from decimal import Decimal
 from uuid import UUID
 
 from saalr_core.db.session import tenant_session
+from saalr_core.llm import repo as llm_repo
+from saalr_core.llm.cost import BudgetExceeded, budget_exceeded, estimate_cost, month_start
 from saalr_core.marketdata.bars import load_closes
 from saalr_core.rag.chat import ChatError
 from saalr_core.rag.embeddings import EmbeddingError
 from saalr_core.rag.qa import retrieve_context
 from saalr_core.research import repo
-from saalr_core.research.note import ResearchInputs, build_research_prompt, estimate_cost
+from saalr_core.research.note import ResearchInputs, build_research_prompt
 from saalr_core.sentiment.repo import latest_sentiment
 from saalr_ml.forecast import vol_forecast
 
@@ -72,11 +76,11 @@ async def gather_inputs(session, *, embedding_provider, catalog, ticker: str, ma
 
 
 async def run_research_job(sessionmaker, tenant_id: UUID, note_id: UUID, *,
-                           chat_provider, embedding_provider, catalog) -> dict:
+                           chat_provider, embedding_provider, catalog, cap: Decimal) -> dict:
     """Generate the note for a queued run. 3 phases, each isolating its failure mode.
 
     A re-delivered job whose row is already succeeded/failed is a no-op (idempotent)."""
-    # Phase 1 — load + mark running.
+    # Phase 1 — load + budget check + mark running.
     try:
         async with tenant_session(sessionmaker, tenant_id) as session:
             note = await repo.get_note(session, note_id)
@@ -84,8 +88,14 @@ async def run_research_job(sessionmaker, tenant_id: UUID, note_id: UUID, *,
                 return {"status": "missing"}
             if note.status in ("succeeded", "failed"):
                 return {"status": note.status}
-            ticker, market = note.ticker, note.market
+            spent = await llm_repo.month_to_date_cost(
+                session, tenant_id, month_start(datetime.now(timezone.utc)))
+            if budget_exceeded(spent, cap):
+                raise BudgetExceeded(f"month-to-date {spent} >= cap {cap}")
+            ticker, market, user_id = note.ticker, note.market, note.user_id
             await repo.mark_running(session, note_id)
+    except BudgetExceeded as exc:
+        return await _fail(sessionmaker, tenant_id, note_id, "RESEARCH_BUDGET_EXCEEDED", exc)
     except Exception as exc:  # noqa: BLE001 - persisted as failed in a fresh tx
         return await _fail(sessionmaker, tenant_id, note_id, "RESEARCH_GENERATION_FAILED", exc)
 
@@ -106,15 +116,21 @@ async def run_research_job(sessionmaker, tenant_id: UUID, note_id: UUID, *,
     except Exception as exc:  # noqa: BLE001
         return await _fail(sessionmaker, tenant_id, note_id, "RESEARCH_GENERATION_FAILED", exc)
 
-    # Phase 3 — persist success.
+    # Phase 3 — persist success + record the LLM cost (one transaction).
     signals = {"spot": inputs.spot, "vol_forecast": inputs.vol_forecast, "sentiment": inputs.sentiment}
     sources = [{"slug": slug, "title": title} for slug, title, _c in inputs.content_excerpts]
-    cost = estimate_cost(chat_provider.model_name, result.prompt_tokens, result.completion_tokens)
+    model = result.model or chat_provider.model_name
+    provider = result.provider or getattr(chat_provider, "name", "unknown")
+    cost = estimate_cost(model, result.prompt_tokens, result.completion_tokens)
     async with tenant_session(sessionmaker, tenant_id) as session:
         await repo.save_succeeded(
             session, note_id, summary=result.text, signals=signals, sources=sources,
-            model=chat_provider.model_name, prompt_tokens=result.prompt_tokens,
+            model=model, prompt_tokens=result.prompt_tokens,
             completion_tokens=result.completion_tokens, cost_usd=cost)
+        await llm_repo.record_usage(
+            session, tenant_id=tenant_id, user_id=user_id, provider=provider, model=model,
+            prompt_tokens=result.prompt_tokens, completion_tokens=result.completion_tokens,
+            cost_usd=cost, purpose="research_note", note_id=note_id)
     return {"status": "succeeded"}
 
 

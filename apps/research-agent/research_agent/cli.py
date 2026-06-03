@@ -22,9 +22,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 async def _cmd_consume(args) -> None:
-    # lazy imports keep build_parser light (and torch/openai out of arg parsing)
+    # lazy imports keep build_parser light
     from saalr_content.loader import load_catalog
-    from saalr_core.rag.chat import make_chat_provider
+    from saalr_core.llm.cost import monthly_cap
+    from saalr_core.llm.gateway import make_chat_gateway
     from saalr_core.rag.embeddings import make_embedding_provider
 
     from .consumer import run_consumer
@@ -36,9 +37,10 @@ async def _cmd_consume(args) -> None:
     try:
         await run_consumer(
             redis, create_sessionmaker(engine), consumer,
-            chat_provider=make_chat_provider(settings),
+            chat_provider=make_chat_gateway(settings),
             embedding_provider=make_embedding_provider(settings),
             catalog=load_catalog(),
+            cap=monthly_cap(settings),
             block_ms=args.block_ms, count=args.count, once=args.once,
         )
     finally:
