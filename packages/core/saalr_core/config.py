@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     chat_model: str = "gpt-4o-mini"
 
+    # LLM gateway + budgets (RA-3a)
+    anthropic_api_key: str | None = None
+    anthropic_model: str = "claude-3-5-haiku-latest"
+    llm_monthly_budget_usd: float = 10.0
+
 
 def get_settings() -> Settings:
     return Settings()

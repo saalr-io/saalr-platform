@@ -13,11 +13,14 @@ class ChatResult:
     text: str
     prompt_tokens: int
     completion_tokens: int
+    provider: str | None = None
+    model: str | None = None
 
 
 @runtime_checkable
 class ChatProvider(Protocol):
     model_name: str
+    name: str
 
     async def complete(self, system: str, user: str) -> ChatResult:
         """Single-shot completion from a system + user message."""
@@ -29,6 +32,7 @@ class StubChatProvider:
     and word-count-based token figures so the pipeline (retrieve -> prompt -> answer -> citations)
     can be tested with no API key."""
 
+    name = "stub"
     model_name = "stub-chat"
 
     async def complete(self, system: str, user: str) -> ChatResult:
@@ -41,6 +45,8 @@ class StubChatProvider:
 
 class OpenAIChatProvider:
     """OpenAI chat completion. `openai` is imported lazily, so importing this module needs no SDK."""
+
+    name = "openai"
 
     def __init__(self, api_key: str, model_name: str = "gpt-4o-mini") -> None:
         self._api_key = api_key
