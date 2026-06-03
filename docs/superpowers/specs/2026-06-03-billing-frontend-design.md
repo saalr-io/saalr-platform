@@ -11,8 +11,11 @@ billing — all over the B1 endpoints, with **no gating changes**.
 
 ## B1 endpoints consumed (all bearer-authed; base `import.meta.env.VITE_API_BASE_URL ?? '/api'`)
 
-- `GET /subscription` → `{ tier, status, current_period_end, cancel_at_period_end, entitlements }`
-  (`tier` ∈ free|pro|premium; `status` ∈ active|trialing|past_due|...).
+- `GET /subscription` → `{ tier, status, current_period_end, cancel_at_period_end, entitlements,
+  has_customer }` (`tier` ∈ free|pro|premium; `status` ∈ active|trialing|past_due|...).
+  **B2 adds `has_customer: bool`** to B1's `service.get_subscription` (true when
+  `tenants.stripe_customer_id` is set) so the UI shows "Manage billing" only when a Stripe customer
+  actually exists.
 - `POST /subscription/upgrade` body `{ tier: 'pro'|'premium' }` → `{ checkout_url }`. Honors
   `Idempotency-Key`. 503 `FEATURE_UNAVAILABLE` (billing unconfigured); 502 `BILLING_UNAVAILABLE`.
 - `POST /subscription/portal` → `{ portal_url }`. 409 `BILLING_NO_CUSTOMER` (no Stripe customer yet).
@@ -29,6 +32,11 @@ billing — all over the B1 endpoints, with **no gating changes**.
   consistent with the pre-revenue "no fabricated numbers" stance).
 - Full-page redirect to Stripe (`window.location.assign`) via a mockable `redirectTo` helper.
 - Entry points: a "Billing" sidebar item + the Topbar tier chip becomes a link to `/app/billing`.
+- **Manage billing shows only when a real Stripe customer exists** (`has_customer`), not merely when
+  tier ≠ free.
+- **B2 updates the B1 redirect-URL defaults** in `packages/core/saalr_core/config.py` from `:5174`
+  to `:5173` (`billing_success_url`/`billing_cancel_url`/`billing_portal_return_url`) to match the
+  Vite dev server origin. (Still env-overridable per environment.)
 
 ## Components / files
 
@@ -58,9 +66,10 @@ billing — all over the B1 endpoints, with **no gating changes**.
 - **`src/pages/Billing.tsx`** — the `/app/billing` page (rendered in `AppShell` outlet): a
   `// Billing` mono kicker + `h2`, a current-plan summary line from `useSubscription` (tier + status;
   if `cancel_at_period_end` show "cancels on {date}", else for paid show "renews {date}"), the
-  `PlanCards`, and a **"Manage billing"** button (calls `usePortal`) shown when the current tier is
-  not free (a Stripe customer exists). 409 `BILLING_NO_CUSTOMER` from portal → hide/disable with a
-  hint. Reads `?plan` from the URL to pass the highlight to PlanCards.
+  `PlanCards`, and a **"Manage billing"** button (calls `usePortal`) shown **only when
+  `subscription.has_customer` is true**. 409 `BILLING_NO_CUSTOMER` from portal → graceful inline hint
+  (defensive; shouldn't happen given the `has_customer` guard). Reads `?plan` from the URL to pass the
+  highlight to PlanCards.
 - **`src/pages/BillingSuccess.tsx`** — `/app/billing/success`. Captures the tier at mount; polls
   `useSubscription` with `refetchInterval` ~2000ms while not yet flipped and elapsed < ~20s. When the
   returned `tier` differs from the mount tier (or is non-free) → stop polling, show "You're on
@@ -103,13 +112,26 @@ Manage billing → `openPortal()` → `redirectTo(portal_url)` → Stripe portal
 - `PlanCards.test.tsx` — current tier shows "Current plan" (disabled); a higher tier's "Upgrade"
   calls the client and then `redirectTo(checkout_url)`; `?plan` highlights the right card.
 - `Billing.test.tsx` — renders the current plan from a mocked `/subscription`; "Manage billing" calls
-  the portal client → `redirectTo(portal_url)`; manage hidden when tier is free.
+  the portal client → `redirectTo(portal_url)` when `has_customer` is true; manage hidden when
+  `has_customer` is false.
 - `BillingSuccess.test.tsx` — `/subscription` returns `free` then `pro` across polls → shows the
   confirmation and calls `auth.refresh()`; a never-flipping mock → the timeout/"processing" branch.
 - Nudge tests (extend the existing academy/research tests) — each nudge renders an upgrade link to
   `/billing?plan=…`.
 - Gate: `npm run typecheck && npm run lint && npm run test:run` (all green); `npm run build` still
   prerenders the public pages (these are all client-only `/app` routes — no SSG impact).
+
+## Backend touch-ups (small, part of B2)
+
+Two changes to the already-shipped B1 backend that B2 depends on:
+1. `apps/api/saalr_api/billing/service.py` `get_subscription` → add `has_customer: bool` (read
+   `repo.get_customer_id(session, tenant_id) is not None`) to the returned dict; extend its
+   integration test (`tests/integration/test_billing.py`) to assert the flag (false for a fresh free
+   tenant, true after `set_customer_id`).
+2. `packages/core/saalr_core/config.py` → change the three billing redirect defaults from `:5174` to
+   `:5173` (`billing_success_url`, `billing_cancel_url`, `billing_portal_return_url`).
+
+These run on the backend gate (DB 55432) — `uv run pytest tests/integration/test_billing.py`.
 
 ## Out of scope (later)
 
