@@ -57,3 +57,7 @@ output "task_role_arn" {
 output "api_alb_dns_name" {
   value = module.api_service.alb_dns_name
 }
+
+output "gha_deploy_role_arn" {
+  value = module.cicd.deploy_role_arn
+}

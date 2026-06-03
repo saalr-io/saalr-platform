@@ -1,0 +1,65 @@
+# Deploy to ECS (AWS-2e). TEMPLATE — manual trigger only until activated.
+#
+# Prerequisites before this can run successfully:
+#   1. `terraform apply` the dev stack (creates the ECR repos, ECS cluster/services, and the
+#      GitHub OIDC deploy role — see infra/terraform/environments/dev/outputs.tf gha_deploy_role_arn).
+#   2. Set the repo secret AWS_DEPLOY_ROLE_ARN to that deploy-role ARN.
+#   3. Each app needs a Dockerfile at the path below (only apps/ingest-worker has one today;
+#      apps/api + the service workers need Dockerfiles — a build-tooling follow-up).
+#
+# To activate continuous deploy, replace `workflow_dispatch` with `push: { branches: [master] }`.
+name: Deploy to ECS
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write # required for OIDC
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECS_CLUSTER: saalr-dev-cluster
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: api, service: saalr-dev-api, dockerfile: apps/api/Dockerfile }
+          - { image: backtest-worker, service: saalr-dev-backtest-worker, dockerfile: apps/backtest-worker/Dockerfile }
+          - { image: research-agent, service: saalr-dev-research-agent, dockerfile: apps/research-agent/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          REPO="$REGISTRY/saalr-dev/${{ matrix.image }}"
+          docker build -t "$REPO:${{ github.sha }}" -t "$REPO:latest" -f "${{ matrix.dockerfile }}" .
+          docker push "$REPO:${{ github.sha }}"
+          docker push "$REPO:latest"
+
+      - name: Force a new ECS deployment
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "${{ matrix.service }}" \
+            --force-new-deployment
+
+# NOTE: the scheduled workers (ingest-worker / oms-reconcile / sentiment) are EventBridge tasks
+# pinned to a task-definition revision, not ECS services — updating their image is done by
+# re-registering the task def (terraform apply with a new image tag), not `update-service`.

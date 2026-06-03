@@ -159,3 +159,10 @@ module "workers" {
     }
   }
 }
+
+module "cicd" {
+  source              = "../../modules/cicd"
+  name_prefix         = "saalr-dev"
+  ecr_repository_arns = values(module.compute.ecr_repository_arns)
+  passable_role_arns  = [module.compute.task_execution_role_arn, module.compute.task_role_arn]
+}

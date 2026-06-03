@@ -11,7 +11,8 @@ AWS single-cloud (ADR-008), region `us-east-1`. Terraform `>= 1.6`, AWS provider
     modules/compute/      ECR repos + ECS cluster + IAM task/exec roles + CloudWatch logs + ECS app SG
     modules/api_service/  internet-facing ALB + target group + listener + API ECS task def + Fargate service
     modules/workers/      worker task defs + EventBridge scheduled tasks + long-running consumer services
-    environments/dev/     dev stack: S3 backend + the network/data/storage/compute/api_service/workers modules
+    modules/cicd/         GitHub Actions OIDC provider + a scoped deploy role (ECR push + ECS deploy)
+    environments/dev/     dev stack: network/data/storage/compute/api_service/workers/cicd modules
 
 ## Database (TimescaleDB note)
 
@@ -83,6 +84,22 @@ under the app SG + compute task/execution roles. `cpu`/`memory` are shared defau
 (`512`/`1024`) — per-worker sizing (e.g. more memory for the torch-based `ml-worker`) is a later
 refinement. The EventBridge invoke role is scoped to `ecs:RunTask` on the scheduled task defs +
 `iam:PassRole` on the two ECS roles.
+
+## CI/CD (AWS-2e)
+
+`modules/cicd/` creates a **GitHub Actions OIDC provider** (`token.actions.githubusercontent.com`)
+and a **deploy role** that GH Actions assumes via OIDC — scoped by `sub` to
+`repo:spayyavula/saalr-platform:*`, granting ECR push (on the project's repos), ECS
+deploy (`RegisterTaskDefinition`/`UpdateService`/...), and `iam:PassRole` on the ECS roles. No
+long-lived AWS keys in GitHub. (`create_oidc_provider = false` if the account already has the
+GitHub OIDC provider.)
+
+The deploy workflow is `.github/workflows/deploy.yml` (a **manual-trigger template** — switch
+`workflow_dispatch` to `push: branches: [master]` to activate). Before it works: `terraform
+apply` the stack, set the repo secret `AWS_DEPLOY_ROLE_ARN` to the `gha_deploy_role_arn` output,
+and add a Dockerfile per app (only `apps/ingest-worker` has one today — the rest are a
+build-tooling follow-up). Scheduled-worker image updates go through a task-def re-register
+(`terraform apply`), not `update-service`.
 
 Set a globally-unique bucket name first (e.g. append your account id), then:
 
