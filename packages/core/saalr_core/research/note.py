@@ -1,13 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
 
-# USD per 1,000,000 tokens (prompt, completion). Estimate; the real bill is the source of truth.
-_RATES: dict[str, tuple[Decimal, Decimal]] = {
-    "gpt-4o-mini": (Decimal("0.15"), Decimal("0.60")),
-    "stub-chat": (Decimal(0), Decimal(0)),
-}
+from saalr_core.llm.cost import estimate_cost  # noqa: F401  (canonical home is llm.cost)
 
 _SYSTEM = (
     "You are a Saalr research analyst. Write a concise markdown research note with these sections: "
@@ -42,11 +37,3 @@ def build_research_prompt(inputs: ResearchInputs) -> tuple[str, str]:
     else:
         lines.append("(none)")
     return _SYSTEM, "\n".join(lines)
-
-
-def estimate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> Decimal:
-    """Estimated USD cost for a completion. Unknown model -> 0. Quantized to 6 dp."""
-    rate_p, rate_c = _RATES.get(model, (Decimal(0), Decimal(0)))
-    cost = (Decimal(prompt_tokens) / Decimal(1_000_000) * rate_p
-            + Decimal(completion_tokens) / Decimal(1_000_000) * rate_c)
-    return cost.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
