@@ -7,4 +7,5 @@ export default {
   extends: [vikeReact],
   prerender: true,
   title: 'Saalr',
+  favicon: '/favicon.svg',
 } satisfies Config

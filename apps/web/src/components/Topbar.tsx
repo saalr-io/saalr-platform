@@ -1,6 +1,7 @@
 import { useHealth } from '../hooks/useHealth'
 import { StatusDot, type HealthState } from './StatusDot'
 import { Clock } from './Clock'
+import { Logo } from './Logo'
 import { useAuth } from '../auth/AuthContext'
 
 function cap(s: string): string {
@@ -20,13 +21,7 @@ export function Topbar() {
 
   return (
     <header className="col-span-2 flex items-center gap-4 border-b border-line bg-canvas/70 px-5 backdrop-blur-md">
-      <div className="flex items-center gap-2.5">
-        <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-pos to-accent text-sm font-extrabold text-[#04110d] shadow-[0_0_18px_-2px] shadow-pos">
-          S
-        </span>
-        <span className="font-semibold tracking-tight">Saalr</span>
-        <span className="font-mono text-[9px] tracking-[2.5px] text-txtFaint">RESEARCH&nbsp;TERMINAL</span>
-      </div>
+      <Logo size={24} descriptor />
 
       <div className="flex items-center gap-2 rounded-lg border border-line bg-panel px-2.5 py-1 text-xs">
         <span className="h-1.5 w-1.5 rounded-full bg-pos shadow-[0_0_8px] shadow-pos" />
