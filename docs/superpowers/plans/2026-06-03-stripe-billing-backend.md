@@ -21,7 +21,7 @@
 | `packages/core/saalr_core/config.py` (modify) | Add 6 Stripe settings |
 | `apps/api/pyproject.toml` (modify) | Add `stripe` optional extra |
 | `packages/core/saalr_core/db/models/tenancy.py` (modify) | Add `stripe_customer_id` to `Tenant` |
-| `infra/migrations/versions/0011_stripe_billing.py` (create) | Column + definer fn + resolver/index trialing |
+| `infra/migrations/versions/0012_stripe_billing.py` (create) | Column + definer fn + resolver/index trialing |
 | `apps/api/saalr_api/billing/__init__.py` (create) | Export `router` |
 | `apps/api/saalr_api/billing/provider.py` (create) | `PaymentProvider` protocol + `StripeProvider` + `StubProvider` + `make_payment_provider` |
 | `apps/api/saalr_api/billing/reducer.py` (create) | Pure `SubscriptionState` + `apply_subscription_event` |
@@ -275,10 +275,10 @@ git commit -m "feat(billing): pure subscription-event reducer + unit tests"
 
 **Files:**
 - Modify: `packages/core/saalr_core/db/models/tenancy.py`
-- Create: `infra/migrations/versions/0011_stripe_billing.py`
+- Create: `infra/migrations/versions/0012_stripe_billing.py`
 - Test: `tests/integration/test_billing_resolver.py`
 
-- [ ] **Step 1: Confirm the migration head.** Run `uv run alembic heads`. Expected: `0010 (head)`. If it prints a different revision, set `down_revision` in Step 3 to that value and rename the file's number to head+1 (and `revision` to match).
+- [ ] **Step 1: Confirm the migration head.** Run `uv run alembic heads`. Expected: `0011 (head)` (the head is `0011_research_transcripts.py`). If it prints a different revision, set `down_revision` in Step 3 to that value and rename the file's number to head+1 (and `revision` to match).
 
 - [ ] **Step 2: Add the model field.** In `packages/core/saalr_core/db/models/tenancy.py`, add to the `Tenant` class (after `status`):
 
@@ -287,19 +287,19 @@ git commit -m "feat(billing): pure subscription-event reducer + unit tests"
 ```
 (`Text` is already imported in that file.)
 
-- [ ] **Step 3: Write the migration.** Create `infra/migrations/versions/0011_stripe_billing.py`:
+- [ ] **Step 3: Write the migration.** Create `infra/migrations/versions/0012_stripe_billing.py`:
 
 ```python
 """stripe billing: tenants.stripe_customer_id, customer->tenant lookup, trialing entitlements
 
-Revision ID: 0011
-Revises: 0010
+Revision ID: 0012
+Revises: 0011
 Create Date: 2026-06-03
 """
 from alembic import op
 
-revision = "0011"
-down_revision = "0010"
+revision = "0012"
+down_revision = "0011"
 branch_labels = None
 depends_on = None
 
@@ -406,7 +406,7 @@ async def test_trialing_subscription_resolves_to_its_tier(admin_engine, app_sess
 
 - [ ] **Step 6: Commit.**
 ```bash
-git add packages/core/saalr_core/db/models/tenancy.py infra/migrations/versions/0011_stripe_billing.py tests/integration/test_billing_resolver.py
+git add packages/core/saalr_core/db/models/tenancy.py infra/migrations/versions/0012_stripe_billing.py tests/integration/test_billing_resolver.py
 git commit -m "feat(billing): migration — customer id on tenants, definer lookup, trialing entitlements"
 ```
 
