@@ -32,3 +32,20 @@ RLS bypass). DB on 55432 locally.
   `--once`, confirm the order advances.
 - Deferred: containerize + schedule (supercronic, like the ingest-worker); the real trade-update
   websocket (`stream_executions`).
+
+## Broker credentials via Secrets Manager (AWS-1)
+
+A `broker_account.credential_ref` is resolved by a `CompositeCredentialResolver`:
+`env:PREFIX` → env vars `PREFIX_KEY`/`PREFIX_SECRET` (dev); `secretsmanager:<id>`
+→ AWS Secrets Manager, a secret whose JSON is `{"key": ..., "secret": ...}`. Both
+schemes coexist — set the ref per account. `boto3` is an optional extra
+(`saalr-brokers[aws]`); the resolver caches each secret after first fetch and
+never logs/returns the values.
+
+Create a secret for LocalStack (or real AWS):
+
+    aws --endpoint-url=$AWS_ENDPOINT_URL secretsmanager create-secret \
+      --name saalr/brokers/alpaca-paper \
+      --secret-string '{"key":"<ALPACA_KEY>","secret":"<ALPACA_SECRET>"}'
+
+then set the account's `credential_ref` to `secretsmanager:saalr/brokers/alpaca-paper`.

@@ -101,3 +101,21 @@ The store is **pluggable** (`TranscriptStore` Protocol, injected on
 `app.state.transcript_store` and threaded into the worker): `DbTranscriptStore`
 today; an `S3TranscriptStore` drops in when the AWS-foundation slice lands, with
 no caller change.
+
+## AWS backends (AWS-1)
+
+Set `TRANSCRIPT_S3_BUCKET` (+ `AWS_REGION`) to route transcripts to **S3**
+(`S3TranscriptStore`, key `transcripts/{tenant_id}/{note_id}.json`); unset, they
+go to Postgres (`DbTranscriptStore`). `boto3` is an optional extra
+(`saalr-core[aws]`) — install it where the API/worker run against real S3.
+
+For local dev/tests, run LocalStack and point boto3 at it:
+
+    docker compose -f infra/docker/docker-compose.localstack.yml up -d
+    export AWS_ENDPOINT_URL=http://localhost:4566 AWS_DEFAULT_REGION=us-east-1 \
+           AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test
+    aws --endpoint-url=$AWS_ENDPOINT_URL s3 mb s3://saalr-transcripts
+
+The gated tests (`packages/core/tests/test_s3_transcript_store.py`) run only when
+`AWS_ENDPOINT_URL` is set + `boto3` is installed; a real-AWS smoke uses real
+creds with `AWS_ENDPOINT_URL` unset.
