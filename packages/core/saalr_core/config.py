@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-3-5-haiku-latest"
     llm_monthly_budget_usd: float = 10.0
 
+    # AWS (app-side integrations; AWS-1)
+    aws_region: str | None = None
+    aws_endpoint_url: str | None = None   # LocalStack/MinIO override for S3 + Secrets Manager
+    transcript_s3_bucket: str | None = None
+
 
 def get_settings() -> Settings:
     return Settings()
