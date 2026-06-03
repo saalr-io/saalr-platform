@@ -53,3 +53,7 @@ output "ecs_cluster_name" {
 output "task_role_arn" {
   value = module.compute.task_role_arn
 }
+
+output "api_alb_dns_name" {
+  value = module.api_service.alb_dns_name
+}

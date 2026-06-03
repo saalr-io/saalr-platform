@@ -9,7 +9,8 @@ AWS single-cloud (ADR-008), region `us-east-1`. Terraform `>= 1.6`, AWS provider
     modules/data/         RDS Postgres + ElastiCache Redis + subnet groups + security groups
     modules/storage/      KMS CMK + S3 buckets (transcripts/audit/ml-models) + Secrets Manager containers
     modules/compute/      ECR repos + ECS cluster + IAM task/exec roles + CloudWatch logs + ECS app SG
-    environments/dev/     dev stack: S3 backend + the network, data, storage, and compute modules
+    modules/api_service/  internet-facing ALB + target group + listener + API ECS task def + Fargate service
+    environments/dev/     dev stack: S3 backend + the network, data, storage, compute, and api_service modules
 
 ## Database (TimescaleDB note)
 
@@ -51,6 +52,22 @@ on the secrets, `kms:Decrypt`/`GenerateDataKey` on the CMK). It also creates the
 security group** (egress-all; ALB ingress is added in AWS-2d-2), and the data tier now accepts
 SG-to-SG ingress from it (`modules/data` `app_security_group_id`). Task definitions, services,
 the internal ALB, and EventBridge scheduled tasks land in AWS-2d-2/2d-3.
+
+## API service (AWS-2d-2)
+
+`modules/api_service/` runs the API monolith on ECS Fargate behind an **internet-facing ALB**
+(public subnets, HTTP:80 — HTTPS/ACM is a later hardening). The ALB SG allows 80 from the
+internet; the ECS app SG accepts the container port (8000) only from the ALB SG; tasks run in
+private subnets (`assign_public_ip = false`) and register with the target group (health check
+`/healthz`). The task definition pulls the `api` image from ECR, logs to the compute log group,
+and runs under the compute task/execution roles.
+
+**Container config (deploy-time):** the env (`AWS_REGION`, `REDIS_URL`, `TRANSCRIPT_S3_BUCKET`,
+`DB_HOST/PORT/USER/NAME`) + secrets (the four `saalr/app/*` API keys, and `DB_PASSWORD` pulled
+from the RDS-managed secret's `password` JSON key) are passed by the dev env. Note: RDS manages
+the password as a Secrets-Manager JSON blob that can't be interpolated into a single env, so the
+app builds `APP_DATABASE_URL` from `DB_HOST/PORT/USER/NAME/PASSWORD` at startup — a small
+app-config follow-up before the first real deploy.
 
 Set a globally-unique bucket name first (e.g. append your account id), then:
 
