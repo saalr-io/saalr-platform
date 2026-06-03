@@ -49,6 +49,14 @@ class Settings(BaseSettings):
     aws_endpoint_url: str | None = None   # LocalStack/MinIO override for S3 + Secrets Manager
     transcript_s3_bucket: str | None = None
 
+    # Stripe billing (B1). Absent secret_key -> billing endpoints return 503.
+    stripe_secret_key: str | None = None
+    stripe_webhook_secret: str | None = None
+    stripe_price_pro: str | None = None
+    stripe_price_premium: str | None = None
+    billing_success_url: str = "http://localhost:5174/app/billing/success"
+    billing_cancel_url: str = "http://localhost:5174/app/billing/cancel"
+
 
 def get_settings() -> Settings:
     return Settings()

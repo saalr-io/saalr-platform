@@ -12,6 +12,9 @@ dependencies = [
   "redis>=5",
 ]
 
+[project.optional-dependencies]
+stripe = ["stripe>=10.0"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
