@@ -1,6 +1,8 @@
 # Frontends + public surface — band design
 
-**Status:** in progress (autonomous `/ralph` run, 2026-06-03)
+**Status:** FE-1, FE-2, FE-3 DONE (committed on `feat/scaffold-data-layer`, not pushed) — autonomous
+`/ralph` run, 2026-06-03, with a `/frontend-design` aesthetic pass. FE-4 (public academy SSG) deferred
+to its own short design pass (it carries a Pro-content-leak decision; see the note at the end of FE-4).
 
 ## Context
 
