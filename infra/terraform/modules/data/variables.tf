@@ -24,6 +24,12 @@ variable "ingress_cidr_blocks" {
   default     = []
 }
 
+variable "app_security_group_id" {
+  description = "ECS app SG allowed to reach the data tier (SG-to-SG); empty => CIDR-only."
+  type        = string
+  default     = ""
+}
+
 variable "db_engine_version" {
   description = "Postgres major version."
   type        = string

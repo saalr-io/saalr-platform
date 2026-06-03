@@ -86,6 +86,27 @@ resource "aws_vpc_security_group_egress_rule" "redis" {
   description       = "All egress"
 }
 
+# --- SG-to-SG ingress from the ECS app SG (when provided; AWS-2d-1) ---
+resource "aws_vpc_security_group_ingress_rule" "rds_app" {
+  count                        = var.app_security_group_id != "" ? 1 : 0
+  security_group_id            = aws_security_group.rds.id
+  referenced_security_group_id = var.app_security_group_id
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+  description                  = "Postgres from the ECS app SG"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "redis_app" {
+  count                        = var.app_security_group_id != "" ? 1 : 0
+  security_group_id            = aws_security_group.redis.id
+  referenced_security_group_id = var.app_security_group_id
+  from_port                    = 6379
+  to_port                      = 6379
+  ip_protocol                  = "tcp"
+  description                  = "Redis from the ECS app SG"
+}
+
 resource "aws_elasticache_cluster" "this" {
   cluster_id         = "${var.name_prefix}-redis"
   engine             = "redis"
