@@ -13,3 +13,15 @@ output "private_subnet_ids" {
 output "nat_gateway_id" {
   value = module.network.nat_gateway_id
 }
+
+output "db_endpoint" {
+  value = module.data.db_endpoint
+}
+
+output "db_master_user_secret_arn" {
+  value = module.data.db_master_user_secret_arn
+}
+
+output "redis_endpoint" {
+  value = module.data.redis_endpoint
+}

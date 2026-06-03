@@ -6,7 +6,20 @@ AWS single-cloud (ADR-008), region `us-east-1`. Terraform `>= 1.6`, AWS provider
 
     bootstrap/            one-time: creates the S3 state bucket + DynamoDB lock table (local state)
     modules/network/      VPC, subnets, IGW, single NAT, route tables (outputs consumed by later modules)
-    environments/dev/     dev stack: S3 backend + the network module
+    modules/data/         RDS Postgres + ElastiCache Redis + subnet groups + security groups
+    environments/dev/     dev stack: S3 backend + the network and data modules
+
+## Database (TimescaleDB note)
+
+The app uses TimescaleDB for the `bars` hypertable, but **AWS RDS for PostgreSQL does
+not support the TimescaleDB extension**. AWS-2b provisions managed RDS Postgres, where
+`bars` runs as a plain Postgres table (queries are correct; only the time-partitioning
+optimization is absent). The migrations that `CREATE EXTENSION timescaledb` /
+`create_hypertable(...)` need an RDS-specific guard or path before applying to RDS. The
+hypertable optimization at scale is a deferred decision: native `pg_partman` partitioning,
+or Timescale Cloud (off-AWS). The RDS master password is **managed by RDS in Secrets
+Manager** (the module's `db_master_user_secret_arn` output) — the app reads it at deploy
+time to build `APP_DATABASE_URL`; no password lives in Terraform state.
 
 ## One-time bootstrap (creates remote state)
 
