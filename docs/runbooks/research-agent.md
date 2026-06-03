@@ -42,3 +42,24 @@ toward the limit immediately; if it later transitions to `failed` (e.g.
 `RESEARCH_NO_PRICE_DATA`), the quota self-heals since `failed` rows are
 excluded. A hard, race-free limit (unique-window constraint or atomic counter)
 is deferred to RA-3 alongside per-tenant budgets.
+
+## Providers & budget (RA-3a)
+
+The worker generates via a **ChatGateway** with ordered fallback: OpenAI →
+Anthropic. `make_chat_gateway(settings)` includes a provider only if its key is
+set, so with just `OPENAI_API_KEY` the gateway is OpenAI-only; add
+`ANTHROPIC_API_KEY` (+ `ANTHROPIC_MODEL`, default `claude-3-5-haiku-latest`) to
+enable fallback. If no provider is configured the run fails
+`RESEARCH_LLM_UNAVAILABLE`.
+
+Every successful call is recorded to the per-tenant `llm_usage` ledger
+(provider, model, tokens, `cost_usd`, `purpose`, `note_id`). The note's
+`cost_usd` is the roll-up for its run; `llm_usage` is the per-call ledger that
+budgets + the cost dashboard sum.
+
+**Monthly budget cap** (`LLM_MONTHLY_BUDGET_USD`, default $10/tenant): before a
+run, month-to-date `llm_usage` for the tenant is summed (UTC calendar month). At
+or over the cap, the run is rejected — fail-fast `402 RESEARCH_BUDGET_EXCEEDED`
+at the API, and authoritatively in the worker (phase-1 check →
+`RESEARCH_BUDGET_EXCEEDED`). The cap is uniform across tenants for now
+(per-tenant overrides + operator alerts deferred).
