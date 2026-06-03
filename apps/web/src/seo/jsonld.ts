@@ -31,3 +31,38 @@ export function breadcrumbJsonLd(trail: { name: string; url: string }[]): Record
     itemListElement: trail.map((t, i) => ({ '@type': 'ListItem', position: i + 1, name: t.name, item: t.url })),
   }
 }
+
+const SITE_NAME = 'Saalr'
+const SITE_DESC = 'Research-grade options analytics for retail traders.'
+
+export function organizationJsonLd(site: string): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: SITE_NAME,
+    url: site,
+    description: SITE_DESC,
+  }
+}
+
+export function softwareAppJsonLd(site: string): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: SITE_NAME,
+    applicationCategory: 'FinanceApplication',
+    operatingSystem: 'Web',
+    url: site,
+    description:
+      'Build and price multi-leg options strategies, study volatility, run backtests, and read multi-agent research notes.',
+  }
+}
+
+export function websiteJsonLd(site: string): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_NAME,
+    url: site,
+  }
+}

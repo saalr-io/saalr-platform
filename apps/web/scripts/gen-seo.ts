@@ -5,7 +5,7 @@ import { EXPLAINERS } from '../src/seo/content/strategies'
 
 const SITE = process.env.SITE_ORIGIN ?? 'https://saalr.com'
 const pages = [
-  { url: '/', title: 'Saalr', description: 'Research-grade options analytics for retail traders.' },
+  { url: '/', title: 'Saalr — Research-grade options analytics', description: 'Build and price multi-leg options strategies, study volatility, run backtests, and read multi-agent research notes — from one fast terminal.' },
   { url: '/learn', title: 'Learn options strategies', description: 'Explainers for common options strategies.' },
   ...EXPLAINERS.map((e) => ({ url: `/learn/${e.slug}`, title: e.title, description: e.summary })),
 ]

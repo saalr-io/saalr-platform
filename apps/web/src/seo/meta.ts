@@ -6,11 +6,11 @@ export interface PageMeta {
   twitter: Record<string, string>
 }
 
-export function pageMeta(input: { title: string; description: string; canonical: string; image?: string }): PageMeta {
+export function pageMeta(input: { title: string; description: string; canonical: string; image?: string; type?: string }): PageMeta {
   const og: Record<string, string> = {
     'og:title': input.title,
     'og:description': input.description,
-    'og:type': 'article',
+    'og:type': input.type ?? 'article',
     'og:url': input.canonical,
   }
   if (input.image) og['og:image'] = input.image

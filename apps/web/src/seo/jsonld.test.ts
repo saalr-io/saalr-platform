@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { articleJsonLd, faqJsonLd, breadcrumbJsonLd } from './jsonld'
+import {
+  articleJsonLd, faqJsonLd, breadcrumbJsonLd,
+  organizationJsonLd, softwareAppJsonLd, websiteJsonLd,
+} from './jsonld'
 import { pageMeta } from './meta'
 
 const content = {
@@ -42,5 +45,40 @@ describe('jsonld', () => {
     expect(m.title).toBe('T')
     expect(m.canonical).toBe('https://saalr.com/learn/x')
     expect(m.og['og:title']).toBe('T')
+  })
+
+  it('pageMeta defaults og:type to article but honours an override', () => {
+    expect(pageMeta({ title: 'T', description: 'D', canonical: 'u' }).og['og:type']).toBe('article')
+    expect(
+      pageMeta({ title: 'T', description: 'D', canonical: 'u', type: 'website' }).og['og:type'],
+    ).toBe('website')
+  })
+})
+
+describe('landing JSON-LD builders', () => {
+  const SITE = 'https://saalr.com'
+
+  it('organization carries context, type, and url', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const o = organizationJsonLd(SITE) as any
+    expect(o['@context']).toBe('https://schema.org')
+    expect(o['@type']).toBe('Organization')
+    expect(o.url).toBe(SITE)
+  })
+
+  it('software application is a FinanceApplication on the Web with no price/offers', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s = softwareAppJsonLd(SITE) as any
+    expect(s['@type']).toBe('SoftwareApplication')
+    expect(s.applicationCategory).toBe('FinanceApplication')
+    expect(s.operatingSystem).toBe('Web')
+    expect(s).not.toHaveProperty('offers')
+  })
+
+  it('website carries type and url', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = websiteJsonLd(SITE) as any
+    expect(w['@type']).toBe('WebSite')
+    expect(w.url).toBe(SITE)
   })
 })
