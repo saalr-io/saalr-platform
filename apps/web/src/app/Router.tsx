@@ -5,6 +5,7 @@ import { SystemStatus } from '../pages/SystemStatus'
 import { PlaceholderPage } from '../components/PlaceholderPage'
 import { Strategies } from '../pages/Strategies'
 import { Education } from '../pages/Education'
+import { Research } from '../pages/Research'
 import { Login } from '../pages/Login'
 import { VerifyMagicLink } from '../pages/VerifyMagicLink'
 
@@ -28,7 +29,7 @@ export function AppRoutes() {
         <Route path="markets" element={<PlaceholderPage title="Markets & Vol" />} />
         <Route path="strategies" element={<Strategies />} />
         <Route path="models" element={<PlaceholderPage title="Models" />} />
-        <Route path="research" element={<PlaceholderPage title="Research Agent" />} />
+        <Route path="research" element={<Research />} />
         <Route path="education" element={<Education />} />
         <Route path="portfolio" element={<PlaceholderPage title="Portfolio" />} />
         <Route path="system" element={<SystemStatus />} />
