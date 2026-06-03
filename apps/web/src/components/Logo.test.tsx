@@ -3,10 +3,11 @@ import { render, screen } from '@testing-library/react'
 import { Logo, LogoMark } from './Logo'
 
 describe('Logo', () => {
-  it('renders an accessible mark and the serif wordmark', () => {
+  it('renders the mono wordmark (mark is decorative — not double-announced)', () => {
     render(<Logo />)
-    expect(screen.getByRole('img', { name: 'Saalr' })).toBeInTheDocument()
-    expect(screen.getByText('Saalr')).toBeInTheDocument()
+    expect(screen.getByText('SAALR')).toBeInTheDocument()
+    // The adjacent mark is aria-hidden, so it must NOT expose a second "Saalr" img.
+    expect(screen.queryByRole('img', { name: 'Saalr' })).not.toBeInTheDocument()
   })
 
   it('shows the terminal descriptor when asked', () => {
