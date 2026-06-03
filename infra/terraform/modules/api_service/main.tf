@@ -70,6 +70,21 @@ resource "aws_lb_listener" "http" {
   }
 }
 
+# Allow the execution role to inject the RDS-managed DB password secret at container start.
+# (Granted here rather than in the compute module to avoid a compute<->data dependency cycle.)
+data "aws_iam_policy_document" "exec_db_secret" {
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [var.db_secret_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "exec_db_secret" {
+  name   = "${var.name_prefix}-api-exec-db-secret"
+  role   = var.execution_role_name
+  policy = data.aws_iam_policy_document.exec_db_secret.json
+}
+
 # --- ECS task definition + service ---
 resource "aws_ecs_task_definition" "this" {
   family                   = "${var.name_prefix}-api"

@@ -33,6 +33,16 @@ variable "execution_role_arn" {
   type        = string
 }
 
+variable "execution_role_name" {
+  description = "ECS task-execution role NAME (to attach the DB-secret read policy)."
+  type        = string
+}
+
+variable "db_secret_arn" {
+  description = "RDS-managed master-password secret ARN; granted to the execution role for injection."
+  type        = string
+}
+
 variable "task_role_arn" {
   description = "ECS task role ARN (from the compute module)."
   type        = string

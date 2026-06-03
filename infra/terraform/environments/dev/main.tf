@@ -67,7 +67,9 @@ module "api_service" {
   app_security_group_id = module.compute.app_security_group_id
   cluster_arn           = module.compute.cluster_arn
   execution_role_arn    = module.compute.task_execution_role_arn
+  execution_role_name   = module.compute.task_execution_role_name
   task_role_arn         = module.compute.task_role_arn
+  db_secret_arn         = module.data.db_master_user_secret_arn
   log_group_name        = module.compute.log_group_name
   aws_region            = var.region
   image                 = "${module.compute.ecr_repository_urls["api"]}:latest"
