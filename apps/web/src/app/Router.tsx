@@ -4,6 +4,7 @@ import { AppShell } from './AppShell'
 import { SystemStatus } from '../pages/SystemStatus'
 import { PlaceholderPage } from '../components/PlaceholderPage'
 import { Strategies } from '../pages/Strategies'
+import { Education } from '../pages/Education'
 import { Login } from '../pages/Login'
 import { VerifyMagicLink } from '../pages/VerifyMagicLink'
 
@@ -28,7 +29,7 @@ export function AppRoutes() {
         <Route path="strategies" element={<Strategies />} />
         <Route path="models" element={<PlaceholderPage title="Models" />} />
         <Route path="research" element={<PlaceholderPage title="Research Agent" />} />
-        <Route path="education" element={<PlaceholderPage title="OptionsAcademy" />} />
+        <Route path="education" element={<Education />} />
         <Route path="portfolio" element={<PlaceholderPage title="Portfolio" />} />
         <Route path="system" element={<SystemStatus />} />
         <Route path="*" element={<Navigate to="/" replace />} />
