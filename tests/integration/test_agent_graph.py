@@ -62,3 +62,17 @@ async def test_metered_complete_raises_when_over_budget(app_sessionmaker, admin_
                 await metered_complete(
                     app.state.sessionmaker, tid, uid, gateway=ChatGateway([StubChatProvider()]),
                     cap=Decimal("10"), purpose="test", note_id=uuid4(), system="s", user="u")
+
+
+async def test_run_agent_graph_returns_full_transcript(app_sessionmaker, admin_engine):
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            tid, uid = await _me(c, {"Authorization": "Bearer dev:graph3@x.com"})
+            res = await run_agent_graph(
+                app.state.sessionmaker, tid, uid, inputs=ResearchInputs("AAPL", "US", 50.0, None, None, []),
+                gateway=ChatGateway([StubChatProvider()]), cap=Decimal("10"), note_id=uuid4())
+            roles = [s["role"] for s in res.transcript]
+            assert roles == ["fundamentals", "sentiment", "technical", "risk", "trader", "pm"]
+            assert all(s["memo"] for s in res.transcript)
+            assert res.transcript[-1]["memo"] == res.note_markdown

@@ -20,6 +20,7 @@ class AgentGraphResult:
     cost_usd: Decimal
     model: str
     provider: str
+    transcript: list[dict]
 
 
 async def run_agent_graph(sessionmaker, tenant_id, user_id, *, inputs, gateway, cap,
@@ -48,7 +49,11 @@ async def run_agent_graph(sessionmaker, tenant_id, user_id, *, inputs, gateway, 
     system, user = build_pm_prompt(inputs, memos)
     pm = await _call("research_agent:pm", system, user)
 
+    memos["pm"] = pm.text
+    transcript = [{"role": r, "memo": memos[r]} for r in (*ANALYST_ROLES, "trader", "pm")]
+
     return AgentGraphResult(
         note_markdown=pm.text, prompt_tokens=totals["p"], completion_tokens=totals["c"],
         cost_usd=totals["cost"], model=pm.model or gateway.model_name,
-        provider=pm.provider or getattr(gateway, "name", "unknown"))
+        provider=pm.provider or getattr(gateway, "name", "unknown"),
+        transcript=transcript)
