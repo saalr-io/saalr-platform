@@ -7,6 +7,7 @@ from sqlalchemy import text
 from saalr_api.billing import repo, service
 from saalr_api.billing.provider import StubProvider, make_payment_provider
 from saalr_api.billing.reducer import SubscriptionState
+from saalr_api.main import create_app
 from saalr_core.db.session import tenant_session
 
 
@@ -180,3 +181,57 @@ async def test_dunning_roundtrip_past_due_then_recovers(admin_engine, app_sessio
     async with tenant_session(app_sessionmaker, tenant_id) as s:
         row = await repo.get_subscription(s, tenant_id)
         assert row is not None and row.status == "active" and row.tier == "pro"  # recovered
+
+
+def _client(app):
+    return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
+
+
+def _auth(email):
+    return {"Authorization": f"Bearer dev:{email}"}
+
+
+async def test_get_subscription_defaults_to_free():
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        app.state.payment_provider = StubProvider()
+        async with _client(app) as c:
+            await c.post("/auth/dev/login", json={"email": "free@acme.com"})
+            r = await c.get("/subscription", headers=_auth("free@acme.com"))
+    assert r.status_code == 200
+    assert r.json()["tier"] == "free"
+    assert r.json()["entitlements"]["live_chains"] is False
+
+
+async def test_upgrade_returns_checkout_url():
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        app.state.payment_provider = StubProvider()
+        async with _client(app) as c:
+            await c.post("/auth/dev/login", json={"email": "u2@acme.com"})
+            r = await c.post("/subscription/upgrade", json={"tier": "pro"},
+                             headers=_auth("u2@acme.com"))
+    assert r.status_code == 200
+    assert r.json()["checkout_url"].startswith("https://stub.stripe/checkout/")
+
+
+async def test_upgrade_503_when_billing_unconfigured():
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        app.state.payment_provider = None  # not configured
+        async with _client(app) as c:
+            await c.post("/auth/dev/login", json={"email": "u3@acme.com"})
+            r = await c.post("/subscription/upgrade", json={"tier": "pro"},
+                             headers=_auth("u3@acme.com"))
+    assert r.status_code == 503
+    assert r.json()["detail"]["error"]["code"] == "FEATURE_UNAVAILABLE"
+
+
+async def test_webhook_bad_signature_is_400():
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        app.state.payment_provider = StubProvider()
+        async with _client(app) as c:
+            r = await c.post("/webhooks/stripe", content=b'{"id":"e"}',
+                             headers={"Stripe-Signature": "wrong"})
+    assert r.status_code == 400

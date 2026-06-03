@@ -28,6 +28,8 @@ from saalr_core.research.transcript_store import make_transcript_store
 from .auth import Principal, get_auth_provider, get_principal
 from .auth.magic import consume_link, request_link
 from .backtests.router import router as backtests_router
+from .billing import router as billing_router
+from .billing.provider import make_payment_provider
 from .content.router import router as content_router
 from .forecast.router import router as forecast_router
 from .market.router import router as market_router
@@ -80,6 +82,8 @@ def create_app() -> FastAPI:
         app.state.chat_provider = make_chat_provider(settings)
         app.state.llm_budget_cap = monthly_cap(settings)
         app.state.transcript_store = make_transcript_store(settings, app.state.sessionmaker)
+        app.state.settings = settings
+        app.state.payment_provider = make_payment_provider(settings)
         yield
         await app.state.redis.aclose()
         await engine.dispose()
@@ -95,6 +99,7 @@ def create_app() -> FastAPI:
     app.include_router(oms_router)
     app.include_router(content_router)
     app.include_router(research_router)
+    app.include_router(billing_router)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
