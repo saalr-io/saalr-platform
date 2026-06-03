@@ -77,7 +77,8 @@ async def gather_inputs(session, *, embedding_provider, catalog, ticker: str, ma
 
 
 async def run_research_job(sessionmaker, tenant_id: UUID, note_id: UUID, *,
-                           chat_provider, embedding_provider, catalog, cap: Decimal) -> dict:
+                           chat_provider, embedding_provider, catalog, cap: Decimal,
+                           transcript_store) -> dict:
     """Generate the note for a queued run. 3 phases, each isolating its failure mode.
 
     A re-delivered job whose row is already succeeded/failed is a no-op (idempotent)."""
@@ -128,6 +129,10 @@ async def run_research_job(sessionmaker, tenant_id: UUID, note_id: UUID, *,
             session, note_id, summary=graph.note_markdown, signals=signals, sources=sources,
             model=graph.model, prompt_tokens=graph.prompt_tokens,
             completion_tokens=graph.completion_tokens, cost_usd=graph.cost_usd)
+    try:
+        await transcript_store.save(tenant_id=tenant_id, note_id=note_id, steps=graph.transcript)
+    except Exception as exc:  # noqa: BLE001 - supplementary; a transcript write must not fail the note
+        log.warning("transcript persist failed for %s: %s", note_id, exc)
     return {"status": "succeeded"}
 
 

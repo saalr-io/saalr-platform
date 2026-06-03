@@ -15,6 +15,7 @@ from saalr_core.llm import repo as llm_repo
 from saalr_core.llm.gateway import ChatGateway
 from saalr_core.rag.chat import ChatError, ChatResult, StubChatProvider
 from saalr_core.rag.embeddings import HashEmbeddingProvider
+from saalr_core.research.transcript_store import DbTranscriptStore
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 _CAP = Decimal("10")
@@ -74,13 +75,16 @@ class _CostlyChat:
         return ChatResult("memo", prompt_tokens=1_000_000, completion_tokens=0)
 
 
-async def _run_worker_once(*, chat, cap=_CAP):
+async def _run_worker_once(*, chat, cap=_CAP, transcript_store=None):
     engine = create_engine(os.environ["APP_DATABASE_URL"])
     redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+    sm = create_sessionmaker(engine)
+    store = transcript_store if transcript_store is not None else DbTranscriptStore(sm)
     try:
-        await run_consumer(redis, create_sessionmaker(engine), "test-research",
+        await run_consumer(redis, sm, "test-research",
                            chat_provider=chat, embedding_provider=HashEmbeddingProvider(),
-                           catalog=load_catalog(), cap=cap, block_ms=1000, count=10, once=True)
+                           catalog=load_catalog(), cap=cap, transcript_store=store,
+                           block_ms=1000, count=10, once=True)
     finally:
         await redis.aclose()
         await engine.dispose()
@@ -215,3 +219,53 @@ async def test_e2e_all_providers_down_failed(app_sessionmaker, admin_engine):
             done = (await c.get(poll, headers=h)).json()
             assert done["status"] == "failed"
             assert done["error"]["code"] == "RESEARCH_LLM_UNAVAILABLE"
+
+
+class _RaisingStore:
+    async def save(self, *, tenant_id, note_id, steps):
+        raise RuntimeError("transcript backend down")
+
+    async def load(self, *, tenant_id, note_id):
+        return None
+
+
+async def test_e2e_persists_transcript(app_sessionmaker, admin_engine):
+    await _clean_stream()
+    await _seed_bars(admin_engine, "AAPL", n=40)
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:rwt1@x.com"}
+            tid, _ = await _me(c, h)
+            await _tier(admin_engine, str(tid), "premium")
+            poll = await _post(c, h)
+            await _run_worker_once(chat=ChatGateway([StubChatProvider()]))
+            assert (await c.get(poll, headers=h)).json()["status"] == "succeeded"
+            async with admin_engine.begin() as conn:
+                row = (await conn.execute(
+                    text("SELECT transcript_json FROM research_transcripts WHERE tenant_id=:t"),
+                    {"t": str(tid)})).first()
+            assert row is not None
+            roles = [s["role"] for s in row.transcript_json]
+            assert roles == ["fundamentals", "sentiment", "technical", "risk", "trader", "pm"]
+
+
+async def test_e2e_transcript_failure_is_best_effort(app_sessionmaker, admin_engine):
+    await _clean_stream()
+    await _seed_bars(admin_engine, "AAPL", n=40)
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:rwt2@x.com"}
+            tid, _ = await _me(c, h)
+            await _tier(admin_engine, str(tid), "premium")
+            poll = await _post(c, h)
+            await _run_worker_once(chat=ChatGateway([StubChatProvider()]),
+                                   transcript_store=_RaisingStore())
+            # the note still succeeds even though the transcript write raised
+            assert (await c.get(poll, headers=h)).json()["status"] == "succeeded"
+            async with admin_engine.begin() as conn:
+                row = (await conn.execute(
+                    text("SELECT 1 FROM research_transcripts WHERE tenant_id=:t"),
+                    {"t": str(tid)})).first()
+            assert row is None

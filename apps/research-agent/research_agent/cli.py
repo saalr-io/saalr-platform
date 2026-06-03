@@ -27,20 +27,23 @@ async def _cmd_consume(args) -> None:
     from saalr_core.llm.cost import monthly_cap
     from saalr_core.llm.gateway import make_chat_gateway
     from saalr_core.rag.embeddings import make_embedding_provider
+    from saalr_core.research.transcript_store import make_transcript_store
 
     from .consumer import run_consumer
 
     settings = get_settings()
     engine = create_engine(settings.app_database_url)
     redis = aioredis.from_url(settings.redis_url, decode_responses=True)
+    sm = create_sessionmaker(engine)
     consumer = args.consumer or f"research-{socket.gethostname()}"
     try:
         await run_consumer(
-            redis, create_sessionmaker(engine), consumer,
+            redis, sm, consumer,
             chat_provider=make_chat_gateway(settings),
             embedding_provider=make_embedding_provider(settings),
             catalog=load_catalog(),
             cap=monthly_cap(settings),
+            transcript_store=make_transcript_store(settings, sm),
             block_ms=args.block_ms, count=args.count, once=args.once,
         )
     finally:
