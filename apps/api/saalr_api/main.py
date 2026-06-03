@@ -23,6 +23,7 @@ from saalr_core.queue.research_queue import ensure_group as ensure_research_grou
 from saalr_core.llm.cost import monthly_cap
 from saalr_core.rag.chat import make_chat_provider
 from saalr_core.rag.embeddings import make_embedding_provider
+from saalr_core.research.transcript_store import make_transcript_store
 
 from .auth import Principal, get_auth_provider, get_principal
 from .auth.magic import consume_link, request_link
@@ -77,6 +78,7 @@ def create_app() -> FastAPI:
         app.state.embedding_provider = make_embedding_provider(settings)
         app.state.chat_provider = make_chat_provider(settings)
         app.state.llm_budget_cap = monthly_cap(settings)
+        app.state.transcript_store = make_transcript_store(settings, app.state.sessionmaker)
         yield
         await app.state.redis.aclose()
         await engine.dispose()

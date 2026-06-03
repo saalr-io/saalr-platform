@@ -7,6 +7,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from saalr_core.llm import repo as llm_repo
+
 from ..auth import Principal
 from . import repo, service
 from .gating import require_research_agent
@@ -84,3 +86,33 @@ async def get_one(note_id: UUID,
             "signals": note.signals_json, "sources": note.sources_json,
             "usage": {"prompt_tokens": note.prompt_tokens,
                       "completion_tokens": note.completion_tokens}}
+
+
+@router.get("/notes/{note_id}/transcript")
+async def get_transcript(note_id: UUID, request: Request,
+                         ctx: tuple[AsyncSession, Principal] = Depends(require_research_agent)) -> dict:
+    session, principal = ctx
+    note = await repo.get_note(session, note_id)
+    if note is None:
+        raise HTTPException(404, {"error": {"code": "RESOURCE_NOT_FOUND", "message": "note not found"}})
+    steps = await request.app.state.transcript_store.load(
+        tenant_id=principal.tenant_id, note_id=note_id)
+    if steps is None:
+        raise HTTPException(404, {"error": {"code": "RESOURCE_NOT_FOUND",
+                                            "message": "no transcript for note"}})
+    by_role = {}
+    for row in await llm_repo.usage_for_note(session, note_id):
+        if row.purpose.startswith("research_agent:"):
+            by_role[row.purpose.split(":", 1)[1]] = row
+    out = []
+    for step in steps:
+        u = by_role.get(step["role"])
+        out.append({
+            "role": step["role"], "memo": step["memo"],
+            "provider": u.provider if u else None,
+            "model": u.model if u else None,
+            "prompt_tokens": u.prompt_tokens if u else None,
+            "completion_tokens": u.completion_tokens if u else None,
+            "cost_usd": str(u.cost_usd) if u else None,
+        })
+    return {"note_id": str(note_id), "steps": out}

@@ -24,3 +24,12 @@ async def month_to_date_cost(session, tenant_id, since) -> Decimal:
             LlmUsage.tenant_id == tenant_id, LlmUsage.created_at >= since)
     )).scalar_one()
     return Decimal(total)
+
+
+async def usage_for_note(session, note_id) -> list:
+    """All LLM-usage rows tied to a note (used by the transcript endpoint to join cost by role)."""
+    return list((await session.execute(
+        select(LlmUsage.purpose, LlmUsage.provider, LlmUsage.model, LlmUsage.prompt_tokens,
+               LlmUsage.completion_tokens, LlmUsage.cost_usd)
+        .where(LlmUsage.note_id == note_id)
+    )).all())
