@@ -35,6 +35,7 @@ module "data" {
   vpc_id                = module.network.vpc_id
   vpc_cidr              = module.network.vpc_cidr
   private_subnet_ids    = module.network.private_subnet_ids
+  enable_app_sg_ingress = true
   app_security_group_id = module.compute.app_security_group_id
 }
 

@@ -25,9 +25,15 @@ variable "ingress_cidr_blocks" {
 }
 
 variable "app_security_group_id" {
-  description = "ECS app SG allowed to reach the data tier (SG-to-SG); empty => CIDR-only."
+  description = "ECS app SG allowed to reach the data tier (SG-to-SG); used when enable_app_sg_ingress."
   type        = string
   default     = ""
+}
+
+variable "enable_app_sg_ingress" {
+  description = "Add SG-to-SG ingress from app_security_group_id (a static toggle, since count must be plan-time-known)."
+  type        = bool
+  default     = false
 }
 
 variable "db_engine_version" {

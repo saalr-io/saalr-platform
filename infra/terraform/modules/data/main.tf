@@ -88,7 +88,7 @@ resource "aws_vpc_security_group_egress_rule" "redis" {
 
 # --- SG-to-SG ingress from the ECS app SG (when provided; AWS-2d-1) ---
 resource "aws_vpc_security_group_ingress_rule" "rds_app" {
-  count                        = var.app_security_group_id != "" ? 1 : 0
+  count                        = var.enable_app_sg_ingress ? 1 : 0
   security_group_id            = aws_security_group.rds.id
   referenced_security_group_id = var.app_security_group_id
   from_port                    = 5432
@@ -98,7 +98,7 @@ resource "aws_vpc_security_group_ingress_rule" "rds_app" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "redis_app" {
-  count                        = var.app_security_group_id != "" ? 1 : 0
+  count                        = var.enable_app_sg_ingress ? 1 : 0
   security_group_id            = aws_security_group.redis.id
   referenced_security_group_id = var.app_security_group_id
   from_port                    = 6379
