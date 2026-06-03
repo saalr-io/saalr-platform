@@ -30,15 +30,29 @@ module "network" {
 }
 
 module "data" {
-  source             = "../../modules/data"
-  name_prefix        = "saalr-dev"
-  vpc_id             = module.network.vpc_id
-  vpc_cidr           = module.network.vpc_cidr
-  private_subnet_ids = module.network.private_subnet_ids
+  source                = "../../modules/data"
+  name_prefix           = "saalr-dev"
+  vpc_id                = module.network.vpc_id
+  vpc_cidr              = module.network.vpc_cidr
+  private_subnet_ids    = module.network.private_subnet_ids
+  app_security_group_id = module.compute.app_security_group_id
 }
 
 module "storage" {
   source        = "../../modules/storage"
   name_prefix   = "saalr-dev"
   bucket_prefix = "saalr-dev" # globally-unique — set a unique suffix before apply
+}
+
+module "compute" {
+  source      = "../../modules/compute"
+  name_prefix = "saalr-dev"
+  vpc_id      = module.network.vpc_id
+  s3_bucket_names = [
+    module.storage.transcripts_bucket,
+    module.storage.ml_models_bucket,
+    module.storage.audit_bucket,
+  ]
+  secret_arns = values(module.storage.secret_arns)
+  kms_key_arn = module.storage.kms_key_arn
 }

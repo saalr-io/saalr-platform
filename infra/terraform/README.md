@@ -8,7 +8,8 @@ AWS single-cloud (ADR-008), region `us-east-1`. Terraform `>= 1.6`, AWS provider
     modules/network/      VPC, subnets, IGW, single NAT, route tables (outputs consumed by later modules)
     modules/data/         RDS Postgres + ElastiCache Redis + subnet groups + security groups
     modules/storage/      KMS CMK + S3 buckets (transcripts/audit/ml-models) + Secrets Manager containers
-    environments/dev/     dev stack: S3 backend + the network, data, and storage modules
+    modules/compute/      ECR repos + ECS cluster + IAM task/exec roles + CloudWatch logs + ECS app SG
+    environments/dev/     dev stack: S3 backend + the network, data, storage, and compute modules
 
 ## Database (TimescaleDB note)
 
@@ -40,7 +41,16 @@ At deploy time (AWS-2d), the app wires `TRANSCRIPT_S3_BUCKET` to the transcripts
 `secretsmanager:saalr/brokers/...`. The ECS task-role IAM grants for the buckets/secrets/key
 land with the roles in AWS-2d.
 
-## One-time bootstrap (creates remote state)
+## Compute foundation (AWS-2d-1)
+
+`modules/compute/` provides the shared compute substrate: an ECR repo per deployable image
+(`api`, the workers), an ECS Fargate cluster (Container Insights on), a CloudWatch log group,
+and two IAM roles — the **execution role** (ECR pull + log write + secret injection) and the
+**task role** (runtime `s3:*Object`/`ListBucket` on the AWS-2c buckets, `secretsmanager:GetSecretValue`
+on the secrets, `kms:Decrypt`/`GenerateDataKey` on the CMK). It also creates the **ECS app
+security group** (egress-all; ALB ingress is added in AWS-2d-2), and the data tier now accepts
+SG-to-SG ingress from it (`modules/data` `app_security_group_id`). Task definitions, services,
+the internal ALB, and EventBridge scheduled tasks land in AWS-2d-2/2d-3.
 
 Set a globally-unique bucket name first (e.g. append your account id), then:
 

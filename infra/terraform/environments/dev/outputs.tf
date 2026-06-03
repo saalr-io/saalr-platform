@@ -41,3 +41,15 @@ output "kms_key_arn" {
 output "secret_arns" {
   value = module.storage.secret_arns
 }
+
+output "ecr_repository_urls" {
+  value = module.compute.ecr_repository_urls
+}
+
+output "ecs_cluster_name" {
+  value = module.compute.cluster_name
+}
+
+output "task_role_arn" {
+  value = module.compute.task_role_arn
+}
