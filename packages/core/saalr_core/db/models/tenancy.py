@@ -16,6 +16,7 @@ class Tenant(Base):
     country_code: Mapped[str] = mapped_column(CHAR(2), nullable=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="active")
+    stripe_customer_id: Mapped[str | None] = mapped_column(Text)
 
 
 class User(Base):
