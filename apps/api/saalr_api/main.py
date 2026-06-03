@@ -19,6 +19,7 @@ from saalr_core.marketdata.massive import MassiveProvider
 from saalr_core.marketdata.rates import FredRateProvider
 
 from saalr_core.queue.backtest_queue import ensure_group
+from saalr_core.queue.research_queue import ensure_group as ensure_research_group
 from saalr_core.rag.chat import make_chat_provider
 from saalr_core.rag.embeddings import make_embedding_provider
 
@@ -61,6 +62,7 @@ def create_app() -> FastAPI:
         app.state.auth_provider = get_auth_provider(settings)
         app.state.redis = aioredis.from_url(settings.redis_url, decode_responses=True)
         await ensure_group(app.state.redis)
+        await ensure_research_group(app.state.redis)
         app.state.market_provider = MassiveProvider(settings.massive_api_key)
         app.state.rate_provider = FredRateProvider(
             settings.fred_api_key, settings.risk_free_rate_fallback

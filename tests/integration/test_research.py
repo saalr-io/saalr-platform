@@ -1,11 +1,16 @@
+import os
+from decimal import Decimal
+from uuid import UUID
+
 import httpx
+import redis.asyncio as aioredis
 from sqlalchemy import text
 
 from saalr_api.main import create_app
-from saalr_content.loader import load_catalog
-from saalr_core.rag.chat import StubChatProvider
-from saalr_core.rag.embeddings import HashEmbeddingProvider
-from saalr_core.rag.index import reindex_catalog
+from saalr_core.db.session import tenant_session
+from saalr_core.research import repo as rrepo
+
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
 
 def _client(app):
@@ -18,135 +23,148 @@ async def _tier(admin_engine, tenant_id, tier):
                            {"tier": tier, "t": tenant_id})
 
 
-async def _tid(c, h):
-    return (await c.get("/me", headers=h)).json()["tenant"]["id"]
+async def _me(c, h):
+    body = (await c.get("/me", headers=h)).json()
+    return UUID(body["tenant"]["id"]), UUID(body["user"]["id"])
 
 
-async def _seed_bars(admin_engine, symbol, n=40, base=50.0):
-    from datetime import datetime, timedelta, timezone
-    from decimal import Decimal
-    start = datetime(2025, 1, 1, tzinfo=timezone.utc)
-    async with admin_engine.begin() as conn:
-        await conn.execute(text("DELETE FROM bars WHERE symbol=:s"), {"s": symbol})
-        # news_sentiment is a shared (non-RLS) table the conftest does not truncate; clear any
-        # stale row for this symbol so "no sentiment seeded" scenarios start from a clean slate.
-        await conn.execute(text("DELETE FROM news_sentiment WHERE symbol=:s"), {"s": symbol})
-        for i in range(n):
-            ts = start + timedelta(days=i)
-            px = Decimal(str(round(base + (i % 5) * 0.3, 4)))  # mild variation
-            await conn.execute(
-                text("""INSERT INTO bars (ts, symbol, market, interval, open, high, low, close, volume)
-                        VALUES (:ts,:s,'US','1d',:c,:c,:c,:c,1000)"""),
-                {"ts": ts, "s": symbol, "c": px})
+async def _clean_stream():
+    r = aioredis.from_url(REDIS_URL, decode_responses=True)
+    await r.delete("saalr:research:jobs:v1")
+    await r.aclose()
 
 
-async def _build_index(app, provider):
-    async with app.state.sessionmaker() as s, s.begin():
-        await reindex_catalog(s, provider, load_catalog(), model=provider.model_name)
+async def _seed_succeeded(app, tid, uid, ticker="AAPL"):
+    async with tenant_session(app.state.sessionmaker, tid) as s:
+        nid = await rrepo.create_queued_run(s, tenant_id=tid, user_id=uid, ticker=ticker, market="US")
+        await rrepo.save_succeeded(s, nid, summary="cached note", signals={"spot": 1.0},
+                                   sources=[], model="stub-chat", prompt_tokens=1,
+                                   completion_tokens=1, cost_usd=Decimal("0"))
+    return nid
 
 
-async def test_run_produces_and_persists_note(app_sessionmaker, admin_engine):
-    await _seed_bars(admin_engine, "AAPL", n=40)
+async def _seed_runs(app, tid, uid, *, queued=0, failed=0):
+    async with tenant_session(app.state.sessionmaker, tid) as s:
+        for _ in range(queued):
+            await rrepo.create_queued_run(s, tenant_id=tid, user_id=uid, ticker="AAPL", market="US")
+        for _ in range(failed):
+            nid = await rrepo.create_queued_run(s, tenant_id=tid, user_id=uid, ticker="AAPL", market="US")
+            await rrepo.save_failed(s, nid, "RESEARCH_NO_PRICE_DATA")
+
+
+async def test_run_enqueues_202_and_poll_is_queued(app_sessionmaker, admin_engine):
+    await _clean_stream()
     app = create_app()
     async with app.router.lifespan_context(app):
-        app.state.chat_provider = StubChatProvider()
-        app.state.embedding_provider = HashEmbeddingProvider()
-        await _build_index(app, app.state.embedding_provider)
         async with _client(app) as c:
-            h = {"Authorization": "Bearer dev:res1@x.com"}
-            await _tier(admin_engine, await _tid(c, h), "premium")
+            h = {"Authorization": "Bearer dev:rar1@x.com"}
+            tid, _ = await _me(c, h)
+            await _tier(admin_engine, str(tid), "premium")
+            r = await c.post("/research/run", json={"ticker": "AAPL"}, headers=h)
+            assert r.status_code == 202, r.text
+            body = r.json()
+            assert body["status"] == "queued"
+            assert body["poll_url"] == f"/research/notes/{body['note_id']}"
+            poll = await c.get(body["poll_url"], headers=h)
+            assert poll.status_code == 200 and poll.json()["status"] == "queued"
+
+
+async def test_cached_succeeded_note_returns_200(app_sessionmaker, admin_engine):
+    await _clean_stream()
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:rar2@x.com"}
+            tid, uid = await _me(c, h)
+            await _tier(admin_engine, str(tid), "premium")
+            nid = await _seed_succeeded(app, tid, uid)
             r = await c.post("/research/run", json={"ticker": "AAPL"}, headers=h)
             assert r.status_code == 200, r.text
             body = r.json()
-            assert body["summary"] and body["model"] == "stub-chat" and body["cached"] is False
-            assert body["signals"]["spot"] is not None
-            assert isinstance(body["usage"]["prompt_tokens"], int)
-            assert isinstance(body["cost_usd"], str)
-            nid = body["note_id"]
-            lst = (await c.get("/research/notes", headers=h)).json()["notes"]
-            assert any(n["note_id"] == nid for n in lst)
-            one = (await c.get(f"/research/notes/{nid}", headers=h)).json()
-            assert one["summary"] and "signals" in one and "sources" in one
+            assert body["cached"] is True and body["note_id"] == str(nid)
+            assert body["status"] == "succeeded"
 
 
-async def test_six_hour_cache_and_refresh(app_sessionmaker, admin_engine):
-    await _seed_bars(admin_engine, "AAPL", n=40)
+async def test_in_flight_dedup_returns_same_note(app_sessionmaker, admin_engine):
+    await _clean_stream()
     app = create_app()
     async with app.router.lifespan_context(app):
-        app.state.chat_provider = StubChatProvider()
-        app.state.embedding_provider = HashEmbeddingProvider()
         async with _client(app) as c:
-            h = {"Authorization": "Bearer dev:res2@x.com"}
-            await _tier(admin_engine, await _tid(c, h), "premium")
-            first = (await c.post("/research/run", json={"ticker": "AAPL"}, headers=h)).json()
-            second = (await c.post("/research/run", json={"ticker": "AAPL"}, headers=h)).json()
-            assert second["cached"] is True and second["note_id"] == first["note_id"]
-            fresh = (await c.post("/research/run", json={"ticker": "AAPL", "refresh": True}, headers=h)).json()
-            assert fresh["cached"] is False and fresh["note_id"] != first["note_id"]
+            h = {"Authorization": "Bearer dev:rar3@x.com"}
+            tid, _ = await _me(c, h)
+            await _tier(admin_engine, str(tid), "premium")
+            a = await c.post("/research/run", json={"ticker": "AAPL"}, headers=h)
+            b = await c.post("/research/run", json={"ticker": "AAPL"}, headers=h)
+            assert a.status_code == 202 and b.status_code == 202
+            assert a.json()["note_id"] == b.json()["note_id"]
+
+
+async def test_rate_limit_429_after_ten_runs(app_sessionmaker, admin_engine):
+    await _clean_stream()
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:rar4@x.com"}
+            tid, uid = await _me(c, h)
+            await _tier(admin_engine, str(tid), "premium")
+            await _seed_runs(app, tid, uid, queued=10)
+            r = await c.post("/research/run", json={"ticker": "TSLA", "refresh": True}, headers=h)
+            assert r.status_code == 429
+            assert r.json()["detail"]["error"]["code"] == "RATE_LIMIT_RESEARCH_DAILY_EXCEEDED"
+
+
+async def test_failed_runs_do_not_count_toward_limit(app_sessionmaker, admin_engine):
+    await _clean_stream()
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:rar5@x.com"}
+            tid, uid = await _me(c, h)
+            await _tier(admin_engine, str(tid), "premium")
+            await _seed_runs(app, tid, uid, queued=5, failed=20)  # only 5 count
+            r = await c.post("/research/run", json={"ticker": "TSLA", "refresh": True}, headers=h)
+            assert r.status_code == 202, r.text
 
 
 async def test_gating_pro_and_free_402(app_sessionmaker, admin_engine):
-    await _seed_bars(admin_engine, "AAPL", n=40)
+    await _clean_stream()
     app = create_app()
     async with app.router.lifespan_context(app):
-        app.state.chat_provider = StubChatProvider()
         async with _client(app) as c:
-            hp = {"Authorization": "Bearer dev:res3@x.com"}
-            await _tier(admin_engine, await _tid(c, hp), "pro")
+            hp = {"Authorization": "Bearer dev:rar6@x.com"}
+            tid, _ = await _me(c, hp)
+            await _tier(admin_engine, str(tid), "pro")
             rp = await c.post("/research/run", json={"ticker": "AAPL"}, headers=hp)
             assert rp.status_code == 402
             assert rp.json()["detail"]["error"]["code"] == "ENTITLEMENT_RESEARCH_AGENT_REQUIRES_PREMIUM"
-            hf = {"Authorization": "Bearer dev:res4@x.com"}  # free (default)
-            rf = await c.post("/research/run", json={"ticker": "AAPL"}, headers=hf)
-            assert rf.status_code == 402
+            hf = {"Authorization": "Bearer dev:rar7@x.com"}  # free default
+            assert (await c.post("/research/run", json={"ticker": "AAPL"}, headers=hf)).status_code == 402
 
 
-async def test_no_bars_404(app_sessionmaker, admin_engine):
+async def test_validation_400(app_sessionmaker, admin_engine):
+    await _clean_stream()
     app = create_app()
     async with app.router.lifespan_context(app):
-        app.state.chat_provider = StubChatProvider()
         async with _client(app) as c:
-            h = {"Authorization": "Bearer dev:res5@x.com"}
-            await _tier(admin_engine, await _tid(c, h), "premium")
-            r = await c.post("/research/run", json={"ticker": "ZZZZ"}, headers=h)
-            assert r.status_code == 404 and r.json()["detail"]["error"]["code"] == "RESOURCE_NOT_FOUND"
+            h = {"Authorization": "Bearer dev:rar8@x.com"}
+            tid, _ = await _me(c, h)
+            await _tier(admin_engine, str(tid), "premium")
+            assert (await c.post("/research/run", json={"ticker": "12 3"}, headers=h)).status_code == 400
+            assert (await c.post("/research/run", json={"ticker": "AAPL", "market": "IN"},
+                                 headers=h)).status_code == 400
 
 
-async def test_no_chat_provider_503(app_sessionmaker, admin_engine):
-    await _seed_bars(admin_engine, "AAPL", n=40)
+async def test_rls_isolation_poll_and_list(app_sessionmaker, admin_engine):
+    await _clean_stream()
     app = create_app()
     async with app.router.lifespan_context(app):
-        app.state.chat_provider = None
         async with _client(app) as c:
-            h = {"Authorization": "Bearer dev:res6@x.com"}
-            await _tier(admin_engine, await _tid(c, h), "premium")
-            r = await c.post("/research/run", json={"ticker": "AAPL"}, headers=h)
-            assert r.status_code == 503 and r.json()["detail"]["error"]["code"] == "FEATURE_UNAVAILABLE"
-
-
-async def test_graceful_signals_without_garch_or_sentiment(app_sessionmaker, admin_engine):
-    await _seed_bars(admin_engine, "AAPL", n=40)  # < 250 -> GARCH skipped; no sentiment row seeded
-    app = create_app()
-    async with app.router.lifespan_context(app):
-        app.state.chat_provider = StubChatProvider()
-        app.state.embedding_provider = HashEmbeddingProvider()
-        async with _client(app) as c:
-            h = {"Authorization": "Bearer dev:res7@x.com"}
-            await _tier(admin_engine, await _tid(c, h), "premium")
-            body = (await c.post("/research/run", json={"ticker": "AAPL"}, headers=h)).json()
-            assert body["signals"]["vol_forecast"] is None
-            assert body["signals"]["sentiment"] is None
-
-
-async def test_rls_isolation(app_sessionmaker, admin_engine):
-    await _seed_bars(admin_engine, "AAPL", n=40)
-    app = create_app()
-    async with app.router.lifespan_context(app):
-        app.state.chat_provider = StubChatProvider()
-        async with _client(app) as c:
-            ha = {"Authorization": "Bearer dev:res-a@x.com"}
-            await _tier(admin_engine, await _tid(c, ha), "premium")
-            await c.post("/research/run", json={"ticker": "AAPL"}, headers=ha)
-            hb = {"Authorization": "Bearer dev:res-b@x.com"}
-            await _tier(admin_engine, await _tid(c, hb), "premium")
+            ha = {"Authorization": "Bearer dev:rar-a@x.com"}
+            tida, _ = await _me(c, ha)
+            await _tier(admin_engine, str(tida), "premium")
+            nid = (await c.post("/research/run", json={"ticker": "AAPL"}, headers=ha)).json()["note_id"]
+            hb = {"Authorization": "Bearer dev:rar-b@x.com"}
+            tidb, _ = await _me(c, hb)
+            await _tier(admin_engine, str(tidb), "premium")
+            assert (await c.get(f"/research/notes/{nid}", headers=hb)).status_code == 404
             assert (await c.get("/research/notes", headers=hb)).json()["notes"] == []

@@ -4,7 +4,7 @@ import base64
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import Principal
@@ -14,15 +14,22 @@ from .schemas import RunRequest
 
 router = APIRouter(prefix="/research", tags=["research"])
 
+_ERROR_MESSAGES = {
+    "RESEARCH_NO_PRICE_DATA": "no price data for ticker",
+    "RESEARCH_LLM_UNAVAILABLE": "the research assistant is temporarily unavailable",
+    "RESEARCH_GENERATION_FAILED": "research generation failed",
+}
+
 
 def _note_row(note) -> dict:
     return {"note_id": str(note.note_id), "ticker": note.ticker, "market": note.market,
-            "model": note.model, "cost_usd": str(note.cost_usd),
+            "model": note.model,
+            "cost_usd": str(note.cost_usd) if note.cost_usd is not None else None,
             "created_at": note.created_at.isoformat()}
 
 
 @router.post("/run")
-async def run(body: RunRequest, request: Request,
+async def run(body: RunRequest, request: Request, response: Response,
               ctx: tuple[AsyncSession, Principal] = Depends(require_research_agent)) -> dict:
     session, principal = ctx
     ticker = body.ticker.strip().upper()
@@ -32,8 +39,11 @@ async def run(body: RunRequest, request: Request,
     if body.market not in ("US",):
         raise HTTPException(400, {"error": {"code": "VALIDATION_INVALID_PARAMETER",
                                             "message": "unsupported market"}})
-    return await service.run_research(session, principal, request.app.state, ticker, body.market,
-                                      body.refresh)
+    result = await service.run_research(
+        session, principal, request.app.state.redis, request.app.state.sessionmaker,
+        ticker, body.market, body.refresh)
+    response.status_code = result["http_status"]
+    return result["body"]
 
 
 @router.get("/notes")
@@ -48,7 +58,7 @@ async def list_notes(limit: int = Query(20, ge=1, le=100), cursor: str | None = 
         except (ValueError, UnicodeDecodeError) as exc:
             raise HTTPException(400, {"error": {"code": "VALIDATION_INVALID_PARAMETER",
                                                 "message": "bad cursor"}}) from exc
-    rows = await repo.list_notes(session, limit, decoded)
+    rows = await repo.list_succeeded_notes(session, limit, decoded)
     nxt = None
     if len(rows) == limit:
         last = rows[-1]
@@ -63,6 +73,13 @@ async def get_one(note_id: UUID,
     note = await repo.get_note(session, note_id)
     if note is None:
         raise HTTPException(404, {"error": {"code": "RESOURCE_NOT_FOUND", "message": "note not found"}})
-    return {**_note_row(note), "summary": note.summary, "signals": note.signals_json,
-            "sources": note.sources_json,
-            "usage": {"prompt_tokens": note.prompt_tokens, "completion_tokens": note.completion_tokens}}
+    if note.status in ("queued", "running"):
+        return {"note_id": str(note.note_id), "status": note.status}
+    if note.status == "failed":
+        code = note.error_message or "RESEARCH_GENERATION_FAILED"
+        return {"note_id": str(note.note_id), "status": "failed",
+                "error": {"code": code, "message": _ERROR_MESSAGES.get(code, "research generation failed")}}
+    return {**_note_row(note), "status": "succeeded", "summary": note.summary,
+            "signals": note.signals_json, "sources": note.sources_json,
+            "usage": {"prompt_tokens": note.prompt_tokens,
+                      "completion_tokens": note.completion_tokens}}
