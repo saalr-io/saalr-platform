@@ -94,3 +94,68 @@ module "api_service" {
     DB_PASSWORD       = "${module.data.db_master_user_secret_arn}:password::"
   }
 }
+
+module "workers" {
+  source                = "../../modules/workers"
+  name_prefix           = "saalr-dev"
+  private_subnet_ids    = module.network.private_subnet_ids
+  app_security_group_id = module.compute.app_security_group_id
+  cluster_arn           = module.compute.cluster_arn
+  execution_role_arn    = module.compute.task_execution_role_arn
+  execution_role_name   = module.compute.task_execution_role_name
+  task_role_arn         = module.compute.task_role_arn
+  db_secret_arn         = module.data.db_master_user_secret_arn
+  log_group_name        = module.compute.log_group_name
+  aws_region            = var.region
+
+  environment = {
+    AWS_REGION           = var.region
+    REDIS_URL            = "redis://${module.data.redis_endpoint}:6379/0"
+    TRANSCRIPT_S3_BUCKET = module.storage.transcripts_bucket
+    DB_HOST              = module.data.db_endpoint
+    DB_PORT              = tostring(module.data.db_port)
+    DB_NAME              = module.data.db_name
+    DB_USER              = "saalr_admin"
+  }
+
+  secrets = {
+    OPENAI_API_KEY    = module.storage.secret_arns["saalr/app/openai"]
+    ANTHROPIC_API_KEY = module.storage.secret_arns["saalr/app/anthropic"]
+    MASSIVE_API_KEY   = module.storage.secret_arns["saalr/app/massive"]
+    FRED_API_KEY      = module.storage.secret_arns["saalr/app/fred"]
+    DB_PASSWORD       = "${module.data.db_master_user_secret_arn}:password::"
+  }
+
+  # Scheduled (EventBridge -> ecs RunTask): ingest daily, oms-reconcile 5-min, sentiment daily.
+  scheduled_workers = {
+    "ingest-worker" = {
+      image               = "${module.compute.ecr_repository_urls["ingest-worker"]}:latest"
+      command             = ["run"]
+      schedule_expression = "cron(30 21 * * ? *)"
+    }
+    "oms-reconcile" = {
+      image               = "${module.compute.ecr_repository_urls["oms-worker"]}:latest"
+      command             = ["reconcile", "--once"]
+      schedule_expression = "rate(5 minutes)"
+    }
+    "sentiment" = {
+      image               = "${module.compute.ecr_repository_urls["ml-worker"]}:latest"
+      command             = ["sentiment"]
+      schedule_expression = "cron(0 22 * * ? *)"
+    }
+  }
+
+  # Long-running queue consumers (Fargate services, no ALB).
+  service_workers = {
+    "backtest-worker" = {
+      image         = "${module.compute.ecr_repository_urls["backtest-worker"]}:latest"
+      command       = ["consume"]
+      desired_count = 1
+    }
+    "research-agent" = {
+      image         = "${module.compute.ecr_repository_urls["research-agent"]}:latest"
+      command       = ["consume"]
+      desired_count = 1
+    }
+  }
+}

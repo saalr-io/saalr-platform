@@ -10,7 +10,8 @@ AWS single-cloud (ADR-008), region `us-east-1`. Terraform `>= 1.6`, AWS provider
     modules/storage/      KMS CMK + S3 buckets (transcripts/audit/ml-models) + Secrets Manager containers
     modules/compute/      ECR repos + ECS cluster + IAM task/exec roles + CloudWatch logs + ECS app SG
     modules/api_service/  internet-facing ALB + target group + listener + API ECS task def + Fargate service
-    environments/dev/     dev stack: S3 backend + the network, data, storage, compute, and api_service modules
+    modules/workers/      worker task defs + EventBridge scheduled tasks + long-running consumer services
+    environments/dev/     dev stack: S3 backend + the network/data/storage/compute/api_service/workers modules
 
 ## Database (TimescaleDB note)
 
@@ -68,6 +69,20 @@ from the RDS-managed secret's `password` JSON key) are passed by the dev env. No
 the password as a Secrets-Manager JSON blob that can't be interpolated into a single env, so the
 app builds `APP_DATABASE_URL` from `DB_HOST/PORT/USER/NAME/PASSWORD` at startup — a small
 app-config follow-up before the first real deploy.
+
+## Workers (AWS-2d-3)
+
+`modules/workers/` provisions the background workers on Fargate, in two shapes:
+- **Scheduled** (EventBridge `cron`/`rate` → `ecs:RunTask` via an invoke role): `ingest-worker`
+  (daily 21:30 UTC), `oms-reconcile` (every 5 min), `sentiment` (daily 22:00 UTC).
+- **Long-running consumers** (Fargate services, no ALB): `backtest-worker`, `research-agent`
+  (Redis-queue consumers, `desired_count = 1`).
+
+All share the API's env/secrets contract (DB/Redis/S3/LLM/market) and run in private subnets
+under the app SG + compute task/execution roles. `cpu`/`memory` are shared defaults
+(`512`/`1024`) — per-worker sizing (e.g. more memory for the torch-based `ml-worker`) is a later
+refinement. The EventBridge invoke role is scoped to `ecs:RunTask` on the scheduled task defs +
+`iam:PassRole` on the two ECS roles.
 
 Set a globally-unique bucket name first (e.g. append your account id), then:
 
