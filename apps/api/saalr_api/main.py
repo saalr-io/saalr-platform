@@ -20,6 +20,7 @@ from saalr_core.marketdata.rates import FredRateProvider
 
 from saalr_core.queue.backtest_queue import ensure_group
 from saalr_core.queue.research_queue import ensure_group as ensure_research_group
+from saalr_core.llm.cost import monthly_cap
 from saalr_core.rag.chat import make_chat_provider
 from saalr_core.rag.embeddings import make_embedding_provider
 
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
         app.state.catalog = load_catalog()
         app.state.embedding_provider = make_embedding_provider(settings)
         app.state.chat_provider = make_chat_provider(settings)
+        app.state.llm_budget_cap = monthly_cap(settings)
         yield
         await app.state.redis.aclose()
         await engine.dispose()

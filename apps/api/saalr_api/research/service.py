@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
 from fastapi import HTTPException
 
 from saalr_core.db.session import tenant_session
+from saalr_core.llm import repo as llm_repo
+from saalr_core.llm.cost import budget_exceeded, month_start
 from saalr_core.queue.research_queue import enqueue
 
 from . import repo
@@ -34,8 +37,8 @@ def _utc_midnight() -> datetime:
     return datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-async def run_research(session, principal, redis, sessionmaker, ticker: str, market: str,
-                       refresh: bool) -> dict:
+async def run_research(session, principal, redis, sessionmaker, cap: Decimal, ticker: str,
+                       market: str, refresh: bool) -> dict:
     """Enqueue (or short-circuit) a research run. Returns {http_status, body}."""
     if not refresh:
         cached = await repo.recent_succeeded_note(
@@ -50,6 +53,12 @@ async def run_research(session, principal, redis, sessionmaker, ticker: str, mar
     if await repo.count_runs_today(session, principal.tenant_id, _utc_midnight()) >= _DAILY_LIMIT:
         raise HTTPException(429, {"error": {"code": "RATE_LIMIT_RESEARCH_DAILY_EXCEEDED",
                                             "message": f"daily research limit of {_DAILY_LIMIT} reached"}})
+
+    spent = await llm_repo.month_to_date_cost(
+        session, principal.tenant_id, month_start(datetime.now(timezone.utc)))
+    if budget_exceeded(spent, cap):
+        raise HTTPException(402, {"error": {"code": "RESEARCH_BUDGET_EXCEEDED",
+                                            "message": "monthly research budget reached"}})
 
     # Create the row in its OWN committed transaction BEFORE enqueuing, so the worker
     # cannot read a row that does not yet exist (get_principal's session commits only

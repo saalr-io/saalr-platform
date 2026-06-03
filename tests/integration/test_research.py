@@ -8,6 +8,7 @@ from sqlalchemy import text
 
 from saalr_api.main import create_app
 from saalr_core.db.session import tenant_session
+from saalr_core.llm import repo as llm_repo
 from saalr_core.research import repo as rrepo
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
@@ -168,3 +169,20 @@ async def test_rls_isolation_poll_and_list(app_sessionmaker, admin_engine):
             await _tier(admin_engine, str(tidb), "premium")
             assert (await c.get(f"/research/notes/{nid}", headers=hb)).status_code == 404
             assert (await c.get("/research/notes", headers=hb)).json()["notes"] == []
+
+
+async def test_budget_pre_check_402(app_sessionmaker, admin_engine):
+    await _clean_stream()
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:rar-budget@x.com"}
+            tid, uid = await _me(c, h)
+            await _tier(admin_engine, str(tid), "premium")
+            async with tenant_session(app.state.sessionmaker, tid) as s:
+                await llm_repo.record_usage(s, tenant_id=tid, user_id=uid, provider="openai",
+                                            model="gpt-4o-mini", prompt_tokens=1, completion_tokens=1,
+                                            cost_usd=Decimal("11"), purpose="research_note")
+            r = await c.post("/research/run", json={"ticker": "AAPL"}, headers=h)
+            assert r.status_code == 402
+            assert r.json()["detail"]["error"]["code"] == "RESEARCH_BUDGET_EXCEEDED"

@@ -18,6 +18,7 @@ _ERROR_MESSAGES = {
     "RESEARCH_NO_PRICE_DATA": "no price data for ticker",
     "RESEARCH_LLM_UNAVAILABLE": "the research assistant is temporarily unavailable",
     "RESEARCH_GENERATION_FAILED": "research generation failed",
+    "RESEARCH_BUDGET_EXCEEDED": "monthly research budget reached",
 }
 
 
@@ -41,7 +42,7 @@ async def run(body: RunRequest, request: Request, response: Response,
                                             "message": "unsupported market"}})
     result = await service.run_research(
         session, principal, request.app.state.redis, request.app.state.sessionmaker,
-        ticker, body.market, body.refresh)
+        request.app.state.llm_budget_cap, ticker, body.market, body.refresh)
     response.status_code = result["http_status"]
     return result["body"]
 
