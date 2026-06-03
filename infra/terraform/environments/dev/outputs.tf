@@ -25,3 +25,19 @@ output "db_master_user_secret_arn" {
 output "redis_endpoint" {
   value = module.data.redis_endpoint
 }
+
+output "transcripts_bucket" {
+  value = module.storage.transcripts_bucket
+}
+
+output "audit_bucket" {
+  value = module.storage.audit_bucket
+}
+
+output "kms_key_arn" {
+  value = module.storage.kms_key_arn
+}
+
+output "secret_arns" {
+  value = module.storage.secret_arns
+}

@@ -36,3 +36,9 @@ module "data" {
   vpc_cidr           = module.network.vpc_cidr
   private_subnet_ids = module.network.private_subnet_ids
 }
+
+module "storage" {
+  source        = "../../modules/storage"
+  name_prefix   = "saalr-dev"
+  bucket_prefix = "saalr-dev" # globally-unique — set a unique suffix before apply
+}
