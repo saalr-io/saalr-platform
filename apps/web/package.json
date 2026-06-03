@@ -3,11 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "gen:academy": "tsx scripts/gen-academy.ts",
+    "predev": "tsx scripts/gen-academy.ts",
     "dev": "vite",
+    "prebuild": "tsx scripts/gen-academy.ts",
     "build": "tsc --noEmit && vite build && tsx scripts/gen-seo.ts",
     "preview": "vite preview",
+    "pretest": "tsx scripts/gen-academy.ts",
     "test": "vitest",
+    "pretest:run": "tsx scripts/gen-academy.ts",
     "test:run": "vitest run",
+    "pretypecheck": "tsx scripts/gen-academy.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write src"

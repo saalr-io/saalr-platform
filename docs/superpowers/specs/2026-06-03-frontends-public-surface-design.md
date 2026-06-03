@@ -42,9 +42,20 @@ market-data/OMS clients and are a separate analytics-frontend band.
    `ask` Pro-gated. Consumes `/content/*`.
 3. **FE-3 — In-app Research Agent** (`/app/research`, Premium): ticker → run → poll → render note
    (summary + signal cards + sources) → transcript. Consumes `/research/*`. 402 → upgrade nudge.
-4. **FE-4 — Public OptionsAcademy SSG** (GEO extension): prerender free modules as crawlable
-   `/learn/...` (or `/academy/...`) pages with TechArticle/FAQ JSON-LD; register in sitemap + llms.txt.
-   Build-time markdown read. Band tail — may split to a follow-up if the run runs long.
+4. **FE-4 — Public OptionsAcademy SSG** (GEO extension). **Decisions (2026-06-03):**
+   - **Routes** `/academy` (index) + `/academy/<slug>` (one per FREE module), parallel to `/learn`.
+   - **Pro-leak avoidance:** only FREE module bodies are published. Pro modules appear on the index as
+     locked teasers (title + summary + "Pro" badge → `/app/education`) — NO body, NO page. A build-time
+     generator `scripts/gen-academy.ts` reads `packages/content/saalr_content/modules/*.md`, parses
+     frontmatter via a pure testable `parseModule`, and writes `src/academy/modules.generated.ts` with
+     `body: null` for non-free modules, so Pro lesson text never enters the bundle or prerendered HTML.
+     The generated file is gitignored (new `apps/web/.gitignore`) and produced by npm pre-hooks
+     (`pretypecheck`/`pretest`/`pretest:run`/`predev`/`prebuild` → `tsx scripts/gen-academy.ts`).
+   - Pages reuse the FE-2 `Markdown` renderer for bodies and emit `TechArticle` + `BreadcrumbList`
+     JSON-LD (no FAQ — modules have none). `scripts/gen-seo.ts` also lists `/academy` + free
+     `/academy/<slug>` in `sitemap.xml` + `llms.txt`. Robots already `Allow: /`.
+   - **Leak guard test:** the build smoke greps `dist/` to assert a Pro-only phrase is ABSENT and no
+     `dist/client/academy/iron-condor-construction/` page exists.
 
 ## Cross-cutting decisions (autonomous defaults)
 

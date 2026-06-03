@@ -66,3 +66,15 @@ export function websiteJsonLd(site: string): Record<string, unknown> {
     url: site,
   }
 }
+
+export function lessonJsonLd(title: string, summary: string, url: string): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    headline: title,
+    description: summary,
+    url,
+    articleSection: 'OptionsAcademy',
+    about: title,
+  }
+}
