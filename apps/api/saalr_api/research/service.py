@@ -54,6 +54,9 @@ async def run_research(session, principal, redis, sessionmaker, cap: Decimal, ti
         raise HTTPException(429, {"error": {"code": "RATE_LIMIT_RESEARCH_DAILY_EXCEEDED",
                                             "message": f"daily research limit of {_DAILY_LIMIT} reached"}})
 
+    # Soft cap: this read-then-act check is not transactional, so concurrent runs can
+    # collectively overshoot by ~one run's cost. Negligible at a $10 cap with the
+    # 10/day limit; a hard race-free cap is deferred (per-tenant budgets, RA-3+).
     spent = await llm_repo.month_to_date_cost(
         session, principal.tenant_id, month_start(datetime.now(timezone.utc)))
     if budget_exceeded(spent, cap):
