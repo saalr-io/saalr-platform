@@ -63,3 +63,22 @@ or over the cap, the run is rejected — fail-fast `402 RESEARCH_BUDGET_EXCEEDED
 at the API, and authoritatively in the worker (phase-1 check →
 `RESEARCH_BUDGET_EXCEEDED`). The cap is uniform across tenants for now
 (per-tenant overrides + operator alerts deferred).
+
+## Multi-agent graph (RA-3b)
+
+Each research run executes a hand-rolled 6-role graph (sequential): the analysts
+**Fundamentals → Sentiment → Technical → Risk**, then the **Trader** (thesis),
+then the **Portfolio Manager** (synthesis). The PM's markdown becomes the note's
+`summary`; the analyst/trader memos are transient (transcript persistence is
+RA-3c). Fundamentals has no financials wired into the platform, so its prompt
+explicitly states the gap and forbids inventing figures.
+
+Every run makes **6 metered gateway calls** — one `llm_usage` row each, with
+`purpose="research_agent:<role>"`, all linked to the run's `note_id`. The note's
+`prompt_tokens`/`completion_tokens`/`cost_usd` are the sums across the six calls;
+`model` is the PM call's model.
+
+The budget is checked **before every call** (not just at run start), so a run can
+fail `RESEARCH_BUDGET_EXCEEDED` partway through with the already-completed calls'
+cost recorded. (At-least-once redelivery of a crashed run re-runs the graph and
+may double-count `llm_usage` rows — an accepted over-count, dedup deferred.)
