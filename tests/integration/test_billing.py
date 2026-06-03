@@ -5,6 +5,7 @@ import httpx  # noqa: F401
 from sqlalchemy import text
 
 from saalr_api.billing import repo
+from saalr_api.billing.provider import StubProvider, make_payment_provider
 from saalr_api.billing.reducer import SubscriptionState
 from saalr_core.db.session import tenant_session
 
@@ -62,3 +63,26 @@ async def test_record_billing_event_is_idempotent(admin_engine, app_sessionmaker
     async with tenant_session(app_sessionmaker, tenant_id) as s:
         second = await repo.record_billing_event(s, tenant_id, event)
     assert first is True and second is False
+
+
+async def test_stub_provider_checkout_includes_metadata_and_trial():
+    p = StubProvider()
+    url = await p.create_checkout_session(customer_id="cus_1", price_id="price_pro",
+                                          tenant_id="t1", trial_days=14,
+                                          success_url="s", cancel_url="c")
+    assert url.startswith("https://stub.stripe/checkout/")
+    assert p.last_checkout["metadata"]["tenant_id"] == "t1"
+    assert p.last_checkout["trial_days"] == 14
+
+
+def test_stub_verify_webhook_roundtrips_signed_payload():
+    p = StubProvider()
+    payload, sig = p.sign({"id": "evt_1", "type": "invoice.paid"})
+    event = p.verify_webhook(payload=payload, sig_header=sig)
+    assert event["id"] == "evt_1"
+
+
+def test_make_payment_provider_none_without_key():
+    class S:  # minimal settings stand-in
+        stripe_secret_key = None
+    assert make_payment_provider(S()) is None
