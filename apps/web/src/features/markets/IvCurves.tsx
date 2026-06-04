@@ -10,6 +10,7 @@ function scaler(min: number, max: number, lo: number, hi: number) {
 }
 
 function atmIv(e: IvExpiry, spot: number): number {
+  if (e.strikes.length === 0) return 0 // defensive: a malformed provider expiry can't sink the tab
   const s = e.strikes.reduce((best, x) =>
     Math.abs(x.strike - spot) < Math.abs(best.strike - spot) ? x : best, e.strikes[0])
   return ((s.calls.iv + s.puts.iv) / 2) * 100
@@ -21,6 +22,13 @@ function pointsAttr(pts: { x: number; y: number }[]): string {
 
 export function IvCurves({ surface, expiry }: { surface: IvSurface; expiry: string }) {
   const e = surface.expiries.find((x) => x.expiry === expiry) ?? surface.expiries[0]
+  if (!e || e.strikes.length === 0) {
+    return (
+      <p className="py-8 text-center text-sm text-txtFaint" data-testid="iv-empty">
+        No surface data for this ticker.
+      </p>
+    )
+  }
 
   const strikes = e ? e.strikes.map((s) => s.strike) : []
   const ivs = e ? e.strikes.flatMap((s) => [s.calls.iv * 100, s.puts.iv * 100]) : []
@@ -29,7 +37,9 @@ export function IvCurves({ surface, expiry }: { surface: IvSurface; expiry: stri
   const callPts = e ? e.strikes.map((s) => ({ x: sx(s.strike), y: sy(s.calls.iv * 100) })) : []
   const putPts = e ? e.strikes.map((s) => ({ x: sx(s.strike), y: sy(s.puts.iv * 100) })) : []
 
-  const term = surface.expiries.map((x, i) => ({ i, iv: atmIv(x, surface.spot), expiry: x.expiry }))
+  const term = surface.expiries
+    .filter((x) => x.strikes.length > 0)
+    .map((x, i) => ({ i, iv: atmIv(x, surface.spot), expiry: x.expiry }))
   const tx = scaler(0, Math.max(1, term.length - 1), PAD, W - PAD)
   const tIvs = term.map((t) => t.iv)
   const ty = scaler(Math.min(...tIvs), Math.max(...tIvs), H - PAD, PAD)

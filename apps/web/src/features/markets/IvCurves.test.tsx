@@ -26,4 +26,10 @@ describe('IvCurves', () => {
     expect(screen.getByTestId('iv-smile-calls').getAttribute('points')!.trim().split(' ').length).toBe(3)
     expect(screen.getByTestId('iv-term-line').getAttribute('points')!.trim().split(' ').length).toBe(2)
   })
+
+  it('shows an empty state (no crash) for a surface with no expiries', () => {
+    render(<IvCurves surface={{ ...SURFACE, expiries: [] }} expiry="" />)
+    expect(screen.getByTestId('iv-empty')).toBeInTheDocument()
+    expect(screen.queryByTestId('iv-smile')).toBeNull()
+  })
 })
