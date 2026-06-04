@@ -60,15 +60,17 @@ nudge to `/app/billing?plan=pro`.
   `enabled: !!ticker && !!expiry`). `retry: false`.
 - **`src/features/markets/ChainTable.tsx`** — props `{ contracts: Contract[], spot: number }`. Pivot
   the contracts by `strike`: each row = a strike with its CALL on the left and PUT on the right.
-  Call columns: `delta, iv, bid, ask, last, vol, OI`; center `strike`; put columns mirrored
-  (`OI, vol, last, ask, bid, iv, delta`). The strike nearest `spot` (ATM) is highlighted (accent
-  row). IV/Greeks formatted (iv as %, prices `.tnum`). Monospace, dense, terminal styling.
+  Call columns (full Greeks): `delta, gamma, theta, vega, rho, iv, bid, ask, last, vol, OI`; center
+  `strike`; put columns mirrored (`OI, vol, last, ask, bid, iv, rho, vega, theta, gamma, delta`).
+  The strike nearest `spot` (ATM) is highlighted (accent row). IV formatted as %, Greeks to ~2–3 dp,
+  prices `.tnum`. Monospace, dense, **horizontally scrollable** (`overflow-x-auto`) terminal table —
+  the full-Greeks chain is wide by design.
 - **`src/features/markets/IvCurves.tsx`** — props `{ surface: IvSurface, expiry: string }`. Two
   custom SVG charts (a small local `scale` helper or inline min/max mapping; no chart lib):
   - **Smile** — for `expiry`, plot IV (y) vs strike (x); two series (calls, puts) or a blended mid;
     mark the ATM strike. Use `calls[i].iv` / `puts[i].iv` × 100 for %.
-  - **Term structure** — ATM IV (the strike nearest `spot`, calls) per expiry, x = expiry index/date,
-    y = ATM IV %. A single line across expiries.
+  - **Term structure** — ATM IV per expiry as the **average of the call and put IV at the ATM strike**
+    (the strike nearest `spot`); x = expiry index/date, y = ATM IV %. A single line across expiries.
   - Hover/labels optional; axis ticks minimal (min/max IV, strike range). SSR-irrelevant (client-only).
 - **`src/features/markets/MarketsGate.tsx`** — the `vol_surface` upgrade panel (mirrors research
   `PremiumGate`): "Live chains & the IV surface are a Pro feature" + a `<Link to="/billing?plan=pro">
