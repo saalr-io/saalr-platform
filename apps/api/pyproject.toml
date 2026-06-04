@@ -6,6 +6,7 @@ dependencies = [
   "saalr-core",
   "saalr-ml",
   "saalr-content",
+  "saalr-brokers",
   "fastapi>=0.110",
   "uvicorn[standard]>=0.29",
   "pyjwt[crypto]>=2.9",
@@ -26,3 +27,4 @@ packages = ["saalr_api"]
 saalr-core = { workspace = true }
 saalr-ml = { workspace = true }
 saalr-content = { workspace = true }
+saalr-brokers = { workspace = true }
