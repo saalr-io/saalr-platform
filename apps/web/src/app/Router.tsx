@@ -8,6 +8,9 @@ import { Education } from '../pages/Education'
 import { Research } from '../pages/Research'
 import { Login } from '../pages/Login'
 import { VerifyMagicLink } from '../pages/VerifyMagicLink'
+import { Billing } from '../pages/Billing'
+import { BillingSuccess } from '../pages/BillingSuccess'
+import { BillingCancel } from '../pages/BillingCancel'
 
 /**
  * The authenticated SPA route table. Mounted under a <BrowserRouter basename="/app">
@@ -31,6 +34,9 @@ export function AppRoutes() {
         <Route path="models" element={<PlaceholderPage title="Models" />} />
         <Route path="research" element={<Research />} />
         <Route path="education" element={<Education />} />
+        <Route path="billing" element={<Billing />} />
+        <Route path="billing/success" element={<BillingSuccess />} />
+        <Route path="billing/cancel" element={<BillingCancel />} />
         <Route path="portfolio" element={<PlaceholderPage title="Portfolio" />} />
         <Route path="system" element={<SystemStatus />} />
         <Route path="*" element={<Navigate to="/" replace />} />

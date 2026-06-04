@@ -1,6 +1,8 @@
 // ── PremiumGate ────────────────────────────────────────────────────────────
 // Shown when any research call returns ENTITLEMENT_RESEARCH_AGENT_REQUIRES_PREMIUM.
 
+import { Link } from 'react-router-dom'
+
 export function PremiumGate() {
   return (
     <div
@@ -18,9 +20,12 @@ export function PremiumGate() {
         technical, risk, trader, and PM — and receive a structured note with signals and
         sources for any US ticker.
       </p>
-      <p className="mt-4 text-[11px] text-txtFaint">
-        Contact your account team or visit the upgrade page to unlock Research Agent.
-      </p>
+      <Link
+        to="/billing?plan=premium"
+        className="mt-5 inline-block rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-canvas transition hover:opacity-90"
+      >
+        Upgrade to Premium
+      </Link>
     </div>
   )
 }

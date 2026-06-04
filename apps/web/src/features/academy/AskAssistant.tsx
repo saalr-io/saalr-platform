@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { EntitlementError } from '../../lib/content'
 import { useAsk } from './hooks'
 import { Markdown } from './markdown'
@@ -72,6 +73,13 @@ export function AskAssistant({ onSelectModule }: AskAssistantProps) {
           <p className="mt-2 text-sm text-txtDim">
             The assistant is a Pro feature. Upgrade to unlock grounded Q&amp;A across all lessons.
           </p>
+          <Link
+            to="/billing?plan=pro"
+            data-testid="ask-upgrade-link"
+            className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-xs font-medium text-canvas transition hover:opacity-90"
+          >
+            Upgrade to Pro
+          </Link>
         </div>
       )}
 

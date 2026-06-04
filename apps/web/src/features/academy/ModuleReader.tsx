@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { EntitlementError } from '../../lib/content'
 import { useModule, useComplete } from './hooks'
 import { Markdown } from './markdown'
@@ -17,6 +18,13 @@ function UpgradeNudge({ label }: { label: string }) {
       <p className="mt-3 text-[11px] text-txtFaint">
         Upgrade to Pro to unlock this lesson and the full academy catalog.
       </p>
+      <Link
+        to="/billing?plan=pro"
+        data-testid="nudge-upgrade"
+        className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-xs font-medium text-canvas transition hover:opacity-90"
+      >
+        Upgrade to Pro
+      </Link>
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useHealth } from '../hooks/useHealth'
 import { StatusDot, type HealthState } from './StatusDot'
 import { Clock } from './Clock'
@@ -26,9 +27,11 @@ export function Topbar() {
       <div className="flex items-center gap-2 rounded-lg border border-line bg-panel px-2.5 py-1 text-xs">
         <span className="h-1.5 w-1.5 rounded-full bg-pos shadow-[0_0_8px] shadow-pos" />
         {me?.tenant.display_name ?? '—'}
-        <span className="rounded-full border border-[#34406b] bg-accent2/20 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-[#cdbcff]">
-          {cap(me?.tier ?? 'free')}
-        </span>
+        <Link to="/billing" title="Manage plan">
+          <span className="rounded-full border border-[#34406b] bg-accent2/20 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-[#cdbcff]">
+            {cap(me?.tier ?? 'free')}
+          </span>
+        </Link>
       </div>
 
       <label className="hidden items-center gap-2 rounded-lg border border-line bg-panel px-3 py-1.5 text-txtFaint lg:flex">
