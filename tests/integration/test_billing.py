@@ -263,3 +263,12 @@ async def test_webhook_infra_error_is_not_swallowed_as_400():
                                  headers={"Stripe-Signature": sig})
         finally:
             billing_service.handle_webhook = original
+
+
+async def test_get_subscription_reports_has_customer(admin_engine, app_sessionmaker):
+    tenant_id = await _seed_free_tenant(admin_engine, "hc@acme.com")
+    async with tenant_session(app_sessionmaker, tenant_id) as s:
+        assert (await service.get_subscription(s, tenant_id))["has_customer"] is False
+        await repo.set_customer_id(s, tenant_id, "cus_hc")
+    async with tenant_session(app_sessionmaker, tenant_id) as s:
+        assert (await service.get_subscription(s, tenant_id))["has_customer"] is True

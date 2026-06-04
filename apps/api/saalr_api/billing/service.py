@@ -39,6 +39,7 @@ async def get_subscription(session: AsyncSession, tenant_id: UUID) -> dict:
         "current_period_end": row.current_period_end.isoformat() if row else None,
         "cancel_at_period_end": bool(row.cancel_at_period_end) if row else False,
         "entitlements": entitlements_for(tier),
+        "has_customer": await repo.get_customer_id(session, tenant_id) is not None,
     }
 
 
