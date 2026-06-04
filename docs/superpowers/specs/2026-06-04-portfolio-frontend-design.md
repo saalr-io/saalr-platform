@@ -38,11 +38,15 @@ time_in_force?:'day' }`. (`stop`/`stop-limit`/`strategy_id` are out of scope for
 - **Order ticket: equity + options, market + limit** (stop/stop-limit deferred). Limit shows a
   limit-price field; an "Options" toggle reveals CALL/PUT + strike + expiry.
 - **Accounts: paper-only** (create + select; Alpaca/live deferred to a later promotion slice).
-- **One-click "Close position":** a `Close` button per position places an **offsetting market order**
-  (side = `qty >= 0 ? 'SELL' : 'BUY'`, `qty = Math.abs(position.qty)`, carrying `option_type/strike/
-  expiry` for option positions) via the normal place-order path, then refreshes positions + orders.
-- **Idempotency:** a fresh `crypto.randomUUID()` per submit (order *and* close) → `Idempotency-Key`,
-  so a double-click can't double-submit.
+- **Close position (with inline confirm):** a `Close` button per position; the **first** click swaps
+  the row's action to an inline `Confirm? Yes / No` (no modal), and **Yes** places an **offsetting
+  market order** (side = `qty >= 0 ? 'SELL' : 'BUY'`, `qty = Math.abs(position.qty)`, carrying
+  `option_type/strike/expiry` for option positions) via the normal place-order path, then refreshes
+  positions + orders. `No` reverts. This avoids accidental one-click closes.
+- **Double-click protection:** the submit / Yes-close buttons are **disabled while the mutation is
+  pending** (the primary double-click guard); additionally the **component generates a fresh
+  `crypto.randomUUID()` per submit-intent** and passes it as the `Idempotency-Key`, so a network
+  retry of that one click dedupes server-side instead of creating a second order.
 - Single-page layout (no modal): account bar → positions + order ticket → orders list.
 
 ## Components / files
@@ -53,36 +57,45 @@ time_in_force?:'day' }`. (`stop`/`stop-limit`/`strategy_id` are out of scope for
   - `createBrokerAccount(label: string): Promise<BrokerAccount>` (sends `broker:'paper', is_paper:true`)
   - `listPositions(brokerAccountId: string): Promise<{ positions: Position[] }>`
   - `listOrders(cursor?: string): Promise<{ orders: Order[]; next_cursor: string | null }>`
-  - `placeOrder(body: OrderCreate): Promise<OrderResult>` — generates `crypto.randomUUID()` internally
-    and sends it as `Idempotency-Key`. `OrderResult = { order_id, broker_order_id, status, submitted_at }`.
+  - `placeOrder(body: OrderCreate, idempotencyKey: string): Promise<OrderResult>` — sends the
+    caller-supplied key as the `Idempotency-Key` header (the component generates one per submit-intent).
+    `OrderResult = { order_id, broker_order_id, status, submitted_at }`.
   - `cancelOrder(orderId: string): Promise<OrderResult>`
   - Exports the `BrokerAccount`/`Position`/`Order`/`OrderResult`/`OrderCreate` types.
 - **`src/features/portfolio/hooks.ts`** — `useBrokerAccounts()`, `useCreateAccount()` (invalidate
   `['broker-accounts']`), `usePositions(accountId)` (key `['positions', accountId]`,
-  `enabled:!!accountId`), `useOrders()` (key `['orders']`), `usePlaceOrder()` (invalidate
-  `['orders']` + `['positions']`), `useCancelOrder()` (invalidate `['orders']`).
+  `enabled:!!accountId`), `useOrders()` (key `['orders']`), `usePlaceOrder()` (mutationFn
+  `({ body, key }) => placeOrder(body, key)`; invalidate `['orders']` + `['positions']`),
+  `useCancelOrder()` (invalidate `['orders']`).
 - **`src/features/portfolio/AccountBar.tsx`** — props `{ accounts, selected, onSelect }`. A `<select>`
   of accounts + an inline "New paper account" label input → `useCreateAccount`. If `accounts` is
   empty, render a "Create a paper account to start trading." prompt with the same input.
-- **`src/features/portfolio/PositionsTable.tsx`** — props `{ positions, onClose, closingId }`.
-  Columns: instrument (equity `symbol`; option `${symbol} $${strike} ${option_type} ${expiry}`), qty,
-  avg entry. A `Close` button per row → `onClose(position)`; shows "Closing…" + disabled while
-  `closingId === a row key`. Empty → "No open positions."
+- **`src/features/portfolio/PositionsTable.tsx`** — props `{ positions, confirmingId, closingId,
+  onCloseRequest, onCloseConfirm, onCloseCancel }`. Columns: instrument (equity `symbol`; option
+  `${symbol} $${strike} ${option_type} ${expiry}`), qty, avg entry. Each row keys on a stable
+  `rowKey(position)` (e.g. `${symbol}|${option_type}|${strike}|${expiry}`). The action cell:
+  normally a `Close` button → `onCloseRequest(rowKey)`; when `confirmingId === rowKey` it becomes an
+  inline `Confirm? [Yes] [No]` (`Yes` → `onCloseConfirm(position)`, `No` → `onCloseCancel()`); while
+  `closingId === rowKey` it shows "Closing…" and `Yes` is disabled. Empty → "No open positions."
 - **`src/features/portfolio/OrderTicket.tsx`** — props `{ disabled, onSubmit, pending, error,
   lastResult }`. Fields: symbol (uppercased), side BUY/SELL toggle, qty, order_type market|limit,
   limit_price (shown only for limit), an Options checkbox → option_type CALL/PUT + strike + expiry.
   On submit, build `OrderCreate` (omit option fields unless Options is on; omit `limit_price` unless
-  limit) and call `onSubmit`. Disabled when no account. Shows `error` (the humanized RISK reason) and
-  `lastResult` (e.g. "Order submitted · filled"). A `data-testid` on the form + key fields.
+  limit), generate `crypto.randomUUID()`, and call `onSubmit(order, idempotencyKey)`. The submit
+  button is **disabled when `disabled` (no account) OR `pending`** (double-click guard). Shows `error`
+  (the humanized RISK reason) and `lastResult` (e.g. "Order submitted · filled"). `data-testid`s on
+  the form + key fields.
 - **`src/features/portfolio/OrdersList.tsx`** — props `{ orders, onCancel, cancellingId, onLoadMore,
   hasMore }`. Rows: symbol, side, qty, order_type, status (color: filled→`pos`,
   rejected/cancelled→`neg`, pending/submitted→`warn`), `created_at`, and `reject_reason_code` when
   rejected. A `Cancel` button on `pending|submitted` rows → `onCancel(order)`; "Load more" when
   `hasMore`. Empty → "No orders yet."
 - **`src/pages/Portfolio.tsx`** — composes it. Owns: `selectedAccount` state (defaults to the first
-  account when they load), the place-order mutation + its error/result, the close + cancel handlers
-  (with `closingId`/`cancellingId` tracking), and the cursor accumulation for orders. A `// Portfolio`
-  kicker + `h2`. Layout: `AccountBar` → a 2-col grid (`PositionsTable` | `OrderTicket`) → `OrdersList`.
+  account when they load), the place-order mutation + its error/result, `confirmingId`/`closingId`
+  (close flow) and `cancellingId` (cancel) tracking, and the cursor accumulation for orders. Generates
+  the `crypto.randomUUID()` for a close in the close-confirm handler and routes the offsetting
+  `OrderCreate` through `usePlaceOrder`. A `// Portfolio` kicker + `h2`. Layout: `AccountBar` → a 2-col
+  grid (`PositionsTable` | `OrderTicket`) → `OrdersList`.
 - **`src/app/Router.tsx`** — replace `<Route path="portfolio" element={<PlaceholderPage title="Portfolio" />} />`
   with `<Route path="portfolio" element={<Portfolio />} />` + import.
 
@@ -105,19 +118,21 @@ same mutation.
 
 ## Testing (vitest + @testing-library/react; mock the `oms` module or `fetch`; `MemoryRouter` where a Link/router is used)
 
-- `src/lib/oms.test.ts` — each method's URL/method; `placeOrder` sends an `Idempotency-Key` header and
-  the body; a 422 throws `Error('RISK_INSUFFICIENT_BUYING_POWER')`.
+- `src/lib/oms.test.ts` — each method's URL/method; `placeOrder(body, key)` sends the
+  `Idempotency-Key: <key>` header and the body; a 422 throws `Error('RISK_INSUFFICIENT_BUYING_POWER')`.
 - `AccountBar.test.tsx` — lists accounts; the create form calls `createBrokerAccount(label)`; empty
   state shows the prompt.
-- `PositionsTable.test.tsx` — formats an option instrument; `Close` calls `onClose` with the position;
-  empty state.
-- `OrderTicket.test.tsx` — submitting an equity market order calls `onSubmit` with the right body;
-  enabling Options + limit adds the option fields + `limit_price`; a passed `error` renders.
+- `PositionsTable.test.tsx` — formats an option instrument; first `Close` click calls `onCloseRequest`
+  (not `onCloseConfirm`); when `confirmingId` matches, `Yes` calls `onCloseConfirm(position)` and `No`
+  calls `onCloseCancel`; empty state.
+- `OrderTicket.test.tsx` — submitting an equity market order calls `onSubmit(body, key)` with the
+  right body and a string key; enabling Options + limit adds the option fields + `limit_price`; the
+  submit button is disabled while `pending` (double-click guard); a passed `error` renders.
 - `OrdersList.test.tsx` — status colors; `Cancel` on a submitted order calls `onCancel`; a rejected
   order shows its `reject_reason_code`.
 - `Portfolio.test.tsx` — with no accounts shows the create prompt; with an account + a position,
-  clicking `Close` places an **offsetting market order** (mock `placeOrder`, assert side/qty) and the
-  order ticket is enabled.
+  `Close` → `Yes` places an **offsetting market order** (mock `placeOrder`, assert side/qty + that a
+  key string was passed) and the order ticket is enabled.
 - Gate: `npm run typecheck && npm run lint && npm run test:run` (all green); `npm run build` still
   prerenders 17 docs (client-only `/app` route).
 
