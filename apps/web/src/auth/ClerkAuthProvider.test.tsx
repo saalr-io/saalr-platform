@@ -67,6 +67,13 @@ describe('ClerkAuthProvider', () => {
     expect(screen.getByTestId('tenant').textContent).toBe('acme')
   })
 
+  it('getMe rejection: clears the token and falls back to anon (no throw)', async () => {
+    h.getMe.mockRejectedValue(new Error('unauthorized'))
+    render(<ClerkAuthProvider><Probe /></ClerkAuthProvider>)
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anon'))
+    expect(getToken()).toBeNull()
+  })
+
   it('signed out: status anon and does not call getMe', async () => {
     h.clerk.isSignedIn = false
     render(<ClerkAuthProvider><Probe /></ClerkAuthProvider>)

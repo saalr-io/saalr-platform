@@ -33,17 +33,23 @@ function ClerkBridge({ template, children }: { template: string; children: React
       setStatus('anon')
       return
     }
+    // Persisted to tokenStore (localStorage) for the synchronous authHeaders(); on next boot
+    // it may be momentarily stale until this sync() runs, but getMe()'s 401 path re-clears it.
     setToken(t)
     try {
       setMe(await getMe())
       setStatus('authed')
-    } catch {
+    } catch (err) {
       setToken(null)
       setMe(null)
       setStatus('anon')
-      console.warn(
-        'Clerk sign-in succeeded but /me was rejected — check that the Clerk JWT template includes an `email` claim.',
-      )
+      // getMe() throws Error('unauthorized') on a 401 — the likeliest cause is a JWT template
+      // missing the `email` claim. Only hint on that case, not on 500s / network errors.
+      if (err instanceof Error && err.message === 'unauthorized') {
+        console.warn(
+          'Clerk sign-in succeeded but /me returned 401 — check that the Clerk JWT template includes an `email` claim.',
+        )
+      }
     }
   }, [isLoaded, isSignedIn, getToken, template])
 

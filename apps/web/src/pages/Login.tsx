@@ -4,6 +4,13 @@ import { Logo } from '../components/Logo'
 import { ClerkSignIn } from '../auth/ClerkSignIn'
 
 export function Login() {
+  if (import.meta.env.VITE_AUTH_PROVIDER === 'clerk') {
+    return <ClerkSignIn />
+  }
+  return <DevLogin />
+}
+
+function DevLogin() {
   const { requestLink } = useAuth()
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
@@ -27,10 +34,6 @@ export function Login() {
   }
 
   const brand = <Logo size={24} descriptor />
-
-  if (import.meta.env.VITE_AUTH_PROVIDER === 'clerk') {
-    return <ClerkSignIn />
-  }
 
   if (sent) {
     return (
