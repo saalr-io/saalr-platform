@@ -17,6 +17,9 @@ export default function Page() {
         a short FAQ. Pick a strategy to learn when to use it and how its risk
         behaves.
       </p>
+      <p className="mt-3 text-sm text-txtDim">
+        New to the jargon? <a href="/glossary" className="text-accent underline">Browse the options glossary →</a>
+      </p>
       {GROUPS.map(({ category, label }) => {
         const items = EXPLAINERS.filter((e) => e.category === category)
         if (items.length === 0) return null
