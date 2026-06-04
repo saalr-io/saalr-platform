@@ -51,4 +51,12 @@ describe('useAuth (dev provider)', () => {
     fireEvent.click(screen.getByText('logout'))
     await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anon'))
   })
+
+  it('exposes a refresh() on the context', async () => {
+    let ctx: ReturnType<typeof useAuth> | null = null
+    function Probe() { ctx = useAuth(); return null }
+    render(<AuthProvider><Probe /></AuthProvider>)
+    await waitFor(() => expect(ctx).not.toBeNull())
+    expect(typeof ctx!.refresh).toBe('function')
+  })
 })

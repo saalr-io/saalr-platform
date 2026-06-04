@@ -22,6 +22,7 @@ describe('Login', () => {
       requestLink,
       completeLink: vi.fn(),
       logout: vi.fn(),
+      refresh: vi.fn(),
     })
 
     render(<Login />)

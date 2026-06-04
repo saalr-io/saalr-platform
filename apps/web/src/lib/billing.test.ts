@@ -11,7 +11,7 @@ describe('billing client', () => {
     }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     const s = await getSubscription()
-    expect(String(fetchMock.mock.calls[0][0])).toContain('/subscription')
+    expect(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[0])).toContain('/subscription')
     expect(s.tier).toBe('free')
     expect(s.has_customer).toBe(false)
   })

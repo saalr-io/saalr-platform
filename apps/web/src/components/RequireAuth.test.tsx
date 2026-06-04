@@ -20,6 +20,7 @@ describe('RequireAuth', () => {
       requestLink: vi.fn(),
       completeLink: vi.fn(),
       logout: vi.fn(),
+      refresh: vi.fn(),
     })
     render(
       <MemoryRouter initialEntries={['/secret']}>
@@ -48,6 +49,7 @@ describe('RequireAuth', () => {
       requestLink: vi.fn(),
       completeLink: vi.fn(),
       logout: vi.fn(),
+      refresh: vi.fn(),
     })
     render(
       <MemoryRouter>

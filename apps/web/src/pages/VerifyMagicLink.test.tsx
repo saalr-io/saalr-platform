@@ -32,6 +32,7 @@ describe('VerifyMagicLink', () => {
       requestLink: vi.fn(),
       completeLink,
       logout: vi.fn(),
+      refresh: vi.fn(),
     })
     renderAt('/auth/verify?token=abc')
     await waitFor(() => expect(screen.getByText('HOME')).toBeInTheDocument())
@@ -47,6 +48,7 @@ describe('VerifyMagicLink', () => {
       requestLink: vi.fn(),
       completeLink,
       logout: vi.fn(),
+      refresh: vi.fn(),
     })
     renderAt('/auth/verify?token=bad')
     await waitFor(() =>

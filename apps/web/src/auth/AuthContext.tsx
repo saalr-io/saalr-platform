@@ -18,6 +18,7 @@ export interface AuthContextValue {
   requestLink: (email: string) => Promise<{ dev_link?: string }>
   completeLink: (token: string) => Promise<void>
   logout: () => void
+  refresh: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -81,7 +82,7 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ status, me, login, requestLink, completeLink, logout }}>
+    <AuthContext.Provider value={{ status, me, login, requestLink, completeLink, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   )
