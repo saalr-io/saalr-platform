@@ -8,12 +8,7 @@ export interface FeatureItem {
   href: string
 }
 
-export interface TierCard {
-  name: string
-  tagline: string
-  features: string[]
-  highlight?: boolean
-}
+export { TIERS, type TierCard } from '../../lib/tiers'
 
 export interface FooterLink {
   label: string
@@ -68,38 +63,6 @@ export const FEATURES: FeatureItem[] = [
     title: 'OptionsAcademy',
     blurb: 'Plain-English lessons from “what is an option?” to iron condors, with a grounded Q&A assistant.',
     href: '/learn',
-  },
-]
-
-export const TIERS: TierCard[] = [
-  {
-    name: 'Free',
-    tagline: 'Learn and build.',
-    features: [
-      'Strategy builder & payoff analysis',
-      'OptionsAcademy lessons',
-      'Strategy explainers',
-    ],
-  },
-  {
-    name: 'Pro',
-    tagline: 'Live market data & models.',
-    features: [
-      'Live options chains & IV surface',
-      'GARCH vol forecasts & Monte-Carlo POP',
-      'Grounded Q&A assistant',
-      'Everything in Free',
-    ],
-    highlight: true,
-  },
-  {
-    name: 'Premium',
-    tagline: 'The full research desk.',
-    features: [
-      'Multi-agent Research Agent notes',
-      'Higher run & rate limits',
-      'Everything in Pro',
-    ],
   },
 ]
 
