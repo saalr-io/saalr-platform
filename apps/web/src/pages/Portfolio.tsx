@@ -65,6 +65,11 @@ export function Portfolio() {
 
   const placeError = place.error ? humanize((place.error as Error).message) : null
   const lastResult = place.data && !place.isError ? `Order ${place.data.status}` : null
+  const cancelError = cancel.error
+    ? ((cancel.error as Error).message === 'ORDER_NOT_CANCELLABLE'
+      ? "Order can't be cancelled."
+      : "Couldn't cancel the order.")
+    : null
 
   return (
     <div className="animate-fadeUp space-y-5">
@@ -106,6 +111,7 @@ export function Portfolio() {
 
           <div>
             <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-txtFaint">Orders</p>
+            {cancelError && <p data-testid="cancel-error" className="mb-2 text-[11px] text-neg">{cancelError}</p>}
             <OrdersList
               orders={orders}
               cancellingId={cancellingId}

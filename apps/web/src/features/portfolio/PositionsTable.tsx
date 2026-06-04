@@ -49,10 +49,10 @@ export function PositionsTable({ positions, confirmingId, closingId, onCloseRequ
                   ) : confirming ? (
                     <span className="inline-flex items-center gap-2">
                       <span className="text-[11px] text-txtDim">Confirm?</span>
-                      <button data-testid="close-yes" onClick={() => onCloseConfirm(p)}
-                        className="rounded border border-neg/40 px-2 py-0.5 text-[11px] text-neg hover:bg-neg/10">Yes</button>
-                      <button data-testid="close-no" onClick={onCloseCancel}
-                        className="rounded border border-line px-2 py-0.5 text-[11px] text-txtDim hover:text-txt">No</button>
+                      <button data-testid="close-yes" onClick={() => onCloseConfirm(p)} disabled={closing}
+                        className="rounded border border-neg/40 px-2 py-0.5 text-[11px] text-neg hover:bg-neg/10 disabled:opacity-40">Yes</button>
+                      <button data-testid="close-no" onClick={onCloseCancel} disabled={closing}
+                        className="rounded border border-line px-2 py-0.5 text-[11px] text-txtDim hover:text-txt disabled:opacity-40">No</button>
                     </span>
                   ) : (
                     <button data-testid="close-btn" onClick={() => onCloseRequest(key)}

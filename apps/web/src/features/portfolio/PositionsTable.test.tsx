@@ -30,6 +30,15 @@ describe('PositionsTable', () => {
     expect(onConfirm).toHaveBeenCalledWith(pos)
   })
 
+  it('shows Closing… and hides the confirm buttons while closingId matches', () => {
+    const pos = P()
+    const key = rowKey(pos)
+    render(<PositionsTable positions={[pos]} confirmingId={key} closingId={key}
+      onCloseRequest={vi.fn()} onCloseConfirm={vi.fn()} onCloseCancel={vi.fn()} />)
+    expect(screen.getByText(/Closing…/)).toBeInTheDocument()
+    expect(screen.queryByTestId('close-yes')).toBeNull()
+  })
+
   it('shows an empty state', () => {
     render(<PositionsTable positions={[]} confirmingId={null} closingId={null}
       onCloseRequest={vi.fn()} onCloseConfirm={vi.fn()} onCloseCancel={vi.fn()} />)

@@ -29,10 +29,16 @@ export function OrderTicket({ disabled, pending, error, lastResult, onSubmit }: 
     const q = parseInt(qty, 10)
     if (!sym || !q) return
     const draft: Draft = { symbol: sym, side, qty: q, order_type: orderType, time_in_force: 'day' }
-    if (orderType === 'limit') draft.limit_price = parseFloat(limit)
+    if (orderType === 'limit') {
+      const lp = parseFloat(limit)
+      if (!isFinite(lp) || lp <= 0) return
+      draft.limit_price = lp
+    }
     if (optionsOn) {
+      const st = parseFloat(strike)
+      if (!isFinite(st) || st <= 0 || !expiry) return
       draft.option_type = optionType
-      draft.strike = parseFloat(strike)
+      draft.strike = st
       draft.expiry = expiry
     }
     onSubmit(draft, crypto.randomUUID())

@@ -41,4 +41,14 @@ describe('OrderTicket', () => {
     render(<OrderTicket disabled={false} pending={false} error="insufficient buying power" lastResult={null} onSubmit={vi.fn()} />)
     expect(screen.getByTestId('ot-error').textContent).toContain('insufficient buying power')
   })
+
+  it('does not submit a limit order with an empty limit price', () => {
+    const onSubmit = vi.fn()
+    render(<OrderTicket disabled={false} pending={false} error={null} lastResult={null} onSubmit={onSubmit} />)
+    fireEvent.change(screen.getByTestId('ot-symbol'), { target: { value: 'SPY' } })
+    fireEvent.change(screen.getByTestId('ot-qty'), { target: { value: '1' } })
+    fireEvent.change(screen.getByTestId('ot-type'), { target: { value: 'limit' } })
+    fireEvent.click(screen.getByTestId('ot-submit'))
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
 })
