@@ -9,7 +9,7 @@ describe('market client', () => {
       new Response(JSON.stringify({ ticker: 'SPY', spot: 1, expiries: [] }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     const s = await getIvSurface('SPY')
-    expect(String(fetchMock.mock.calls[0][0])).toContain('/v1/market/iv-surface?ticker=SPY')
+    expect(String((fetchMock.mock.calls as unknown[][])[0][0])).toContain('/v1/market/iv-surface?ticker=SPY')
     expect(s.ticker).toBe('SPY')
   })
 
@@ -18,7 +18,7 @@ describe('market client', () => {
       new Response(JSON.stringify({ ticker: 'SPY', spot: 1, contracts: [] }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     await getChain('SPY', '2026-12-18')
-    const url = String(fetchMock.mock.calls[0][0])
+    const url = String((fetchMock.mock.calls as unknown[][])[0][0])
     expect(url).toContain('/v1/market/chain?ticker=SPY')
     expect(url).toContain('expiry=2026-12-18')
   })
