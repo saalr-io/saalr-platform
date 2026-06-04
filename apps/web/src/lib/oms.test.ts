@@ -8,14 +8,14 @@ describe('oms client', () => {
     const f = vi.fn(async () => new Response(JSON.stringify({ broker_accounts: [] }), { status: 200 }))
     vi.stubGlobal('fetch', f)
     await listBrokerAccounts()
-    expect(String(f.mock.calls[0][0])).toContain('/v1/broker-accounts')
+    expect(String((f.mock.calls as unknown as [string, RequestInit?][])[0][0])).toContain('/v1/broker-accounts')
   })
 
   it('createBrokerAccount POSTs a paper account', async () => {
     const f = vi.fn(async () => new Response(JSON.stringify({ broker_account_id: 'a1' }), { status: 200 }))
     vi.stubGlobal('fetch', f)
     await createBrokerAccount('My desk')
-    const init = f.mock.calls[0][1] as RequestInit
+    const init = (f.mock.calls as unknown as [string, RequestInit?][])[0][1] as RequestInit
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body as string)).toEqual({ broker: 'paper', account_label: 'My desk', is_paper: true })
   })
@@ -24,14 +24,14 @@ describe('oms client', () => {
     const f = vi.fn(async () => new Response(JSON.stringify({ positions: [] }), { status: 200 }))
     vi.stubGlobal('fetch', f)
     await listPositions('a1')
-    expect(String(f.mock.calls[0][0])).toContain('/v1/positions?broker_account_id=a1')
+    expect(String((f.mock.calls as unknown as [string, RequestInit?][])[0][0])).toContain('/v1/positions?broker_account_id=a1')
   })
 
   it('listOrders adds a cursor when given', async () => {
     const f = vi.fn(async () => new Response(JSON.stringify({ orders: [], next_cursor: null }), { status: 200 }))
     vi.stubGlobal('fetch', f)
     await listOrders('CUR')
-    expect(String(f.mock.calls[0][0])).toContain('cursor=CUR')
+    expect(String((f.mock.calls as unknown as [string, RequestInit?][])[0][0])).toContain('cursor=CUR')
   })
 
   it('placeOrder POSTs with the Idempotency-Key header and body', async () => {
@@ -48,7 +48,7 @@ describe('oms client', () => {
     const f = vi.fn(async () => new Response(JSON.stringify({ order_id: 'o1', status: 'cancelled' }), { status: 200 }))
     vi.stubGlobal('fetch', f)
     await cancelOrder('o1')
-    expect(String(f.mock.calls[0][0])).toContain('/v1/orders/o1/cancel')
+    expect(String((f.mock.calls as unknown as [string, RequestInit?][])[0][0])).toContain('/v1/orders/o1/cancel')
   })
 
   it('a 422 throws Error with the RISK code', async () => {
