@@ -67,6 +67,7 @@ export function Models() {
   }
 
   const fcErr = forecastError(forecastQ.error)
+  const sentErr = forecastError(sentimentQ.error)
   const mcErrMsg = mcError(mc.error)
   const strike = parseFloat(atmStrike)
   const canPickTemplate = !!underlying.trim() && !!expiry && isFinite(strike) && strike > 0
@@ -105,6 +106,7 @@ export function Models() {
             <div className="animate-pulse rounded-lg border border-line bg-panel2 py-16" data-testid="models-loading" />
           )}
           {fcErr && ticker && <p className="text-sm text-neg" data-testid="forecast-error">{fcErr}</p>}
+          {sentErr && ticker && <p className="text-sm text-neg" data-testid="sentiment-error">{sentErr}</p>}
 
           {(forecastQ.data || sentimentQ.data) && (
             <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
@@ -117,12 +119,12 @@ export function Models() {
         <div className="space-y-4">
           <div className="grid gap-3 rounded-lg border border-line bg-panel p-4 md:grid-cols-4">
             <input data-testid="mc-underlying" value={underlying}
-              onChange={(e) => setUnderlying(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))}
+              onChange={(e) => { setUnderlying(e.target.value.toUpperCase().replace(/[^A-Z]/g, '')); setConfig(null) }}
               placeholder="Underlying" className="rounded border border-line bg-canvas px-3 py-2 font-mono text-xs uppercase text-txt placeholder:text-txtFaint" />
-            <input data-testid="mc-expiry" type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)}
+            <input data-testid="mc-expiry" type="date" value={expiry} onChange={(e) => { setExpiry(e.target.value); setConfig(null) }}
               className="rounded border border-line bg-canvas px-3 py-2 font-mono text-xs text-txt" />
             <input data-testid="mc-strike" value={atmStrike}
-              onChange={(e) => setAtmStrike(e.target.value.replace(/[^0-9.]/g, ''))}
+              onChange={(e) => { setAtmStrike(e.target.value.replace(/[^0-9.]/g, '')); setConfig(null) }}
               placeholder="ATM strike" className="rounded border border-line bg-canvas px-3 py-2 font-mono text-xs text-txt placeholder:text-txtFaint" />
             <input data-testid="mc-paths" value={paths}
               onChange={(e) => setPaths(e.target.value.replace(/[^0-9]/g, ''))}

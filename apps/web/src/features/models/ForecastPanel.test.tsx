@@ -20,11 +20,17 @@ describe('ForecastPanel', () => {
     expect(screen.getByTestId('forecast-line').getAttribute('points')!.trim().split(' ')).toHaveLength(3)
     expect(screen.getByTestId('forecast-ci')).toBeInTheDocument()
     expect(screen.getByTestId('forecast-primary').textContent).toContain('garch')
+    expect(screen.getByText('approximate')).toBeInTheDocument()
   })
 
   it('omits the CI band when primary_ci_95 is null (hv21 primary)', () => {
     render(<ForecastPanel forecast={{ ...base, primary_model: 'hv21', primary_ci_95: null }} />)
     expect(screen.queryByTestId('forecast-ci')).toBeNull()
     expect(screen.getByTestId('forecast-line')).toBeInTheDocument()
+  })
+
+  it('hides the approximate tag when approximate is false', () => {
+    render(<ForecastPanel forecast={{ ...base, approximate: false }} />)
+    expect(screen.queryByText('approximate')).toBeNull()
   })
 })

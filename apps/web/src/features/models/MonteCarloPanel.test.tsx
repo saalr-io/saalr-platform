@@ -28,4 +28,10 @@ describe('MonteCarloPanel', () => {
     expect(screen.getByTestId('mc-sentiment').textContent).toContain('sentiment applied')
     expect(screen.getByTestId('mc-sentiment').textContent).toContain('bullish')
   })
+
+  it('renders without bars for an empty histogram', () => {
+    render(<MonteCarloPanel result={R({ histogram: { counts: [], bin_edges: [0] } })} />)
+    expect(screen.getByTestId('mc-panel')).toBeInTheDocument()
+    expect(screen.queryAllByTestId('mc-bar')).toHaveLength(0)
+  })
 })

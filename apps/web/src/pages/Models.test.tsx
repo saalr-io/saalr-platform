@@ -40,9 +40,11 @@ describe('Models page', () => {
   it('gates a free user and does not fetch', () => {
     mockMe = { entitlements: { ml_forecast: false } }
     const spy = vi.spyOn(models, 'getVolForecast')
+    const sentSpy = vi.spyOn(models, 'getSentiment')
     render(wrap(<Models />))
     expect(screen.getByTestId('models-gate')).toBeInTheDocument()
     expect(spy).not.toHaveBeenCalled()
+    expect(sentSpy).not.toHaveBeenCalled()
   })
 
   it('loads a ticker and renders forecast + sentiment', async () => {

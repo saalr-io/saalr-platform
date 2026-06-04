@@ -32,11 +32,12 @@ export function ForecastPanel({ forecast }: { forecast: VolForecast }) {
       <figcaption className="mb-2 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">
         Vol forecast · {forecast.horizon_days}d
         <span data-testid="forecast-primary" className="rounded bg-accent/20 px-1.5 py-0.5 text-accent">{forecast.primary_model}</span>
-        <span className="rounded border border-line px-1.5 py-0.5 text-txtFaint">approximate</span>
+        {forecast.approximate && <span className="rounded border border-line px-1.5 py-0.5 text-txtFaint">approximate</span>}
       </figcaption>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
         {band && <polygon data-testid="forecast-ci" points={band} fill="#4da3ff22" stroke="none" />}
         <polyline data-testid="forecast-line" points={linePts} fill="none" stroke="#4da3ff" strokeWidth={1.8} />
+        {n === 1 && <circle cx={xs(0)} cy={ys(fc[0])} r={3} fill="#4da3ff" />}
       </svg>
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[11px] text-txtDim">
         <div className="flex justify-between"><dt>lift</dt><dd className="tnum text-txt">{forecast.validation.lift.toFixed(3)}</dd></div>
