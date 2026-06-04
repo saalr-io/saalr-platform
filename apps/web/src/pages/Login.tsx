@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { Logo } from '../components/Logo'
+import { ClerkSignIn } from '../auth/ClerkSignIn'
 
 export function Login() {
   const { requestLink } = useAuth()
@@ -27,6 +28,9 @@ export function Login() {
 
   const brand = <Logo size={24} descriptor />
 
+  if (import.meta.env.VITE_AUTH_PROVIDER === 'clerk') {
+    return <ClerkSignIn />
+  }
 
   if (sent) {
     return (

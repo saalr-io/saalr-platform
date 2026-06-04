@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 vi.mock('../auth/AuthContext', () => ({ useAuth: vi.fn() }))
+vi.mock('@clerk/clerk-react', () => ({ SignIn: () => null }))
 
 import { useAuth } from '../auth/AuthContext'
 import { Login } from './Login'
@@ -35,5 +36,16 @@ describe('Login', () => {
     expect(requestLink).toHaveBeenCalledWith('alice@acme.com')
     const link = screen.getByText('Dev: open magic link') as HTMLAnchorElement
     expect(link.getAttribute('href')).toContain('/auth/verify?token=abc')
+  })
+
+  it('renders the Clerk sign-in when VITE_AUTH_PROVIDER=clerk', () => {
+    vi.stubEnv('VITE_AUTH_PROVIDER', 'clerk')
+    mockUseAuth.mockReturnValue({
+      status: 'anon', me: null, login: vi.fn(), requestLink: vi.fn(),
+      completeLink: vi.fn(), logout: vi.fn(), refresh: vi.fn(),
+    })
+    render(<Login />)
+    expect(screen.getByTestId('clerk-signin')).toBeInTheDocument()
+    vi.unstubAllEnvs()
   })
 })
