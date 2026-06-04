@@ -20,7 +20,7 @@ const thetaChecks = [
   ['application/ld+json', thetaHtml.includes('application/ld+json')],
   ['SpeakableSpecification', thetaHtml.includes('SpeakableSpecification')],
   ['geo-speakable', thetaHtml.includes('geo-speakable')],
-  ['https://', thetaHtml.includes('https://')],
+  ['sameAs', thetaHtml.includes('"sameAs"')],
 ]
 const failedTheta = thetaChecks.filter(([, ok]) => !ok)
 if (failedTheta.length) { console.error('theta page prerender FAILED:', failedTheta.map(([n]) => n)); process.exit(1) }
@@ -35,6 +35,17 @@ const llmsFullChecks = [
 const failedLlmsFull = llmsFullChecks.filter(([, ok]) => !ok)
 if (failedLlmsFull.length) { console.error('llms-full.txt FAILED:', failedLlmsFull.map(([n]) => n)); process.exit(1) }
 console.log('llms-full.txt OK')
+
+// Pro-leak guard: the Pro iron-condor academy lesson body must NOT appear in llms-full.txt.
+const PRO_SENTINEL = 'An **iron condor** combines a short out-of-the-money call spread'
+const ironCondorMd = readFileSync('../../packages/content/saalr_content/modules/60-iron-condor-construction.md', 'utf8')
+if (!ironCondorMd.includes(PRO_SENTINEL)) {
+  console.error('Pro-leak guard FAILED: sentinel phrase no longer in the iron-condor lesson — update PRO_SENTINEL'); process.exit(1)
+}
+if (llmsFull.includes(PRO_SENTINEL)) {
+  console.error('Pro-leak guard FAILED: iron-condor Pro lesson body leaked into llms-full.txt'); process.exit(1)
+}
+console.log('Pro-leak guard OK')
 
 // sitemap.xml and llms.txt include /glossary/theta
 const sitemap = readFileSync('dist/client/sitemap.xml', 'utf8')

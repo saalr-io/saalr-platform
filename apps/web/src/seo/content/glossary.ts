@@ -216,7 +216,7 @@ export const GLOSSARY: GlossaryTerm[] = [
       'IV is the volatility input that, placed into an option-pricing model such as Black–Scholes, reproduces the option’s observed market price. Higher IV means richer premiums and a wider expected range.',
       'IV is forward-looking and differs from realized (historical) volatility, which is measured from past prices. An IV of 20% implies a one-standard-deviation annual move of about 20% in the underlying.',
     ],
-    example: 'A stock at $100 with 20% IV implies a ≈ ±$20 one-standard-deviation range over a year, or roughly ±$5.5 over one month (20% × √(1/12) × 100).',
+    example: 'A stock at $100 with 20% IV implies a ≈ ±$20 one-standard-deviation range over a year, or about ±$5.8 over one month (20% × √(1/12) × 100 ≈ 5.77).',
     related: ['historical-volatility', 'iv-rank', 'vega', 'extrinsic-value'],
     seeAlso: 'long-straddle',
     faq: [

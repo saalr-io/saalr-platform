@@ -19,7 +19,11 @@ const pages = [
   ...freeAcademy.map((m) => ({ url: `/academy/${m.slug}`, title: m.title, description: m.summary })),
 ]
 writeFileSync('dist/client/sitemap.xml', buildSitemap(SITE, pages.map((p) => p.url)))
-writeFileSync('dist/client/llms.txt', buildLlmsTxt(SITE, 'Saalr', 'Research-grade options analytics for retail traders.', pages))
+writeFileSync(
+  'dist/client/llms.txt',
+  buildLlmsTxt(SITE, 'Saalr', 'Research-grade options analytics for retail traders.', pages) +
+    `\nSee also: ${SITE}/llms-full.txt (full content)\n`,
+)
 
 const fullSections = [
   { heading: 'Options strategies', entries: EXPLAINERS.map((e) => ({ title: e.title, url: `/learn/${e.slug}`, body: explainerToText(e) })) },

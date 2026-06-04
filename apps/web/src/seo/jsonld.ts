@@ -96,6 +96,7 @@ export function definedTermSetJsonLd(site: string, terms: GlossaryTerm[]): Recor
       description: t.short,
       url: `${site}/glossary/${t.slug}`,
       termCode: t.slug,
+      inDefinedTermSet: `${site}/glossary`,
     })),
   }
 }
