@@ -12,6 +12,7 @@ import { Billing } from '../pages/Billing'
 import { BillingSuccess } from '../pages/BillingSuccess'
 import { BillingCancel } from '../pages/BillingCancel'
 import { Markets } from '../pages/Markets'
+import { Portfolio } from '../pages/Portfolio'
 
 /**
  * The authenticated SPA route table. Mounted under a <BrowserRouter basename="/app">
@@ -38,7 +39,7 @@ export function AppRoutes() {
         <Route path="billing" element={<Billing />} />
         <Route path="billing/success" element={<BillingSuccess />} />
         <Route path="billing/cancel" element={<BillingCancel />} />
-        <Route path="portfolio" element={<PlaceholderPage title="Portfolio" />} />
+        <Route path="portfolio" element={<Portfolio />} />
         <Route path="system" element={<SystemStatus />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
