@@ -1,4 +1,5 @@
 import type { ExplainerContent } from './content/strategies'
+import type { GlossaryTerm } from './content/glossary'
 
 export function articleJsonLd(c: ExplainerContent, url: string): Record<string, unknown> {
   return {
@@ -12,16 +13,20 @@ export function articleJsonLd(c: ExplainerContent, url: string): Record<string, 
   }
 }
 
-export function faqJsonLd(c: ExplainerContent): Record<string, unknown> {
+export function faqPageJsonLd(items: { q: string; a: string }[]): Record<string, unknown> {
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: c.faq.map((f) => ({
+    mainEntity: items.map((f) => ({
       '@type': 'Question',
       name: f.q,
       acceptedAnswer: { '@type': 'Answer', text: f.a },
     })),
   }
+}
+
+export function faqJsonLd(c: ExplainerContent): Record<string, unknown> {
+  return faqPageJsonLd(c.faq)
 }
 
 export function breadcrumbJsonLd(trail: { name: string; url: string }[]): Record<string, unknown> {
@@ -76,5 +81,47 @@ export function lessonJsonLd(title: string, summary: string, url: string): Recor
     url,
     articleSection: 'OptionsAcademy',
     about: title,
+  }
+}
+
+export function definedTermSetJsonLd(site: string, terms: GlossaryTerm[]): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'DefinedTermSet',
+    name: 'Saalr Options Glossary',
+    url: `${site}/glossary`,
+    hasDefinedTerm: terms.map((t) => ({
+      '@type': 'DefinedTerm',
+      name: t.term,
+      description: t.short,
+      url: `${site}/glossary/${t.slug}`,
+      termCode: t.slug,
+    })),
+  }
+}
+
+export function definedTermJsonLd(term: GlossaryTerm, url: string, setUrl: string): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'DefinedTerm',
+    name: term.term,
+    description: term.short,
+    url,
+    termCode: term.slug,
+    inDefinedTermSet: setUrl,
+    sameAs: term.sameAs,
+  }
+}
+
+export function speakableWebPageJsonLd(
+  url: string, name: string, description: string, cssSelector: string[],
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    url,
+    name,
+    description,
+    speakable: { '@type': 'SpeakableSpecification', cssSelector },
   }
 }
