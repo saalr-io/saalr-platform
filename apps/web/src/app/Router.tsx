@@ -11,6 +11,7 @@ import { VerifyMagicLink } from '../pages/VerifyMagicLink'
 import { Billing } from '../pages/Billing'
 import { BillingSuccess } from '../pages/BillingSuccess'
 import { BillingCancel } from '../pages/BillingCancel'
+import { Markets } from '../pages/Markets'
 
 /**
  * The authenticated SPA route table. Mounted under a <BrowserRouter basename="/app">
@@ -29,7 +30,7 @@ export function AppRoutes() {
         }
       >
         <Route index element={<PlaceholderPage title="Dashboard" />} />
-        <Route path="markets" element={<PlaceholderPage title="Markets & Vol" />} />
+        <Route path="markets" element={<Markets />} />
         <Route path="strategies" element={<Strategies />} />
         <Route path="models" element={<PlaceholderPage title="Models" />} />
         <Route path="research" element={<Research />} />
