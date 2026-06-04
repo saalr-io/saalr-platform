@@ -36,7 +36,7 @@ export function WatchlistTable({ rows, entitled, onAddSymbol }: {
     return (
       <div className="rounded-lg border border-line bg-panel p-4">
         <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">Watchlist</p>
-        <UpgradeHint feature="Forecasts & sentiment for the symbols you hold" />
+        <UpgradeHint feature="Forecasts & sentiment for your holdings" />
       </div>
     )
   }

@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { RequireAuth } from '../components/RequireAuth'
 import { AppShell } from './AppShell'
 import { SystemStatus } from '../pages/SystemStatus'
-import { PlaceholderPage } from '../components/PlaceholderPage'
 import { Strategies } from '../pages/Strategies'
 import { Education } from '../pages/Education'
 import { Research } from '../pages/Research'
@@ -14,6 +13,7 @@ import { BillingCancel } from '../pages/BillingCancel'
 import { Markets } from '../pages/Markets'
 import { Portfolio } from '../pages/Portfolio'
 import { Models } from '../pages/Models'
+import { Dashboard } from '../pages/Dashboard'
 
 /**
  * The authenticated SPA route table. Mounted under a <BrowserRouter basename="/app">
@@ -31,7 +31,7 @@ export function AppRoutes() {
           </RequireAuth>
         }
       >
-        <Route index element={<PlaceholderPage title="Dashboard" />} />
+        <Route index element={<Dashboard />} />
         <Route path="markets" element={<Markets />} />
         <Route path="strategies" element={<Strategies />} />
         <Route path="models" element={<Models />} />
