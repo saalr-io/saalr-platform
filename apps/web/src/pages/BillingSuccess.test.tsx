@@ -7,7 +7,8 @@ import * as billing from '../lib/billing'
 import { BillingSuccess } from './BillingSuccess'
 
 const refresh = vi.fn(async () => {})
-vi.mock('../auth/AuthContext', () => ({ useAuth: () => ({ refresh }) }))
+let mockMe: { tier: string } | undefined
+vi.mock('../auth/AuthContext', () => ({ useAuth: () => ({ refresh, me: mockMe }) }))
 
 function wrap(ui: React.ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -24,7 +25,7 @@ const SUB = (tier: string) => ({
 })
 
 describe('BillingSuccess', () => {
-  beforeEach(() => { vi.restoreAllMocks(); refresh.mockClear() })
+  beforeEach(() => { vi.restoreAllMocks(); refresh.mockClear(); mockMe = undefined })
 
   it('confirms once the tier flips and refreshes the session', async () => {
     const get = vi.spyOn(billing, 'getSubscription')
@@ -35,5 +36,16 @@ describe('BillingSuccess', () => {
       { timeout: 5000 })
     expect(refresh).toHaveBeenCalled()
     expect(get).toHaveBeenCalled()
+  })
+
+  it('confirms a pro→premium upgrade only when the tier changes from the mount tier', async () => {
+    mockMe = { tier: 'pro' }  // already on Pro before this checkout
+    vi.spyOn(billing, 'getSubscription')
+      .mockResolvedValueOnce(SUB('pro') as never)   // still pro — must NOT confirm
+      .mockResolvedValue(SUB('premium') as never)   // flipped to premium
+    render(wrap(<BillingSuccess />))
+    await waitFor(() => expect(screen.getByTestId('billing-confirmed').textContent).toMatch(/premium/i),
+      { timeout: 5000 })
+    expect(refresh).toHaveBeenCalled()
   })
 })

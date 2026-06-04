@@ -10,8 +10,12 @@ export function BillingSuccess() {
   const auth = useAuth()
   const [polls, setPolls] = useState(0)
   const confirmedRef = useRef(false)
+  // The tier as the session knew it BEFORE checkout — so we confirm only on a real change
+  // (covers pro→premium and a re-visit by an already-paid user, not just free→paid).
+  const initialTier = useRef(auth.me?.tier)
 
-  const flipped = (tier: string | undefined) => tier !== undefined && tier !== 'free'
+  const flipped = (tier: string | undefined) =>
+    tier !== undefined && tier !== 'free' && tier !== initialTier.current
 
   const { data } = useQuery({
     queryKey: ['subscription', 'success'],
