@@ -7,6 +7,7 @@ const SECTIONS: { label: string; items: [string, string][] }[] = [
       ['/', 'Dashboard'],
       ['/markets', 'Markets & Vol'],
       ['/strategies', 'Strategies'],
+      ['/backtests', 'Backtests'],
       ['/models', 'Models'],
     ],
   },
