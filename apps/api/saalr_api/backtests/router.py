@@ -105,8 +105,15 @@ async def get_backtest_run(
         )
     out: dict = {"backtest_id": str(row.backtest_id), "status": row.status}
     if row.status == "succeeded":
-        out["metrics"] = (row.metrics_json or {}).get("metrics", {})
-        out["equity_series"] = (row.metrics_json or {}).get("equity_series", [])
+        blob = row.metrics_json or {}
+        out["metrics"] = blob.get("metrics", {})
+        out["equity_series"] = blob.get("equity_series", [])
+        # Echo the run's own snapshot so the UI's baseline + honesty footnote reflect
+        # what the engine actually ran with, not call-site defaults that can drift.
+        out["initial_capital"] = blob.get("initial_capital")
+        out["model"] = blob.get("model")
+        out["vol_lookback"] = blob.get("vol_lookback")
+        out["approximate"] = blob.get("approximate", True)
         out["trade_log_url"] = None
     elif row.status == "failed":
         out["error"] = {"code": "BACKTEST_FAILED", "message": row.error_message}

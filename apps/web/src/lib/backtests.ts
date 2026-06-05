@@ -31,6 +31,10 @@ export interface BacktestResult {
   status: BacktestStatus
   metrics?: BacktestMetrics
   equity_series?: EquityPoint[]
+  initial_capital?: number
+  model?: string
+  vol_lookback?: number
+  approximate?: boolean
   trade_log_url?: string | null
   error?: { code: string; message: string }
 }

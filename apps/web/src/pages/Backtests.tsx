@@ -52,8 +52,14 @@ export function Backtests() {
 
       {run?.status === 'succeeded' && run.metrics && run.equity_series && (
         <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
-          <EquityCurve series={run.equity_series} initialCapital={capital} />
-          <MetricsPanel metrics={run.metrics} finalEquity={run.equity_series[run.equity_series.length - 1].equity} approximate model="bsm" volLookback={20} />
+          <EquityCurve series={run.equity_series} initialCapital={run.initial_capital ?? capital} />
+          <MetricsPanel
+            metrics={run.metrics}
+            finalEquity={run.equity_series[run.equity_series.length - 1].equity}
+            approximate={run.approximate ?? true}
+            model={run.model ?? 'bsm'}
+            volLookback={run.vol_lookback ?? 20}
+          />
         </div>
       )}
     </div>
