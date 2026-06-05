@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { LegEditor } from '../features/strategies/LegEditor'
 import { TemplatePicker } from '../features/strategies/TemplatePicker'
 import { SavedList } from '../features/strategies/SavedList'
@@ -37,13 +37,17 @@ export function Strategies() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
   useEffect(() => {
     const incoming = (location.state as { config?: StrategyConfig } | null)?.config
     if (incoming) {
       setConfig(incoming)
       setTab('build')
+      // Consume the handoff: clear history state so a back-nav re-mount doesn't
+      // clobber the user's subsequent edits with the original Apply payload.
+      navigate('.', { replace: true, state: {} })
     }
-  }, [location.state])
+  }, [location.state, navigate])
   const analyze = useAnalyze()
   const create = useCreateStrategy()
 

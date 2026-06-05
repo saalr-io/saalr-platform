@@ -34,7 +34,8 @@ export function Ideas() {
         underlying: data.ticker, expiry: defaultExpiry(), atm_strike: data.regime.last_close,
       })
       navigate('/strategies', { state: { config } })
-    } finally {
+      // success unmounts this page; only reset the spinner if the build failed
+    } catch {
       setApplyingKey(null)
     }
   }

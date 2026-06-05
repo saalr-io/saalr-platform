@@ -13,9 +13,15 @@ router = APIRouter(prefix="/v1/market", tags=["regime"])
 
 def _validate(ticker: str, market: str) -> None:
     if not ticker or not ticker.isalpha():
-        raise HTTPException(404, {"error": {"code": "RESOURCE_NOT_FOUND", "message": "unknown ticker"}})
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": "unknown ticker"}},
+        )
     if market not in ("US",):
-        raise HTTPException(400, {"error": {"code": "VALIDATION_INVALID_PARAMETER", "message": "unsupported market"}})
+        raise HTTPException(
+            status_code=400,
+            detail={"error": {"code": "VALIDATION_INVALID_PARAMETER", "message": "unsupported market"}},
+        )
 
 
 @router.get("/regime")
@@ -35,4 +41,7 @@ async def regime_endpoint(
             request.app.state.regime_ttl,
         )
     except ValueError as exc:
-        raise HTTPException(422, {"error": {"code": "INSUFFICIENT_HISTORY", "message": str(exc)}}) from exc
+        raise HTTPException(
+            status_code=422,
+            detail={"error": {"code": "INSUFFICIENT_HISTORY", "message": str(exc)}},
+        ) from exc
