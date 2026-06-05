@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ModuleList } from '../features/academy/ModuleList'
 import { ModuleReader } from '../features/academy/ModuleReader'
 import { SearchBox } from '../features/academy/SearchBox'
@@ -7,6 +8,11 @@ import { useModules } from '../features/academy/hooks'
 
 export function Education() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
+  const [searchParams] = useSearchParams()
+  useEffect(() => {
+    const lesson = searchParams.get('lesson')
+    if (lesson) setSelectedSlug(lesson)
+  }, [searchParams])
   const { data, isLoading } = useModules()
 
   const modules = data?.modules ?? []
