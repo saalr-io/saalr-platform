@@ -1,4 +1,4 @@
-import type { IvSurface, IvExpiry } from '../../lib/market'
+import type { IvSurface, IvExpiry, IvStrike } from '../../lib/market'
 
 const W = 360
 const H = 180
@@ -9,11 +9,18 @@ function scaler(min: number, max: number, lo: number, hi: number) {
   return (v: number) => lo + (hi - lo) * ((v - min) / span)
 }
 
-function atmIv(e: IvExpiry, spot: number): number {
-  if (e.strikes.length === 0) return 0 // defensive: a malformed provider expiry can't sink the tab
-  const s = e.strikes.reduce((best, x) =>
-    Math.abs(x.strike - spot) < Math.abs(best.strike - spot) ? x : best, e.strikes[0])
-  return ((s.calls.iv + s.puts.iv) / 2) * 100
+// A smile/term point needs BOTH a call and a put IV; the solve can leave either null
+// on deep ITM/OTM strikes, and the bounded chain can include a strike with only one side.
+function bothSides(s: IvStrike): s is IvStrike & { iv_call: number; iv_put: number } {
+  return Number.isFinite(s.iv_call) && Number.isFinite(s.iv_put)
+}
+
+function atmIv(e: IvExpiry, spot: number): number | null {
+  const usable = e.strikes.filter(bothSides)
+  if (usable.length === 0) return null
+  const s = usable.reduce((best, x) =>
+    Math.abs(x.strike - spot) < Math.abs(best.strike - spot) ? x : best, usable[0])
+  return ((s.iv_call + s.iv_put) / 2) * 100
 }
 
 function pointsAttr(pts: { x: number; y: number }[]): string {
@@ -22,7 +29,8 @@ function pointsAttr(pts: { x: number; y: number }[]): string {
 
 export function IvCurves({ surface, expiry }: { surface: IvSurface; expiry: string }) {
   const e = surface.expiries.find((x) => x.expiry === expiry) ?? surface.expiries[0]
-  if (!e || e.strikes.length === 0) {
+  const usable = e ? e.strikes.filter(bothSides) : []
+  if (!e || usable.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-txtFaint" data-testid="iv-empty">
         No surface data for this ticker.
@@ -30,16 +38,17 @@ export function IvCurves({ surface, expiry }: { surface: IvSurface; expiry: stri
     )
   }
 
-  const strikes = e ? e.strikes.map((s) => s.strike) : []
-  const ivs = e ? e.strikes.flatMap((s) => [s.calls.iv * 100, s.puts.iv * 100]) : []
+  const strikes = usable.map((s) => s.strike)
+  const ivs = usable.flatMap((s) => [s.iv_call * 100, s.iv_put * 100])
   const sx = scaler(Math.min(...strikes), Math.max(...strikes), PAD, W - PAD)
   const sy = scaler(Math.min(...ivs), Math.max(...ivs), H - PAD, PAD)
-  const callPts = e ? e.strikes.map((s) => ({ x: sx(s.strike), y: sy(s.calls.iv * 100) })) : []
-  const putPts = e ? e.strikes.map((s) => ({ x: sx(s.strike), y: sy(s.puts.iv * 100) })) : []
+  const callPts = usable.map((s) => ({ x: sx(s.strike), y: sy(s.iv_call * 100) }))
+  const putPts = usable.map((s) => ({ x: sx(s.strike), y: sy(s.iv_put * 100) }))
 
   const term = surface.expiries
-    .filter((x) => x.strikes.length > 0)
-    .map((x, i) => ({ i, iv: atmIv(x, surface.spot), expiry: x.expiry }))
+    .map((x) => ({ expiry: x.expiry, iv: atmIv(x, surface.spot) }))
+    .filter((t): t is { expiry: string; iv: number } => t.iv !== null)
+    .map((t, i) => ({ ...t, i }))
   const tx = scaler(0, Math.max(1, term.length - 1), PAD, W - PAD)
   const tIvs = term.map((t) => t.iv)
   const ty = scaler(Math.min(...tIvs), Math.max(...tIvs), H - PAD, PAD)

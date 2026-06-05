@@ -21,9 +21,7 @@ function wrap(ui: React.ReactNode) {
 const SURFACE = {
   ticker: 'SPY', market: 'US', as_of: 'x', spot: 100, data_provider: 'massive', model: 'bsm',
   risk_free_source: 'fred', freshness_ms: 0,
-  expiries: [{ expiry: '2026-07-17', strikes: [{ strike: 100,
-    calls: { price: 1, delta: 0.5, gamma: 0.01, theta: -0.02, vega: 0.1, rho: 0.05, iv: 0.2 },
-    puts: { price: 1, delta: -0.5, gamma: 0.01, theta: -0.02, vega: 0.1, rho: -0.05, iv: 0.21 } }] }],
+  expiries: [{ expiry: '2026-07-17', strikes: [{ strike: 100, iv_call: 0.2, iv_put: 0.21 }] }],
 }
 
 describe('Markets page', () => {

@@ -3,10 +3,16 @@ import { UpgradeHint } from './UpgradeHint'
 
 function atmIv(surface: IvSurface): { expiry: string; iv: number } | null {
   const e = surface.expiries[0]
-  if (!e || e.strikes.length === 0) return null
-  const s = e.strikes.reduce((best, x) =>
-    Math.abs(x.strike - surface.spot) < Math.abs(best.strike - surface.spot) ? x : best, e.strikes[0])
-  return { expiry: e.expiry, iv: ((s.calls.iv + s.puts.iv) / 2) * 100 }
+  if (!e) return null
+  // the surface gives per-strike iv_call/iv_put (nullable); need both for an ATM mid
+  const usable = e.strikes.filter(
+    (s): s is typeof s & { iv_call: number; iv_put: number } =>
+      Number.isFinite(s.iv_call) && Number.isFinite(s.iv_put),
+  )
+  if (usable.length === 0) return null
+  const s = usable.reduce((best, x) =>
+    Math.abs(x.strike - surface.spot) < Math.abs(best.strike - surface.spot) ? x : best, usable[0])
+  return { expiry: e.expiry, iv: ((s.iv_call + s.iv_put) / 2) * 100 }
 }
 
 export function MarketSnapshot({ symbol, surface, entitled, loading }: {

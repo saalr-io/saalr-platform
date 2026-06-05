@@ -4,13 +4,12 @@ import { MemoryRouter } from 'react-router-dom'
 import { MarketSnapshot } from './MarketSnapshot'
 import type { IvSurface } from '../../lib/market'
 
-const G = (iv: number) => ({ price: 1, delta: 0.5, gamma: 0.01, theta: -0.02, vega: 0.1, rho: 0.05, iv })
 const SURFACE: IvSurface = {
   ticker: 'SPY', market: 'US', as_of: 'x', spot: 100, data_provider: 'massive', model: 'bsm',
   risk_free_source: 'fred', freshness_ms: 0,
   expiries: [{ expiry: '2026-07-17', strikes: [
-    { strike: 95, calls: G(0.22), puts: G(0.24) },
-    { strike: 100, calls: G(0.20), puts: G(0.21) }] }],
+    { strike: 95, iv_call: 0.22, iv_put: 0.24 },
+    { strike: 100, iv_call: 0.20, iv_put: 0.21 }] }],
 }
 
 describe('MarketSnapshot', () => {

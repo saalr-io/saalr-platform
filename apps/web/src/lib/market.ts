@@ -14,7 +14,9 @@ export interface Greeks {
   iv: number
 }
 
-export interface IvStrike { strike: number; calls: Greeks; puts: Greeks }
+// The iv-surface endpoint returns per-strike call/put IV directly (decimals, nullable when
+// the BSM IV solve fails for a deep ITM/OTM contract) — NOT full Greeks objects.
+export interface IvStrike { strike: number; iv_call: number | null; iv_put: number | null }
 export interface IvExpiry { expiry: string; strikes: IvStrike[] }
 
 export interface IvSurface {
