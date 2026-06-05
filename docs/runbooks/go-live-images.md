@@ -11,7 +11,7 @@ provisions, then applies the stack. Images: `api`, `ingest-worker`, `oms-worker`
 - Each worker's **ENTRYPOINT is its CLI** (`python -m <pkg>`); the ECS task's `command` is the
   subcommand (`["consume"]`, `["reconcile","--once"]`, `["sentiment"]`, `["run"]`). Keep
   `infra/terraform/environments/dev/main.tf` `command`s aligned with the CLIs.
-- ECR repo names are `saalr-dev-<app>` (from `module.compute` `ecr_repo_names`).
+- ECR repo names are `saalr-dev/<app>` (a SLASH — `${name_prefix}/${each.value}` in `module.compute`).
 
 ## 1. Build locally
 
@@ -29,8 +29,8 @@ aws ecr get-login-password --region "$REGION" \
   | docker login --username AWS --password-stdin "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com"
 
 for app in api ingest-worker oms-worker ml-worker backtest-worker research-agent content-worker; do
-  docker tag "saalr/$app:local" "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/saalr-dev-$app:latest"
-  docker push "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/saalr-dev-$app:latest"
+  docker tag "saalr/$app:local" "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/saalr-dev/$app:latest"
+  docker push "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/saalr-dev/$app:latest"
 done
 ```
 
@@ -50,7 +50,7 @@ terraform -chdir=infra/terraform/environments/dev apply
 
 `content-worker` rebuilds the OptionsAcademy embeddings index; it is content-change-driven, not a
 scheduled or long-running worker (so it is intentionally NOT in the Terraform `workers` module). Its
-ECR repo (`saalr-dev-content-worker`) is already declared in `module.compute` `ecr_repo_names`. Run it
+ECR repo (`saalr-dev/content-worker`) is already declared in `module.compute` `ecr_repo_names`. Run it
 on demand, either locally against the DB:
 
 ```bash
