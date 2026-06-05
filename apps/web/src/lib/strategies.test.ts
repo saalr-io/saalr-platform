@@ -29,7 +29,8 @@ describe('strategies client', () => {
   it('listTemplates returns the array', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(
       JSON.stringify({ templates: [{ key: 'iron_condor', name: 'Iron Condor',
-        category: 'neutral', description: '...' }] }), { status: 200 })))
+        market_view: 'neutral', vol_view: 'short_vol', net: 'credit', risk: 'defined',
+        reward: 'defined', legs: 4, complexity: 'intermediate', description: '...' }] }), { status: 200 })))
     const t = await listTemplates()
     expect(t[0].key).toBe('iron_condor')
   })

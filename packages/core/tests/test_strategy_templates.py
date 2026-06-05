@@ -54,6 +54,14 @@ def test_long_straddle_is_volatile_long_vol():
     assert meta["market_view"] == "volatile" and meta["vol_view"] == "long_vol"
 
 
+def test_long_butterflies_are_short_vol():
+    # A long debit butterfly has negative vega and profits when price pins the body
+    # (same tent payoff as the iron butterfly) — it is short-vol, not long-vol.
+    meta = {t["key"]: t for t in list_templates()}
+    assert meta["call_butterfly"]["vol_view"] == "short_vol"
+    assert meta["put_butterfly"]["vol_view"] == "short_vol"
+
+
 def test_bull_put_spread_is_a_put_credit_spread():
     cfg = build("bull_put_spread", **_BUILD_ARGS)
     legs = _opts(cfg)

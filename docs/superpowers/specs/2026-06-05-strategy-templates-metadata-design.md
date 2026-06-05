@@ -95,8 +95,8 @@ All build with the existing `build(key, underlying, expiry, atm_strike, width)` 
 | call_ratio_spread | buy 1 call @k, sell 2 calls @k+w | bullish | short_vol | credit | undefined | defined | advanced |
 | put_ratio_spread | buy 1 put @k, sell 2 puts @k−w | bearish | short_vol | credit | undefined | defined | advanced |
 | jade_lizard | sell put @k−w, sell call @k+w, buy call @k+2w | neutral | short_vol | credit | undefined | defined | advanced |
-| call_butterfly | buy call @k−w, sell 2 calls @k, buy call @k+w | neutral | long_vol | debit | defined | defined | intermediate |
-| put_butterfly | buy put @k+w, sell 2 puts @k, buy put @k−w | neutral | long_vol | debit | defined | defined | intermediate |
+| call_butterfly | buy call @k−w, sell 2 calls @k, buy call @k+w | neutral | short_vol | debit | defined | defined | intermediate |
+| put_butterfly | buy put @k+w, sell 2 puts @k, buy put @k−w | neutral | short_vol | debit | defined | defined | intermediate |
 | broken_wing_butterfly | buy call @k−w, sell 2 calls @k, buy call @k+2w | neutral | short_vol | credit | defined | defined | advanced |
 
 This brings the library to **21 templates**, covering every (market_view × vol_view) cell the recommender needs.
