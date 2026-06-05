@@ -1,4 +1,7 @@
 import type { IvSurface, IvExpiry, IvStrike } from '../../lib/market'
+import { InfoHint } from '../../components/InfoHint'
+
+const LESSON = '/app/education?lesson=volatility-surface'
 
 const W = 360
 const H = 180
@@ -55,25 +58,45 @@ export function IvCurves({ surface, expiry }: { surface: IvSurface; expiry: stri
   const termPts = term.map((t) => ({ x: tx(t.i), y: ty(t.iv) }))
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <figure className="rounded-lg border border-line bg-panel p-3">
-        <figcaption className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">
-          Smile · {expiry}
-        </figcaption>
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" data-testid="iv-smile">
-          <polyline data-testid="iv-smile-calls" points={pointsAttr(callPts)} fill="none" stroke="#37c98b" strokeWidth={1.8} />
-          <polyline data-testid="iv-smile-puts" points={pointsAttr(putPts)} fill="none" stroke="#ff5d73" strokeWidth={1.8} strokeDasharray="4 3" />
-        </svg>
-      </figure>
-      <figure className="rounded-lg border border-line bg-panel p-3">
-        <figcaption className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">
-          ATM term structure
-        </figcaption>
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" data-testid="iv-term-structure">
-          <polyline data-testid="iv-term-line" points={pointsAttr(termPts)} fill="none" stroke="#4da3ff" strokeWidth={1.8} />
-          {termPts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={2.5} fill="#4da3ff" />)}
-        </svg>
-      </figure>
+    <div className="space-y-3">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <figure className="rounded-lg border border-line bg-panel p-3">
+          <figcaption className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">
+            Smile · {expiry}
+            <InfoHint
+              title="IV smile"
+              body="The smile plots implied volatility by strike for one expiry. Its slope — the skew — shows where the market prices risk: out-of-the-money puts usually carry higher IV as crash insurance."
+              learnMoreHref={LESSON}
+            />
+          </figcaption>
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" data-testid="iv-smile">
+            <polyline data-testid="iv-smile-calls" points={pointsAttr(callPts)} fill="none" stroke="#37c98b" strokeWidth={1.8} />
+            <polyline data-testid="iv-smile-puts" points={pointsAttr(putPts)} fill="none" stroke="#ff5d73" strokeWidth={1.8} strokeDasharray="4 3" />
+          </svg>
+        </figure>
+        <figure className="rounded-lg border border-line bg-panel p-3">
+          <figcaption className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">
+            ATM term structure
+            <InfoHint
+              title="ATM term structure"
+              body="This plots at-the-money IV across expiries. An upward slope means the market expects more movement later (or before an event); an inverted slope signals near-term stress."
+              learnMoreHref={LESSON}
+            />
+          </figcaption>
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" data-testid="iv-term-structure">
+            <polyline data-testid="iv-term-line" points={pointsAttr(termPts)} fill="none" stroke="#4da3ff" strokeWidth={1.8} />
+            {termPts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={2.5} fill="#4da3ff" />)}
+          </svg>
+        </figure>
+      </div>
+      <p className="flex items-center gap-1.5 font-mono text-[10px] text-txtFaint">
+        Model-priced IV · approximate
+        <InfoHint
+          title="Model-priced IV"
+          body="Saalr derives IV from a Black-Scholes fit to option mid-prices, not vendor greeks. It is directionally accurate and great for reading shape, but a single number is not an exact dealer quote."
+          learnMoreHref={LESSON}
+        />
+      </p>
     </div>
   )
 }

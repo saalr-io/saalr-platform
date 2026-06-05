@@ -51,4 +51,9 @@ describe('IvCurves', () => {
     render(<IvCurves surface={s} expiry="2026-07-17" />)
     expect(screen.getByTestId('iv-empty')).toBeInTheDocument()
   })
+
+  it('shows contextual info hints on the charts', () => {
+    render(<IvCurves surface={SURFACE} expiry="2026-07-17" />)
+    expect(screen.getAllByTestId('info-hint').length).toBeGreaterThanOrEqual(3)
+  })
 })
