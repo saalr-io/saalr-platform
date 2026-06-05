@@ -31,6 +31,18 @@ variable "create_oidc_provider" {
   default     = true
 }
 
+variable "web_bucket_arn" {
+  description = "ARN of the web static-site S3 bucket (empty disables the S3 deploy grant)."
+  type        = string
+  default     = ""
+}
+
+variable "cloudfront_distribution_arn" {
+  description = "ARN of the web CloudFront distribution (empty disables the invalidation grant)."
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Extra tags merged onto every resource."
   type        = map(string)

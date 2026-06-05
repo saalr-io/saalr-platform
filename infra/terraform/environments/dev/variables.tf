@@ -27,3 +27,15 @@ variable "single_nat_gateway" {
   type    = bool
   default = true
 }
+
+variable "web_domain_name" {
+  description = "Custom domain for the web app (e.g. saalr.com). Empty uses the default CloudFront domain."
+  type        = string
+  default     = ""
+}
+
+variable "web_route53_zone_id" {
+  description = "Route53 hosted zone id for web_domain_name (only needed when web_domain_name is set)."
+  type        = string
+  default     = ""
+}

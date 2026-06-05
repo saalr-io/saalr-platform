@@ -80,6 +80,24 @@ data "aws_iam_policy_document" "deploy" {
     actions   = ["iam:PassRole"]
     resources = var.passable_role_arns
   }
+
+  dynamic "statement" {
+    for_each = var.web_bucket_arn != "" ? [1] : []
+    content {
+      sid       = "WebS3Sync"
+      actions   = ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket", "s3:GetObject"]
+      resources = [var.web_bucket_arn, "${var.web_bucket_arn}/*"]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.cloudfront_distribution_arn != "" ? [1] : []
+    content {
+      sid       = "WebCloudFrontInvalidate"
+      actions   = ["cloudfront:CreateInvalidation"]
+      resources = [var.cloudfront_distribution_arn]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "deploy" {

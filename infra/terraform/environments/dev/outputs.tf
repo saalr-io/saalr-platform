@@ -61,3 +61,15 @@ output "api_alb_dns_name" {
 output "gha_deploy_role_arn" {
   value = module.cicd.deploy_role_arn
 }
+
+output "web_bucket" {
+  value = module.web.bucket
+}
+
+output "cloudfront_domain_name" {
+  value = module.web.distribution_domain_name
+}
+
+output "cloudfront_distribution_id" {
+  value = module.web.distribution_id
+}

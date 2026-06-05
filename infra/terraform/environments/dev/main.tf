@@ -19,6 +19,19 @@ provider "aws" {
   }
 }
 
+# CloudFront ACM certs must live in us-east-1.
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+  default_tags {
+    tags = {
+      Project     = "saalr"
+      Environment = "dev"
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
 module "network" {
   source               = "../../modules/network"
   name_prefix          = "saalr-dev"
@@ -160,9 +173,24 @@ module "workers" {
   }
 }
 
+module "web" {
+  source          = "../../modules/web"
+  name_prefix     = "saalr-dev"
+  bucket_prefix   = "saalr-dev" # globally-unique — set a unique suffix before apply
+  alb_domain_name = module.api_service.alb_dns_name
+  web_domain_name = var.web_domain_name
+  route53_zone_id = var.web_route53_zone_id
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+}
+
 module "cicd" {
-  source              = "../../modules/cicd"
-  name_prefix         = "saalr-dev"
-  ecr_repository_arns = values(module.compute.ecr_repository_arns)
-  passable_role_arns  = [module.compute.task_execution_role_arn, module.compute.task_role_arn]
+  source                      = "../../modules/cicd"
+  name_prefix                 = "saalr-dev"
+  ecr_repository_arns         = values(module.compute.ecr_repository_arns)
+  passable_role_arns          = [module.compute.task_execution_role_arn, module.compute.task_role_arn]
+  web_bucket_arn              = module.web.bucket_arn
+  cloudfront_distribution_arn = module.web.distribution_arn
 }
