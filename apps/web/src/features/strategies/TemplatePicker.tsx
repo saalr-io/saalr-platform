@@ -1,7 +1,23 @@
+import type React from 'react'
+import { useState } from 'react'
 import { useTemplates, useBuildTemplate } from './hooks'
-import type { StrategyConfig } from '../../lib/strategies'
+import type { StrategyConfig, TemplateDescriptor } from '../../lib/strategies'
 
-const CATS: Array<'bullish' | 'bearish' | 'neutral'> = ['bullish', 'bearish', 'neutral']
+type MV = TemplateDescriptor['market_view'] | 'all'
+type VV = TemplateDescriptor['vol_view'] | 'all'
+
+const MARKET_VIEWS: Array<{ key: MV; label: string }> = [
+  { key: 'all', label: 'All' },
+  { key: 'bullish', label: 'Bullish' },
+  { key: 'bearish', label: 'Bearish' },
+  { key: 'neutral', label: 'Neutral' },
+  { key: 'volatile', label: 'Volatile' },
+]
+const VOL_VIEWS: Array<{ key: VV; label: string }> = [
+  { key: 'all', label: 'All' },
+  { key: 'long_vol', label: 'Long vol' },
+  { key: 'short_vol', label: 'Short vol' },
+]
 
 export function TemplatePicker({
   underlying, expiry, atmStrike, onApply,
@@ -10,6 +26,8 @@ export function TemplatePicker({
 }) {
   const { data: templates = [], isLoading } = useTemplates()
   const build = useBuildTemplate()
+  const [mv, setMv] = useState<MV>('all')
+  const [vv, setVv] = useState<VV>('all')
 
   function apply(key: string) {
     build.mutate(
@@ -19,20 +37,78 @@ export function TemplatePicker({
   }
 
   if (isLoading) return <div className="text-xs text-txtFaint">Loading templates…</div>
+
+  const shown = templates.filter(
+    (t) => (mv === 'all' || t.market_view === mv) && (vv === 'all' || t.vol_view === vv),
+  )
+
   return (
     <div className="space-y-3">
-      {CATS.map((cat) => (
-        <div key={cat}>
-          <div className="mb-1 font-mono text-[9px] uppercase tracking-wider text-txtFaint">{cat}</div>
-          <div className="flex flex-wrap gap-2">
-            {templates.filter((t) => t.category === cat).map((t) => (
-              <button key={t.key} title={t.description} onClick={() => apply(t.key)}
-                      className="rounded-full border border-line bg-panel px-3 py-1 text-xs text-txtDim hover:text-txt">
-                {t.name}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <FilterRow label="View" options={MARKET_VIEWS} value={mv} onChange={setMv} />
+        <FilterRow label="Vol" options={VOL_VIEWS} value={vv} onChange={setVv} />
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {shown.map((t) => (
+          <button
+            key={t.key}
+            data-testid={`tpl-${t.key}`}
+            onClick={() => apply(t.key)}
+            title={t.description}
+            className="flex flex-col gap-1.5 rounded-lg border border-line bg-panel p-3 text-left transition-colors hover:border-lineSoft"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[13px] font-medium text-txt">{t.name}</span>
+              <span className="font-mono text-[9px] uppercase tracking-wider text-txtFaint">{t.complexity}</span>
+            </div>
+            <p className="text-[11px] leading-snug text-txtDim">{t.description}</p>
+            <div className="flex flex-wrap gap-1.5">
+              <Badge>{t.net}</Badge>
+              <Badge>{t.legs} legs</Badge>
+              <Badge tone={t.risk === 'undefined' ? 'warn' : undefined}>
+                {t.risk === 'undefined' ? 'undefined risk' : 'defined risk'}
+              </Badge>
+            </div>
+          </button>
+        ))}
+        {shown.length === 0 && (
+          <p data-testid="tpl-empty" className="text-xs text-txtFaint">No templates match these filters.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Badge({ children, tone }: { children: React.ReactNode; tone?: 'warn' }) {
+  return (
+    <span
+      className={`rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide ${
+        tone === 'warn' ? 'bg-warn/15 text-warn' : 'border border-lineSoft text-txtFaint'
+      }`}
+    >
+      {children}
+    </span>
+  )
+}
+
+function FilterRow<T extends string>({
+  label, options, value, onChange,
+}: {
+  label: string; options: Array<{ key: T; label: string }>; value: T; onChange: (v: T) => void
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <span className="font-mono text-[9px] uppercase tracking-wider text-txtFaint">{label}</span>
+      {options.map((o) => (
+        <button
+          key={o.key}
+          onClick={() => onChange(o.key)}
+          className={`rounded-full px-2 py-0.5 text-[11px] transition-colors ${
+            value === o.key ? 'bg-accent text-canvas' : 'text-txtDim hover:text-txt'
+          }`}
+        >
+          {o.label}
+        </button>
       ))}
     </div>
   )

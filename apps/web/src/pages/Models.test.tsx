@@ -62,7 +62,7 @@ describe('Models page', () => {
       underlying: 'SPY',
       legs: [{ kind: 'option', option_type: 'CALL', side: 'BUY', strike: 500, expiry: '2026-12-18', qty: 1 }],
     }
-    vi.spyOn(strategies, 'listTemplates').mockResolvedValue([{ key: 'long-call', name: 'Long Call', category: 'bullish', description: 'x' }])
+    vi.spyOn(strategies, 'listTemplates').mockResolvedValue([{ key: 'long-call', name: 'Long Call', description: 'x', market_view: 'bullish', vol_view: 'neutral', net: 'debit', risk: 'defined', reward: 'undefined', legs: 1, complexity: 'beginner' }])
     vi.spyOn(strategies, 'buildTemplate').mockResolvedValue(cfg)
     const run = vi.spyOn(models, 'runMonteCarlo').mockResolvedValue(MC)
     render(wrap(<Models />))

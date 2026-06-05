@@ -21,7 +21,16 @@ export interface Strategy {
 }
 
 export interface TemplateDescriptor {
-  key: string; name: string; category: 'bullish' | 'bearish' | 'neutral'; description: string
+  key: string
+  name: string
+  description: string
+  market_view: 'bullish' | 'bearish' | 'neutral' | 'volatile'
+  vol_view: 'long_vol' | 'short_vol' | 'neutral'
+  net: 'debit' | 'credit' | 'mixed'
+  risk: 'defined' | 'undefined'
+  reward: 'defined' | 'undefined'
+  legs: number
+  complexity: 'beginner' | 'intermediate' | 'advanced'
 }
 
 export interface CurvePoint { spot: number; pnl: number }
