@@ -1,10 +1,32 @@
 import json
 import pathlib
+from datetime import date
 
-from saalr_core.marketdata.massive import parse_results
+from saalr_core.marketdata.massive import _chain_query_params, parse_results
 from saalr_core.pricing.types import OptionKind
 
 FIX = pathlib.Path(__file__).parent / "fixtures"
+
+
+def test_chain_query_params_bounds_strikes_and_expiry():
+    # SPY-sized chains are unusable unbisected: window strikes to ATM +-20% and cap the
+    # expiry horizon so the provider returns a few hundred contracts, not tens of thousands.
+    p = _chain_query_params("k", spot=600.0, atm_band=0.20, expiry_horizon_days=90, today=date(2026, 6, 5))
+    assert p["strike_price.gte"] == 480.0
+    assert p["strike_price.lte"] == 720.0
+    assert p["expiration_date.gte"] == "2026-06-06"  # tomorrow — skip 0DTE/expired
+    assert p["expiration_date.lte"] == "2026-09-03"
+    assert p["limit"] == 250
+    assert p["apiKey"] == "k"
+    assert p["sort"] == "expiration_date" and p["order"] == "asc"
+
+
+def test_chain_query_params_skips_strike_window_without_a_spot():
+    # market closed / no trade -> can't ATM-bound, but the expiry bounds still apply
+    p = _chain_query_params("k", spot=0.0, atm_band=0.20, expiry_horizon_days=90, today=date(2026, 6, 5))
+    assert "strike_price.gte" not in p and "strike_price.lte" not in p
+    assert p["expiration_date.gte"] == "2026-06-06"
+    assert p["expiration_date.lte"] == "2026-09-03"
 
 
 def test_parse_results_maps_contracts():
