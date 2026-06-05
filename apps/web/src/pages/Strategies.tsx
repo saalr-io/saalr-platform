@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { LegEditor } from '../features/strategies/LegEditor'
 import { TemplatePicker } from '../features/strategies/TemplatePicker'
 import { SavedList } from '../features/strategies/SavedList'
@@ -35,6 +36,14 @@ export function Strategies() {
   const [needUpgrade, setNeedUpgrade] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const location = useLocation()
+  useEffect(() => {
+    const incoming = (location.state as { config?: StrategyConfig } | null)?.config
+    if (incoming) {
+      setConfig(incoming)
+      setTab('build')
+    }
+  }, [location.state])
   const analyze = useAnalyze()
   const create = useCreateStrategy()
 

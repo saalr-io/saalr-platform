@@ -14,6 +14,7 @@ const SECTIONS: { label: string; items: [string, string][] }[] = [
   {
     label: 'Learn & Research',
     items: [
+      ['/ideas', 'Trade Ideas'],
       ['/research', 'Research Agent'],
       ['/education', 'OptionsAcademy'],
       ['/portfolio', 'Portfolio'],

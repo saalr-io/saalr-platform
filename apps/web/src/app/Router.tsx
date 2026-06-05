@@ -15,6 +15,7 @@ import { Portfolio } from '../pages/Portfolio'
 import { Models } from '../pages/Models'
 import { Dashboard } from '../pages/Dashboard'
 import { Backtests } from '../pages/Backtests'
+import { Ideas } from '../pages/Ideas'
 
 /**
  * The authenticated SPA route table. Mounted under a <BrowserRouter basename="/app">
@@ -35,6 +36,7 @@ export function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="markets" element={<Markets />} />
         <Route path="strategies" element={<Strategies />} />
+        <Route path="ideas" element={<Ideas />} />
         <Route path="backtests" element={<Backtests />} />
         <Route path="models" element={<Models />} />
         <Route path="research" element={<Research />} />
