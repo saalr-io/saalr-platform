@@ -3,6 +3,12 @@ variable "region" {
   default = "us-east-1"
 }
 
+variable "bucket_prefix" {
+  description = "Globally-unique prefix for all S3 bucket names (transcripts/ml-models/audit/web). MUST be globally unique — set a unique suffix before apply."
+  type        = string
+  default     = "saalr-dev"
+}
+
 variable "vpc_cidr" {
   type    = string
   default = "10.0.0.0/16"

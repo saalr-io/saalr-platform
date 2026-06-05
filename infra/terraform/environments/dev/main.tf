@@ -1,6 +1,10 @@
 terraform {
+  # Backend blocks cannot use variables. Override the bucket/table at init time with the
+  # bootstrap outputs (your globally-unique names), e.g.:
+  #   terraform init -backend-config="bucket=<state_bucket>" -backend-config="dynamodb_table=<lock_table>"
+  # The literals below are defaults/placeholders.
   backend "s3" {
-    bucket         = "saalr-terraform-state" # set to the bootstrap bucket (your unique name)
+    bucket         = "saalr-terraform-state"
     key            = "dev/stack.tfstate"
     region         = "us-east-1"
     dynamodb_table = "saalr-terraform-locks"
@@ -55,7 +59,7 @@ module "data" {
 module "storage" {
   source        = "../../modules/storage"
   name_prefix   = "saalr-dev"
-  bucket_prefix = "saalr-dev" # globally-unique — set a unique suffix before apply
+  bucket_prefix = var.bucket_prefix
 }
 
 module "compute" {
@@ -176,7 +180,7 @@ module "workers" {
 module "web" {
   source          = "../../modules/web"
   name_prefix     = "saalr-dev"
-  bucket_prefix   = "saalr-dev" # globally-unique — set a unique suffix before apply
+  bucket_prefix   = var.bucket_prefix
   alb_domain_name = module.api_service.alb_dns_name
   web_domain_name = var.web_domain_name
   route53_zone_id = var.web_route53_zone_id
