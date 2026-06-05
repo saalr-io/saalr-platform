@@ -37,6 +37,7 @@ from .montecarlo.router import router as montecarlo_router
 from .oms.router import router as oms_router
 from .research.router import router as research_router
 from .sentiment.router import router as sentiment_router
+from .regime.router import router as regime_router
 from .strategies.router import router as strategies_router
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
         )
         app.state.vol_surface_ttl = settings.vol_surface_cache_ttl_seconds
         app.state.vol_forecast_ttl = settings.vol_forecast_cache_ttl_seconds
+        app.state.regime_ttl = settings.regime_cache_ttl_seconds
         resolver = make_credential_resolver(settings, os.environ)
         app.state.alpaca_adapter_factory = lambda account: build_alpaca_adapter(
             account.credential_ref, account.is_paper, resolver
@@ -96,6 +98,7 @@ def create_app() -> FastAPI:
     app.include_router(forecast_router)
     app.include_router(montecarlo_router)
     app.include_router(sentiment_router)
+    app.include_router(regime_router)
     app.include_router(oms_router)
     app.include_router(content_router)
     app.include_router(research_router)

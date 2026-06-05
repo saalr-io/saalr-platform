@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     risk_free_rate_fallback: float = 0.05
     vol_surface_cache_ttl_seconds: int = 21600  # 6h, per HLD
     vol_forecast_cache_ttl_seconds: int = 21600  # 6h
+    regime_cache_ttl_seconds: int = 3600  # 1h — regime recomputes from daily bars
 
     # Market-data ingestion
     bars_backfill_default_days: int = 1825  # ~5y, used when a symbol has no stored bars
