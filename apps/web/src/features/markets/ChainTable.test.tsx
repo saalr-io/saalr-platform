@@ -1,13 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { ChainTable } from './ChainTable'
 import type { Contract, Greeks } from '../../lib/market'
 
 const G = (iv: number): Greeks => ({ price: 1, delta: 0.5, gamma: 0.01, theta: -0.02, vega: 0.1, rho: 0.05, iv })
-const C = (strike: number, type: 'CALL' | 'PUT', iv: number): Contract => ({
-  expiry: '2026-12-18', strike, type, bid: 1, ask: 1.2, last: 1.1, volume: 10, open_interest: 99,
+const C = (strike: number, type: 'CALL' | 'PUT', iv: number, oi = 99): Contract => ({
+  expiry: '2026-12-18', strike, type, bid: 1, ask: 1.2, last: 1.1, volume: 10, open_interest: oi,
   ours: G(iv), vendor: { iv: iv - 0.001, delta: 0.5, gamma: 0.01, theta: -0.02, vega: 0.1 },
 })
+
+// a strike ladder straddling spot=101, with a call+put at each strike
+function ladder(strikes: number[], spot: number) {
+  const cs = strikes.flatMap((k) => [C(k, 'CALL', 0.2, k), C(k, 'PUT', 0.25, k)])
+  return <ChainTable contracts={cs} spot={spot} />
+}
 
 describe('ChainTable', () => {
   it('pivots a call and a put at the same strike onto one row', () => {
@@ -26,5 +32,41 @@ describe('ChainTable', () => {
   it('shows an empty message when there are no contracts', () => {
     render(<ChainTable contracts={[]} spot={100} />)
     expect(screen.getByTestId('chain-empty')).toBeInTheDocument()
+  })
+
+  it('tints the ITM side: calls below spot, puts above spot', () => {
+    render(ladder([95, 100, 105], 101))
+    // strike 95 < spot -> call side ITM
+    expect(within(screen.getByTestId('chain-row-95')).getByTestId('call-cells-95')).toHaveAttribute('data-itm', 'true')
+    expect(within(screen.getByTestId('chain-row-95')).getByTestId('put-cells-95')).not.toHaveAttribute('data-itm', 'true')
+    // strike 105 > spot -> put side ITM
+    expect(within(screen.getByTestId('chain-row-105')).getByTestId('put-cells-105')).toHaveAttribute('data-itm', 'true')
+    expect(within(screen.getByTestId('chain-row-105')).getByTestId('call-cells-105')).not.toHaveAttribute('data-itm', 'true')
+  })
+
+  it('toggles between prices and greeks columns', () => {
+    // headers are mirrored (calls + puts), so each label appears twice -> use *AllByText
+    render(ladder([100, 101, 102], 101))
+    expect(screen.getAllByText('OI').length).toBeGreaterThan(0)
+    expect(screen.queryAllByText('Δ')).toHaveLength(0)
+    fireEvent.click(screen.getByTestId('chain-greeks-toggle'))
+    expect(screen.getAllByText('Δ').length).toBeGreaterThan(0)
+    expect(screen.queryAllByText('OI')).toHaveLength(0)
+  })
+
+  it('limits to a window around ATM by default and expands on All', () => {
+    const strikes = Array.from({ length: 41 }, (_, i) => 80 + i) // 80..120, ATM=101
+    render(ladder(strikes, 101))
+    // default window = 10 each side -> at most 21 strike rows
+    expect(screen.queryByTestId('chain-row-80')).not.toBeInTheDocument()
+    expect(screen.getByTestId('chain-row-101')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('chain-window-all'))
+    expect(screen.getByTestId('chain-row-80')).toBeInTheDocument()
+  })
+
+  it('renders a spot line and an OI bar', () => {
+    render(ladder([100, 101, 102], 101))
+    expect(screen.getByTestId('chain-spot-line').textContent).toContain('101')
+    expect(screen.getByTestId('oi-bar-call-101')).toBeInTheDocument()
   })
 })
