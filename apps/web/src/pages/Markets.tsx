@@ -112,11 +112,23 @@ export function Markets() {
 
           {tab === 'vol' ? (
             <IvCurves surface={surface} expiry={activeExpiry} />
-          ) : chainQ.isLoading ? (
-            <div className="animate-pulse rounded-lg border border-line bg-panel2 py-16" />
+          ) : chainQ.isError && !(chainQ.error instanceof EntitlementError) ? (
+            <p className="text-sm text-neg" data-testid="chain-error">
+              {(chainQ.error as Error).message === 'MARKET_DATA_PROVIDER_UNAVAILABLE'
+                ? 'Market data is temporarily unavailable — try Refresh.'
+                : 'Couldn’t load the chain — try Refresh.'}
+            </p>
           ) : chainQ.data ? (
-            <ChainTable contracts={chainQ.data.contracts} spot={surface.spot} />
-          ) : null}
+            chainQ.data.contracts.length > 0 ? (
+              <ChainTable contracts={chainQ.data.contracts} spot={surface.spot} />
+            ) : (
+              <p className="py-8 text-center text-sm text-txtFaint" data-testid="chain-none">
+                No chain for {activeExpiry}.
+              </p>
+            )
+          ) : (
+            <div className="animate-pulse rounded-lg border border-line bg-panel2 py-16" data-testid="chain-loading" />
+          )}
         </>
       )}
     </div>
