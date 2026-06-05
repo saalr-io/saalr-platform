@@ -146,6 +146,9 @@ async def test_end_to_end_post_consume_poll_succeeds(app_sessionmaker, admin_eng
             data = done.json()
             assert data["status"] == "succeeded", data
             assert "sharpe" in data["metrics"]
+            assert "equity_series" in data
+            assert len(data["equity_series"]) > 0
+            assert set(data["equity_series"][0].keys()) == {"date", "equity"}
             assert data["trade_log_url"] is None
 
 

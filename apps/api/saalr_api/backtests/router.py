@@ -106,6 +106,7 @@ async def get_backtest_run(
     out: dict = {"backtest_id": str(row.backtest_id), "status": row.status}
     if row.status == "succeeded":
         out["metrics"] = (row.metrics_json or {}).get("metrics", {})
+        out["equity_series"] = (row.metrics_json or {}).get("equity_series", [])
         out["trade_log_url"] = None
     elif row.status == "failed":
         out["error"] = {"code": "BACKTEST_FAILED", "message": row.error_message}

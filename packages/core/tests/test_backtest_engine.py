@@ -81,3 +81,18 @@ def test_too_few_bars_raises():
         assert False, "expected ValueError"
     except ValueError:
         pass
+
+
+def test_engine_returns_a_dated_equity_series():
+    start = date(2025, 1, 1)
+    prices = [100.0 + i * 0.2 for i in range(120)]
+    closes = _closes(start, prices)
+    cfg = _long_call("2025-02-15")
+    t = RelativeTemplate.from_config(cfg, ref_spot=100.0, ref_date=start)
+    res = run_backtest_engine(closes, t, _params(start, start + timedelta(days=119)))
+    series = res["equity_series"]
+    assert len(series) == res["equity_points"]
+    assert all(set(p.keys()) == {"date", "equity"} for p in series)
+    dates = [p["date"] for p in series]
+    assert dates == sorted(dates)
+    assert series[-1]["equity"] == res["final_equity"]

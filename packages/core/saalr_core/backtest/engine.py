@@ -95,6 +95,7 @@ def run_backtest_engine(
         return realized_vol(all_closes[lo:hi], params.vol_lookback)
 
     equity_curve: list[float] = []
+    equity_series: list[dict] = []
     trade_pnls: list[float] = []
     realized = 0.0
 
@@ -118,7 +119,9 @@ def run_backtest_engine(
             # close-and-reopen the full structure on this day
             legs, entry_value, open_cost, front_expiry = open_cycle(d)
         cur_value = _position_value(legs, closes[d], vol_at(d), d, params.rate)
-        equity_curve.append(params.initial_capital + realized + (cur_value - entry_value - open_cost))
+        eq = params.initial_capital + realized + (cur_value - entry_value - open_cost)
+        equity_curve.append(eq)
+        equity_series.append({"date": d.isoformat(), "equity": eq})
 
     # realize the final still-open cycle (for trade stats) if it never hit its front expiry
     last_d = sim_days[-1]
@@ -149,6 +152,7 @@ def run_backtest_engine(
         "engine_version": ENGINE_VERSION,
         "approximate": True,
         "equity_points": len(equity_curve),
+        "equity_series": equity_series,
         "start": params.start.isoformat(),
         "end": params.end.isoformat(),
         "initial_capital": params.initial_capital,
