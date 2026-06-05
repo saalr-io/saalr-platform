@@ -32,3 +32,8 @@ services:
       context: ../..
       dockerfile: apps/research-agent/Dockerfile
     image: saalr/research-agent:local
+  content-worker:
+    build:
+      context: ../..
+      dockerfile: apps/content-worker/Dockerfile
+    image: saalr/content-worker:local

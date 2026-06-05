@@ -2,7 +2,7 @@
 
 Builds the Saalr container images and pushes them to the ECR repositories the dev Terraform
 provisions, then applies the stack. Images: `api`, `ingest-worker`, `oms-worker`, `ml-worker`,
-`backtest-worker`, `research-agent`.
+`backtest-worker`, `research-agent`, `content-worker`.
 
 ## Contracts (must stay in sync)
 
@@ -28,7 +28,7 @@ ACCOUNT=<aws-account-id>; REGION=us-east-1
 aws ecr get-login-password --region "$REGION" \
   | docker login --username AWS --password-stdin "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com"
 
-for app in api ingest-worker oms-worker ml-worker backtest-worker research-agent; do
+for app in api ingest-worker oms-worker ml-worker backtest-worker research-agent content-worker; do
   docker tag "saalr/$app:local" "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/saalr-dev-$app:latest"
   docker push "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/saalr-dev-$app:latest"
 done
@@ -45,6 +45,22 @@ done
 terraform -chdir=infra/terraform/environments/dev init
 terraform -chdir=infra/terraform/environments/dev apply
 ```
+
+## content-worker — one-off reindex
+
+`content-worker` rebuilds the OptionsAcademy embeddings index; it is content-change-driven, not a
+scheduled or long-running worker (so it is intentionally NOT in the Terraform `workers` module). Its
+ECR repo (`saalr-dev-content-worker`) is already declared in `module.compute` `ecr_repo_names`. Run it
+on demand, either locally against the DB:
+
+```bash
+docker run --rm \
+  -e APP_DATABASE_URL=postgresql+asyncpg://... -e OPENAI_API_KEY=... \
+  saalr/content-worker:local reindex
+```
+
+or as a one-off `aws ecs run-task` (register a task def for the image with `command=["reindex"]`,
+reusing the shared execution/task roles + the `saalr/app/openai` secret).
 
 ## Notes
 
