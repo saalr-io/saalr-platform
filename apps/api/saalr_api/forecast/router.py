@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import Principal
 from . import service
-from .gating import require_ml_forecast
+from .gating import require_ml_forecast, require_price_forecast
 
 router = APIRouter(prefix="/v1/market", tags=["forecast"])
 
@@ -50,7 +50,7 @@ async def price_forecast_endpoint(
     ticker: str = Query(...),
     market: str = Query("US"),
     horizon: int = Query(10, ge=1, le=30),
-    ctx: tuple[AsyncSession, Principal] = Depends(require_ml_forecast),
+    ctx: tuple[AsyncSession, Principal] = Depends(require_price_forecast),
 ) -> dict:
     _validate(ticker, market)
     ticker = ticker.upper()

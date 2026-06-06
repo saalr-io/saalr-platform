@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from saalr_core.sentiment import repo as sentiment_repo
 
 from ..auth import Principal
-from ..forecast.gating import require_ml_forecast
+from ..forecast.gating import require_news_sentiment
 
 router = APIRouter(prefix="/v1/market", tags=["sentiment"])
 
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/v1/market", tags=["sentiment"])
 async def get_sentiment(
     ticker: str = Query(...),
     market: str = Query("US"),
-    ctx: tuple[AsyncSession, Principal] = Depends(require_ml_forecast),
+    ctx: tuple[AsyncSession, Principal] = Depends(require_news_sentiment),
 ) -> dict:
     if not ticker or not ticker.isalpha():
         raise HTTPException(404, {"error": {"code": "RESOURCE_NOT_FOUND", "message": "unknown ticker"}})
