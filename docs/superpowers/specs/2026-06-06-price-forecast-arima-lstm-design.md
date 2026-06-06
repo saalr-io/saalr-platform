@@ -1,15 +1,24 @@
-# Price Forecast (ARIMA + LSTM) — Design
+# Forecasts & Simulation: Price Forecast (ARIMA + LSTM) + HAR-RV — Design
 
 **Date:** 2026-06-06
 **Status:** Approved (brainstorming)
-**Slice:** Models → "Forecasts & simulation" — add a price/return forecast alongside the existing volatility forecast.
+**Slice:** Models → "Forecasts & simulation" — two cohesive feature areas, both shipping today:
+- **Feature A** — a NEW **Price forecast** panel (ARIMA + LSTM + naive baseline) for the underlying.
+- **Feature B** — add a **HAR-RV** model to the EXISTING volatility forecast (beside GARCH/HV21).
+
+Plus a documented **Future work (parked)** section for the heavier options-ML wins.
 
 ## Goal
 
-Add a new **Price forecast** panel to the Models → Insights tab that trains **ARIMA** and
-**LSTM** models (plus a naive baseline) on a ticker's price history and overlays their projected
-close paths over a horizon, with walk-forward validation marking which model actually won on
-backtest. Premium-gated (`ml_forecast`), Redis-cached, and framed honestly as educational.
+1. **Feature A:** Add a new **Price forecast** panel to the Models → Insights tab that trains
+   **ARIMA** and **LSTM** models (plus a naive baseline) on a ticker's price history and overlays
+   their projected close paths over a horizon, with multi-origin walk-forward validation marking
+   which model actually won on backtest.
+2. **Feature B:** Add **HAR-RV** (Corsi's Heterogeneous AutoRegressive realized-variance model) as
+   a third model in the existing volatility forecast, joining the GARCH-vs-HV21 walk-forward so the
+   `primary` can be any of the three.
+
+Both premium-gated (`ml_forecast`), Redis-cached, and framed honestly as educational/approximate.
 
 ## Context (existing design this builds on)
 
@@ -30,6 +39,10 @@ backtest. Premium-gated (`ml_forecast`), Redis-cached, and framed honestly as ed
    and seeding for determinism.
 3. The panel shows **all three models together** (ARIMA, LSTM, naive) with a `primary` marked by
    walk-forward holdout — mirroring the GARCH/HV21 vol panel.
+
+---
+
+# Feature A — Price forecast panel (ARIMA + LSTM)
 
 ## Architecture
 
@@ -153,8 +166,114 @@ the `EntitlementError → ModelsGate` path already in `Models.tsx`.
 - `apps/web/src/features/models/PriceForecastPanel.test.tsx` — renders three model paths + legend
   + axes; shows the primary band and the directional read.
 
+---
+
+# Feature B — HAR-RV volatility model (extends the existing vol forecast)
+
+## What it adds
+
+HAR-RV (Corsi 2009) regresses next-day realized variance on its own **daily / weekly (5d) /
+monthly (22d)** averages — a 4-coefficient OLS (intercept + 3 lags), pure-numpy
+(`np.linalg.lstsq`), **no new deps**. It joins GARCH and HV21 as a third candidate in the existing
+`vol_forecast`; the walk-forward holdout scores all three and `primary` becomes the best of them.
+
+**Honesty caveat:** canonical HAR uses *intraday* realized variance; we only store daily closes,
+so daily realized variance is proxied by squared scaled log-returns (`rv_t = r_t²`, the SAME proxy
+`walk_forward` already uses as its realized target), smoothed by the d/w/m averaging. A legitimate,
+common daily-data variant — noisier than true HAR — and it inherits the panel's existing
+`approximate` chip.
+
+## Modeling conventions (consistent with the existing vol forecast)
+
+- **Realized-variance proxy:** `rv = returns²` where `returns` are the existing scaled log-returns
+  (`_SCALE = 100`). Same units as GARCH/HV21 internals.
+- **Features at day t:** `rv_d = rv[t-1]`, `rv_w = mean(rv[t-5:t])`, `rv_m = mean(rv[t-22:t])`;
+  target `rv[t]`. Fit `β` by OLS over all valid rows (needs ≥ 22 trailing days).
+- **Forecast path:** iterate the HAR recursion forward `horizon` steps (feed each predicted `rv`
+  back into the daily lag and roll the 5d/22d means), then annualize each step to **vol percent**:
+  `sqrt(rv_fc * 252)` — matching `garch_path`/`hv_path` units so it overlays cleanly.
+- **No CI band** for HAR (point path only), like HV21.
+
+## Components / files
+
+### Backend — `saalr_ml`
+- **Create** `packages/ml/saalr_ml/har.py` —
+  - `fit_har(rv: np.ndarray) -> np.ndarray` (returns the 4 OLS coefficients).
+  - `har_one_step(rv_history: np.ndarray, beta) -> float` (next-day variance; used by walk-forward).
+  - `har_rv_forecast(returns: np.ndarray, horizon: int) -> list[float]` (annualized vol-percent path).
+- **Modify** `packages/ml/saalr_ml/evaluate.py` — extend `WalkForward` with `har_mae: float`; in
+  `walk_forward`, score HAR one-step-ahead variance across the holdout (same `realized = resid²`
+  target as GARCH/HV21); set `primary = argmin` over `{garch, hv21, har}`. Bump the minimum-history
+  guard to `holdout_days + 22` (monthly lag). Leave `lift` unchanged
+  (`(hv21_mae − garch_mae) / hv21_mae`) so existing tests/semantics hold; HAR is judged purely by
+  `har_mae` and the `primary` selection.
+- **Modify** `packages/ml/saalr_ml/forecast.py` — add `"har"` to the `forecasts` dict
+  (`(har_path, None)`), include it in `alternative_models` when not primary, and add
+  `validation.har_mae`. `alternative_models` may now hold up to **two** entries.
+
+### Backend — API
+- **Modify** `apps/api/saalr_api/forecast/service.py` — `record_validation` already keys on
+  `result["primary_model"]`; no signature change. (HAR rides the existing `/v1/market/vol-forecast`
+  endpoint and Redis cache; payload simply gains a model.)
+
+### Frontend (`apps/web/src`)
+- **Modify** `lib/models.ts` — `VolForecast.validation` gains optional `har_mae?: number`;
+  `alternative_models` already typed as an array (now 0–2 entries).
+- **Modify** `features/models/ForecastPanel.tsx` — render the `har MAE` validation row when present
+  and map over **all** `alternative_models` (today it shows only `[0]`); `primary` badge already
+  data-driven so "har" displays without further change.
+- **Modify** `features/models/ForecastPanel.test.tsx` — cover a `primary: "har"` payload with two
+  alternatives and the `har_mae` row.
+
+## Payload delta (vol forecast)
+
+```jsonc
+// existing /v1/market/vol-forecast response, additively:
+{
+  "primary_model": "har",                       // now one of garch | hv21 | har
+  "primary_forecast": [22.1, 22.3, …],
+  "alternative_models": [                        // 0–2 entries
+    { "model": "garch", "forecast": […], "status": "underperforming_baseline", "delta_mae_vs_baseline": … },
+    { "model": "hv21",  "forecast": […], "status": "baseline" }
+  ],
+  "validation": { "holdout_days": 40, "garch_mae": …, "hv21_mae": …, "har_mae": …, "lift": … }
+}
+```
+
+## Testing (Feature B)
+
+- `packages/ml/tests/test_har.py` — `fit_har` recovers known coefficients on a synthetic
+  AR-in-variance series; `har_rv_forecast` returns a horizon-length, all-finite, positive vol path;
+  raises/handles too-short input.
+- Extend `packages/ml/tests/test_forecast.py` / `test_evaluate.py` — `vol_forecast` output contains
+  a HAR forecast; `walk_forward` returns `har_mae` and can pick `primary == "har"` on a series HAR
+  fits best.
+- Extend `tests/integration/test_vol_forecast.py` — response includes a HAR entry (primary or
+  alternative) and `validation.har_mae`.
+- Extend `ForecastPanel.test.tsx` — primary "har" + two alternatives render; `har MAE` row shows.
+
+---
+
+# Future work (parked — NOT built today)
+
+Documented so we can scope them as their own slices later. Both are higher-leverage for an options
+platform but carry real cost:
+
+- **Deep hedging** (Buehler et al.) — a NN/RL policy that learns to hedge an option (or a strategy)
+  under transaction costs and market frictions, typically beating static delta-hedging. Heavy:
+  needs a training pipeline, a market simulator, and `torch`; best as an offline-trained model
+  served at inference, not per-request. Natural home: the Models/Strategy area, tied to the OMS
+  paper-trading loop.
+- **IV-surface ML** — arbitrage-free smoothing/forecasting of the implied-vol surface across
+  strike × maturity (Gaussian-process or "deep smoothing" nets; SSVI/SABR as the parametric
+  baselines). Directly augments the existing vol-surface view; main risk is enforcing no-arbitrage
+  constraints. Could start as a parametric SSVI fit before any NN.
+
+These remain **out of scope for this slice**; no files are created for them now.
+
 ## Out of scope (YAGNI)
 
 - Exogenous regressors, multivariate models, GPU training.
 - Persisting trained model artifacts (retrain on cache-miss).
 - Intraday / non-US markets.
+- Deep hedging and IV-surface ML (parked above — future slices).
