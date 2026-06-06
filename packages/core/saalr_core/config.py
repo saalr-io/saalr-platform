@@ -27,6 +27,8 @@ class Settings(BaseSettings):
 
     # Market data (Greeks/vol surface slice)
     massive_api_key: str | None = None
+    finnhub_api_key: str | None = None
+    news_provider: str = "auto"  # auto | massive | finnhub | rss
     fred_api_key: str | None = None
     risk_free_rate_fallback: float = 0.05
     vol_surface_cache_ttl_seconds: int = 21600  # 6h, per HLD
