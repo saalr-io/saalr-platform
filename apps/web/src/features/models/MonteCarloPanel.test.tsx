@@ -34,4 +34,12 @@ describe('MonteCarloPanel', () => {
     expect(screen.getByTestId('mc-panel')).toBeInTheDocument()
     expect(screen.queryAllByTestId('mc-bar')).toHaveLength(0)
   })
+
+  it('labels the P&L axis and explains the bars', () => {
+    render(<MonteCarloPanel result={R()} />)
+    const hist = screen.getByTestId('mc-histogram')
+    expect(hist.textContent).toContain('P&L')    // x-axis title
+    expect(hist.textContent).toContain('$100')   // max-loss / max-profit tick
+    expect(screen.getByTestId('mc-explainer').textContent).toMatch(/max loss/i)
+  })
 })
