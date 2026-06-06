@@ -27,5 +27,17 @@ def test_walk_forward_ties_or_baseline_on_iid():
     r = rng.standard_normal(1500) * 1.0   # near-constant vol, no clustering
     wf = walk_forward(r, holdout_days=60)
     # GARCH has no clustering to exploit; it must NOT spuriously dominate
-    assert wf.primary in ("hv21", "garch")
+    assert wf.primary in ("hv21", "garch", "har")
     assert wf.hv21_mae <= wf.garch_mae * 1.5   # baseline is competitive on IID data
+
+
+def test_walk_forward_reports_har_and_can_pick_it():
+    from saalr_ml.evaluate import walk_forward
+    rng = np.random.default_rng(7)
+    r = rng.standard_normal(1500) * 1.0
+    wf = walk_forward(r, holdout_days=60)
+    assert hasattr(wf, "har_mae") and np.isfinite(wf.har_mae)
+    assert wf.primary in ("garch", "hv21", "har")
+    # primary is the lowest-MAE of the three
+    best = min(("garch", wf.garch_mae), ("hv21", wf.hv21_mae), ("har", wf.har_mae), key=lambda t: t[1])
+    assert wf.primary == best[0]
