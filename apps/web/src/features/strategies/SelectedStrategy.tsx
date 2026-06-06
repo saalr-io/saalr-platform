@@ -1,4 +1,6 @@
 import type { Leg, StrategyConfig } from '../../lib/strategies'
+import { InfoHint } from '../../components/InfoHint'
+import { hintProps } from '../../content/helpHints'
 
 function LegRow({ leg, i }: { leg: Leg; i: number }) {
   const sideClass = (side: 'BUY' | 'SELL') => (side === 'BUY' ? 'text-pos' : 'text-neg')
@@ -29,12 +31,13 @@ function LegRow({ leg, i }: { leg: Leg; i: number }) {
   )
 }
 
-export function SelectedStrategy({ config, onChange }: { config: StrategyConfig; onChange?: () => void }) {
+export function SelectedStrategy({ config, onChange, templateKey }: { config: StrategyConfig; onChange?: () => void; templateKey?: string }) {
   return (
     <div className="rounded-lg border border-line bg-panel p-3" data-testid="mc-selected">
       <div className="mb-2 flex items-center justify-between">
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-txtFaint">
           Selected strategy · <span className="text-txt">{config.underlying}</span>
+          {templateKey && <InfoHint {...hintProps(templateKey)} />}
         </p>
         {onChange && (
           <button

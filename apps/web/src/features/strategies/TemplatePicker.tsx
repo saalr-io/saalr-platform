@@ -2,6 +2,8 @@ import type React from 'react'
 import { useState } from 'react'
 import { useTemplates, useBuildTemplate } from './hooks'
 import type { StrategyConfig, TemplateDescriptor } from '../../lib/strategies'
+import { InfoHint } from '../../components/InfoHint'
+import { hintProps } from '../../content/helpHints'
 
 type MV = TemplateDescriptor['market_view'] | 'all'
 type VV = TemplateDescriptor['vol_view'] | 'all'
@@ -56,14 +58,16 @@ export function TemplatePicker({
         {shown.map((t) => {
           const isSelected = t.key === selectedKey
           return (
-          <button
+          <div
             key={t.key}
-            type="button"
+            role="button"
+            tabIndex={0}
             data-testid={`tpl-${t.key}`}
             data-selected={isSelected ? 'true' : undefined}
             onClick={() => apply(t.key)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); apply(t.key) } }}
             title={t.description}
-            className={`flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors ${
+            className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors ${
               isSelected ? 'border-accent bg-accent/10 ring-1 ring-accent/40' : 'border-line bg-panel hover:border-lineSoft'
             }`}
           >
@@ -71,7 +75,10 @@ export function TemplatePicker({
               <span className={`text-[13px] font-medium ${isSelected ? 'text-accent' : 'text-txt'}`}>
                 {isSelected ? '✓ ' : ''}{t.name}
               </span>
-              <span className="font-mono text-[9px] uppercase tracking-wider text-txtFaint">{t.complexity}</span>
+              <span className="flex items-center gap-1.5">
+                <span className="font-mono text-[9px] uppercase tracking-wider text-txtFaint">{t.complexity}</span>
+                <span onClick={(e) => e.stopPropagation()}><InfoHint {...hintProps(t.key)} /></span>
+              </span>
             </div>
             <p className="text-[11px] leading-snug text-txtDim">{t.description}</p>
             <div className="flex flex-wrap gap-1.5">
@@ -81,7 +88,7 @@ export function TemplatePicker({
                 {t.risk === 'undefined' ? 'undefined risk' : 'defined risk'}
               </Badge>
             </div>
-          </button>
+          </div>
           )
         })}
         {shown.length === 0 && (

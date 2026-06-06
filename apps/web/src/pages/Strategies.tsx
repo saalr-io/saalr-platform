@@ -124,7 +124,7 @@ export function Strategies() {
                             selectedKey={readyKey ?? undefined} onPick={setReadyKey} onApply={setConfig} />
             {readyKey && (
               <div className="space-y-2" data-testid="ready-selected">
-                <SelectedStrategy config={config} />
+                <SelectedStrategy config={config} templateKey={readyKey ?? undefined} />
                 <button type="button" data-testid="ready-tweak" onClick={() => setTab('build')}
                         className="rounded-md bg-accent px-4 py-1.5 text-xs font-medium text-canvas transition hover:opacity-90">
                   Tweak in builder →

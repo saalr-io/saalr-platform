@@ -154,7 +154,7 @@ export function Models() {
 
           {config && (
             <div className="space-y-3">
-              <SelectedStrategy config={config} onChange={clearSelection} />
+              <SelectedStrategy config={config} onChange={clearSelection} templateKey={selectedKey ?? undefined} />
               <div className="flex flex-wrap items-center gap-3">
                 <label className="flex items-center gap-2 text-xs text-txtDim">
                   <input data-testid="mc-use-sentiment" type="checkbox" checked={useSentimentDrift} onChange={(e) => setUseSentimentDrift(e.target.checked)} />
