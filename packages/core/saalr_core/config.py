@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     risk_free_rate_fallback: float = 0.05
     vol_surface_cache_ttl_seconds: int = 21600  # 6h, per HLD
     vol_forecast_cache_ttl_seconds: int = 21600  # 6h
+    price_forecast_cache_ttl_seconds: int = 21600  # 6h — ARIMA+LSTM price forecast (costly; cache hard)
     regime_cache_ttl_seconds: int = 3600  # 1h — regime recomputes from daily bars
 
     # Market-data ingestion

@@ -74,6 +74,7 @@ def create_app() -> FastAPI:
         )
         app.state.vol_surface_ttl = settings.vol_surface_cache_ttl_seconds
         app.state.vol_forecast_ttl = settings.vol_forecast_cache_ttl_seconds
+        app.state.price_forecast_ttl = settings.price_forecast_cache_ttl_seconds
         app.state.regime_ttl = settings.regime_cache_ttl_seconds
         resolver = make_credential_resolver(settings, os.environ)
         app.state.alpaca_adapter_factory = lambda account: build_alpaca_adapter(

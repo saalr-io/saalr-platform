@@ -65,7 +65,7 @@ async def price_forecast_endpoint(
             ticker,
             market,
             horizon,
-            request.app.state.vol_forecast_ttl,
+            request.app.state.price_forecast_ttl,
         )
     except ValueError as exc:
         raise HTTPException(
