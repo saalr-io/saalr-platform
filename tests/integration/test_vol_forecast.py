@@ -57,7 +57,7 @@ async def test_vol_forecast_pro_returns_both_models_and_persists_validation(app_
             assert r.status_code == 200, r.text
             body = r.json()
             assert body["ticker"] == "AAPL" and body["horizon_days"] == 10
-            assert body["primary_model"] in ("garch", "hv21")
+            assert body["primary_model"] in ("garch", "hv21", "har")
             assert len(body["primary_forecast"]) == 10
             assert body["validation"]["holdout_days"] >= 1
             assert len(body["alternative_models"]) == 2
