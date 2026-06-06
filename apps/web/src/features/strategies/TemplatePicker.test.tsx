@@ -49,4 +49,16 @@ describe('TemplatePicker', () => {
     fireEvent.click(screen.getByText('Bearish'))
     await waitFor(() => expect(screen.getByTestId('tpl-empty')).toBeInTheDocument())
   })
+
+  it('highlights the selectedKey and reports picks via onPick', async () => {
+    stubFetch()
+    const onPick = vi.fn()
+    render(wrap(<TemplatePicker underlying="AAPL" expiry="2026-12-18" atmStrike={100}
+      onApply={vi.fn()} onPick={onPick} selectedKey="bull_call_spread" />))
+    const selected = await screen.findByTestId('tpl-bull_call_spread')
+    expect(selected).toHaveAttribute('data-selected', 'true')
+    expect(screen.getByTestId('tpl-short_strangle')).not.toHaveAttribute('data-selected')
+    fireEvent.click(screen.getByTestId('tpl-short_strangle'))
+    expect(onPick).toHaveBeenCalledWith('short_strangle')
+  })
 })

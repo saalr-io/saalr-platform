@@ -20,9 +20,12 @@ const VOL_VIEWS: Array<{ key: VV; label: string }> = [
 ]
 
 export function TemplatePicker({
-  underlying, expiry, atmStrike, onApply,
+  underlying, expiry, atmStrike, onApply, onPick, selectedKey,
 }: {
-  underlying: string; expiry: string; atmStrike: number; onApply: (c: StrategyConfig) => void
+  underlying: string; expiry: string; atmStrike: number
+  onApply: (c: StrategyConfig) => void
+  onPick?: (key: string) => void
+  selectedKey?: string
 }) {
   const { data: templates = [], isLoading } = useTemplates()
   const build = useBuildTemplate()
@@ -30,6 +33,7 @@ export function TemplatePicker({
   const [vv, setVv] = useState<VV>('all')
 
   function apply(key: string) {
+    onPick?.(key)
     build.mutate(
       { key, params: { underlying, expiry, atm_strike: atmStrike } },
       { onSuccess: (cfg) => onApply(cfg) },
@@ -49,16 +53,24 @@ export function TemplatePicker({
         <FilterRow label="Vol" options={VOL_VIEWS} value={vv} onChange={setVv} />
       </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {shown.map((t) => (
+        {shown.map((t) => {
+          const isSelected = t.key === selectedKey
+          return (
           <button
             key={t.key}
+            type="button"
             data-testid={`tpl-${t.key}`}
+            data-selected={isSelected ? 'true' : undefined}
             onClick={() => apply(t.key)}
             title={t.description}
-            className="flex flex-col gap-1.5 rounded-lg border border-line bg-panel p-3 text-left transition-colors hover:border-lineSoft"
+            className={`flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors ${
+              isSelected ? 'border-accent bg-accent/10 ring-1 ring-accent/40' : 'border-line bg-panel hover:border-lineSoft'
+            }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[13px] font-medium text-txt">{t.name}</span>
+              <span className={`text-[13px] font-medium ${isSelected ? 'text-accent' : 'text-txt'}`}>
+                {isSelected ? '✓ ' : ''}{t.name}
+              </span>
               <span className="font-mono text-[9px] uppercase tracking-wider text-txtFaint">{t.complexity}</span>
             </div>
             <p className="text-[11px] leading-snug text-txtDim">{t.description}</p>
@@ -70,7 +82,8 @@ export function TemplatePicker({
               </Badge>
             </div>
           </button>
-        ))}
+          )
+        })}
         {shown.length === 0 && (
           <p data-testid="tpl-empty" className="text-xs text-txtFaint">No templates match these filters.</p>
         )}

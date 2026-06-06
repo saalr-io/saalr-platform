@@ -44,7 +44,13 @@ export function Models() {
   const [expiry, setExpiry] = useState('')
   const [atmStrike, setAtmStrike] = useState('')
   const [config, setConfig] = useState<StrategyConfig | null>(null)
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [paths, setPaths] = useState('10000')
+
+  function clearSelection() {
+    setConfig(null)
+    setSelectedKey(null)
+  }
   const [useSentimentDrift, setUseSentimentDrift] = useState(false)
   const mc = useMonteCarlo()
 
@@ -120,12 +126,12 @@ export function Models() {
         <div className="space-y-4">
           <div className="grid gap-3 rounded-lg border border-line bg-panel p-4 md:grid-cols-4">
             <input data-testid="mc-underlying" value={underlying}
-              onChange={(e) => { setUnderlying(e.target.value.toUpperCase().replace(/[^A-Z]/g, '')); setConfig(null) }}
+              onChange={(e) => { setUnderlying(e.target.value.toUpperCase().replace(/[^A-Z]/g, '')); clearSelection() }}
               placeholder="Underlying" className="rounded border border-line bg-canvas px-3 py-2 font-mono text-xs uppercase text-txt placeholder:text-txtFaint" />
-            <input data-testid="mc-expiry" type="date" value={expiry} onChange={(e) => { setExpiry(e.target.value); setConfig(null) }}
+            <input data-testid="mc-expiry" type="date" value={expiry} onChange={(e) => { setExpiry(e.target.value); clearSelection() }}
               className="rounded border border-line bg-canvas px-3 py-2 font-mono text-xs text-txt" />
             <input data-testid="mc-strike" value={atmStrike}
-              onChange={(e) => { setAtmStrike(e.target.value.replace(/[^0-9.]/g, '')); setConfig(null) }}
+              onChange={(e) => { setAtmStrike(e.target.value.replace(/[^0-9.]/g, '')); clearSelection() }}
               placeholder="ATM strike" className="rounded border border-line bg-canvas px-3 py-2 font-mono text-xs text-txt placeholder:text-txtFaint" />
             <input data-testid="mc-paths" value={paths}
               onChange={(e) => setPaths(e.target.value.replace(/[^0-9]/g, ''))}
@@ -133,14 +139,15 @@ export function Models() {
           </div>
 
           {canPickTemplate ? (
-            <TemplatePicker underlying={underlying} expiry={expiry} atmStrike={strike} onApply={setConfig} />
+            <TemplatePicker underlying={underlying} expiry={expiry} atmStrike={strike}
+              onApply={setConfig} onPick={setSelectedKey} selectedKey={selectedKey ?? undefined} />
           ) : (
             <p className="text-xs text-txtFaint" data-testid="mc-need-inputs">Enter an underlying, expiry, and ATM strike to pick a template.</p>
           )}
 
           {config && (
             <div className="space-y-3">
-              <SelectedStrategy config={config} onChange={() => setConfig(null)} />
+              <SelectedStrategy config={config} onChange={clearSelection} />
               <div className="flex flex-wrap items-center gap-3">
                 <label className="flex items-center gap-2 text-xs text-txtDim">
                   <input data-testid="mc-use-sentiment" type="checkbox" checked={useSentimentDrift} onChange={(e) => setUseSentimentDrift(e.target.checked)} />
