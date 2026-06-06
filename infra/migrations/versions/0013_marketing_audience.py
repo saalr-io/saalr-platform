@@ -18,8 +18,11 @@ def upgrade() -> None:
         ALTER TABLE users ADD COLUMN unsubscribe_token UUID NOT NULL DEFAULT gen_random_uuid();
         CREATE UNIQUE INDEX idx_users_unsubscribe_token ON users(unsubscribe_token);
 
+        -- DISTINCT ON pins each user to their oldest membership (matches
+        -- auth_resolve_principal semantics) so a multi-tenant user yields ONE audience row.
         CREATE VIEW marketing_audience AS
-          SELECT u.email,
+          SELECT DISTINCT ON (u.user_id)
+                 u.email,
                  u.email_verified_at,
                  u.created_at,
                  u.marketing_opt_in,
@@ -31,7 +34,8 @@ def upgrade() -> None:
                  EXISTS (SELECT 1 FROM user_progress p WHERE p.tenant_id  = m.tenant_id) AS has_progress
           FROM users u
           JOIN memberships m ON m.user_id = u.user_id
-          LEFT JOIN subscriptions s ON s.tenant_id = m.tenant_id AND s.status IN ('active','trialing');
+          LEFT JOIN subscriptions s ON s.tenant_id = m.tenant_id AND s.status IN ('active','trialing')
+          ORDER BY u.user_id, m.created_at;
         GRANT SELECT ON marketing_audience TO saalr_app;
     """)
 
