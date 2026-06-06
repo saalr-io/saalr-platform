@@ -104,3 +104,30 @@ export function placeOrder(body: OrderCreate, idempotencyKey: string): Promise<O
 export function cancelOrder(orderId: string): Promise<OrderResult> {
   return request(`/v1/orders/${encodeURIComponent(orderId)}/cancel`, { method: 'POST' })
 }
+
+export interface StrategyLeg {
+  kind: 'option' | 'equity' | 'cash'
+  side?: 'BUY' | 'SELL'
+  qty?: number
+  option_type?: 'CALL' | 'PUT'
+  strike?: number
+  expiry?: string
+  amount?: number
+}
+
+export interface StrategyOrderResult {
+  broker_account_id: string
+  results: { leg_index: number; kind: string; status: string; order_id?: string; reject_code?: string }[]
+  placed: number
+  rejected: number
+}
+
+export function placeStrategy(
+  body: { broker_account_id: string; underlying: string; legs: StrategyLeg[] },
+): Promise<StrategyOrderResult> {
+  return request('/v1/orders/strategy', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    body: JSON.stringify(body),
+  })
+}
