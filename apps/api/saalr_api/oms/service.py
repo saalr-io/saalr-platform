@@ -22,7 +22,7 @@ from saalr_core.oms.types import OrderRequest, RiskContext
 from ..strategies import repo as strat_repo
 from . import repo
 from .marks import NoMarketData, model_mark
-from .schemas import OrderCreate
+from .schemas import OrderCreate, StrategyOrderCreate  # noqa: F401  (StrategyOrderCreate used by place_strategy)
 
 _MULT = 100
 _logger = logging.getLogger("saalr.oms")
@@ -185,6 +185,42 @@ async def place_order(session: AsyncSession, principal, body: OrderCreate, idemp
     # else: rests as "submitted"
 
     return _out(order)
+
+
+async def place_strategy(session: AsyncSession, principal, body, idem, request_id,
+                         adapter_factory=None) -> dict:
+    """Place each option/equity leg of a strategy as a standalone paper order (no strategy_id —
+    the risk gate rejects a strategy_id whose strategy isn't in paper/live state). Cash legs are
+    skipped. place_order raises HTTPException on a reject, so each leg is wrapped; a leg placed
+    before a later reject stays placed — the per-leg result is the honest record."""
+    results: list[dict] = []
+    for i, leg in enumerate(body.legs):
+        if leg.kind == "cash":
+            results.append({"leg_index": i, "kind": "cash", "status": "skipped"})
+            continue
+        order = OrderCreate(
+            broker_account_id=body.broker_account_id,
+            symbol=body.underlying.upper(),
+            side=(leg.side or "BUY").lower(),  # OMS risk gate expects lowercase buy/sell
+            qty=leg.qty or 0,
+            order_type="market",
+            option_type=leg.option_type if leg.kind == "option" else None,
+            strike=leg.strike if leg.kind == "option" else None,
+            expiry=leg.expiry if leg.kind == "option" else None,
+            time_in_force="day",
+        )
+        try:
+            res = await place_order(session, principal, order, f"{idem}:{i}", request_id, adapter_factory)
+            results.append({"leg_index": i, "kind": leg.kind, "status": res["status"],
+                            "order_id": res["order_id"]})
+        except HTTPException as exc:
+            code = (exc.detail["error"]["code"]
+                    if isinstance(exc.detail, dict) and "error" in exc.detail else str(exc.detail))
+            results.append({"leg_index": i, "kind": leg.kind, "status": "rejected", "reject_code": code})
+    placed = sum(1 for r in results if r["status"] not in ("rejected", "skipped"))
+    rejected = sum(1 for r in results if r["status"] == "rejected")
+    return {"broker_account_id": str(body.broker_account_id), "results": results,
+            "placed": placed, "rejected": rejected}
 
 
 async def _submit_alpaca(session, order, body, adapter, idempotency_key, tenant_id, user_id,

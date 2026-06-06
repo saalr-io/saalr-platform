@@ -11,7 +11,7 @@ from saalr_core.ids import new_id
 
 from ..auth import Principal, get_principal
 from . import repo, service
-from .schemas import BrokerAccountCreate, OrderCreate
+from .schemas import BrokerAccountCreate, OrderCreate, StrategyOrderCreate
 
 router = APIRouter(tags=["oms"])
 
@@ -72,6 +72,16 @@ async def place(body: OrderCreate, request: Request,
     factory = getattr(request.app.state, "alpaca_adapter_factory", None)
     return await service.place_order(session, principal, body, idempotency_key,
                                      _request_id(request), factory)
+
+
+@router.post("/v1/orders/strategy")
+async def place_strategy(body: StrategyOrderCreate, request: Request,
+                         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+                         ctx: tuple[AsyncSession, Principal] = Depends(get_principal)) -> dict:
+    session, principal = ctx
+    factory = getattr(request.app.state, "alpaca_adapter_factory", None)
+    idem = idempotency_key or str(new_id())
+    return await service.place_strategy(session, principal, body, idem, _request_id(request), factory)
 
 
 @router.get("/v1/orders")
