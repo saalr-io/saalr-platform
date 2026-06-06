@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { useVolForecast, useSentiment, useMonteCarlo } from '../features/models/hooks'
+import { useVolForecast, useSentiment, usePriceForecast, useMonteCarlo } from '../features/models/hooks'
 import { ForecastPanel } from '../features/models/ForecastPanel'
 import { SentimentGauge } from '../features/models/SentimentGauge'
 import { MonteCarloPanel } from '../features/models/MonteCarloPanel'
+import { PriceForecastPanel } from '../features/models/PriceForecastPanel'
 import { SelectedStrategy } from '../features/strategies/SelectedStrategy'
 import { ModelsGate } from '../features/models/ModelsGate'
 import { TemplatePicker } from '../features/strategies/TemplatePicker'
@@ -39,6 +40,7 @@ export function Models() {
 
   const forecastQ = useVolForecast(entitled ? ticker : '', horizon, entitled)
   const sentimentQ = useSentiment(entitled ? ticker : '', entitled)
+  const priceQ = usePriceForecast(entitled ? ticker : '', horizon, entitled)
 
   const [underlying, setUnderlying] = useState('')
   const [expiry, setExpiry] = useState('')
@@ -58,6 +60,7 @@ export function Models() {
   if (
     forecastQ.error instanceof EntitlementError ||
     sentimentQ.error instanceof EntitlementError ||
+    priceQ.error instanceof EntitlementError ||
     mc.error instanceof EntitlementError
   ) {
     return <ModelsGate />
@@ -120,6 +123,10 @@ export function Models() {
               {forecastQ.data && <ForecastPanel forecast={forecastQ.data} />}
               {sentimentQ.data && <SentimentGauge sentiment={sentimentQ.data} />}
             </div>
+          )}
+          {priceQ.data && <PriceForecastPanel forecast={priceQ.data} />}
+          {priceQ.isLoading && ticker && (
+            <div className="animate-pulse rounded-lg border border-line bg-panel2 py-16" data-testid="price-loading" />
           )}
         </div>
       ) : (

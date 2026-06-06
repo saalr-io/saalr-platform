@@ -90,6 +90,33 @@ export function getVolForecast(ticker: string, horizon: number): Promise<VolFore
   return request(`/v1/market/vol-forecast?ticker=${encodeURIComponent(ticker)}&market=US&horizon=${horizon}`)
 }
 
+export interface PriceModel {
+  model: 'arima' | 'lstm' | 'naive'
+  path: number[]
+  ci_95: [number, number][] | null
+  expected_return_pct: number
+  direction: 'up' | 'down' | 'flat'
+  holdout_mae: number
+  directional_accuracy: number
+}
+
+export interface PriceForecast {
+  ticker: string
+  market: string
+  as_of: string
+  horizon_days: number
+  last_close: number
+  primary_model: 'arima' | 'lstm' | 'naive'
+  models: PriceModel[]
+  validation: { holdout_days: number; n_origins: number; best_model: string }
+  approximate: boolean
+  disclaimer: string
+}
+
+export function getPriceForecast(ticker: string, horizon: number): Promise<PriceForecast> {
+  return request(`/v1/market/price-forecast?ticker=${encodeURIComponent(ticker)}&market=US&horizon=${horizon}`)
+}
+
 export function getSentiment(ticker: string): Promise<Sentiment> {
   return request(`/v1/market/sentiment?ticker=${encodeURIComponent(ticker)}&market=US`)
 }
