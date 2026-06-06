@@ -42,3 +42,32 @@ async def vol_forecast_endpoint(
         raise HTTPException(
             422, {"error": {"code": "INSUFFICIENT_HISTORY", "message": str(exc)}}
         ) from exc
+
+
+@router.get("/price-forecast")
+async def price_forecast_endpoint(
+    request: Request,
+    ticker: str = Query(...),
+    market: str = Query("US"),
+    horizon: int = Query(10, ge=1, le=30),
+    ctx: tuple[AsyncSession, Principal] = Depends(require_ml_forecast),
+) -> dict:
+    _validate(ticker, market)
+    ticker = ticker.upper()
+    session, _principal = ctx
+    from . import price_service
+
+    try:
+        return await price_service.get_or_compute_price_forecast(
+            request.app.state.redis,
+            request.app.state.sessionmaker,
+            session,
+            ticker,
+            market,
+            horizon,
+            request.app.state.vol_forecast_ttl,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            422, {"error": {"code": "INSUFFICIENT_HISTORY", "message": str(exc)}}
+        ) from exc
