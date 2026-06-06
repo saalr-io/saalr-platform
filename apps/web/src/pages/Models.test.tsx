@@ -78,4 +78,26 @@ describe('Models page', () => {
     await waitFor(() => expect(run).toHaveBeenCalled())
     expect(screen.getByTestId('mc-panel')).toBeInTheDocument()
   })
+
+  it('shows the price upsell for a Pro user (ml_forecast, no price_forecast)', async () => {
+    mockMe = { entitlements: { ml_forecast: true, price_forecast: false } }
+    vi.spyOn(models, 'getVolForecast').mockResolvedValue(FORECAST)
+    vi.spyOn(models, 'getSentiment').mockResolvedValue(SENTIMENT)
+    render(wrap(<Models />))
+    fireEvent.change(screen.getByTestId('ticker-input'), { target: { value: 'AAPL' } })
+    fireEvent.click(screen.getByTestId('ticker-load'))
+    await waitFor(() => expect(screen.getByTestId('forecast-panel')).toBeInTheDocument())
+    expect(await screen.findByTestId('price-upsell')).toBeInTheDocument()
+  })
+
+  it('does not show the upsell for a Premium user (price_forecast true)', async () => {
+    mockMe = { entitlements: { ml_forecast: true, price_forecast: true } }
+    vi.spyOn(models, 'getVolForecast').mockResolvedValue(FORECAST)
+    vi.spyOn(models, 'getSentiment').mockResolvedValue(SENTIMENT)
+    render(wrap(<Models />))
+    fireEvent.change(screen.getByTestId('ticker-input'), { target: { value: 'AAPL' } })
+    fireEvent.click(screen.getByTestId('ticker-load'))
+    await waitFor(() => expect(screen.getByTestId('forecast-panel')).toBeInTheDocument())
+    expect(screen.queryByTestId('price-upsell')).toBeNull()
+  })
 })

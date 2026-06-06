@@ -9,6 +9,7 @@ import { SelectedStrategy } from '../features/strategies/SelectedStrategy'
 import { ModelsGate } from '../features/models/ModelsGate'
 import { TemplatePicker } from '../features/strategies/TemplatePicker'
 import { EntitlementError } from '../lib/models'
+import { Link } from 'react-router-dom'
 import type { StrategyConfig } from '../lib/strategies'
 
 const HORIZONS = [10, 20, 30]
@@ -32,6 +33,7 @@ function mcError(err: unknown): string | null {
 export function Models() {
   const { me } = useAuth()
   const entitled = me?.entitlements?.ml_forecast === true
+  const priceEntitled = me?.entitlements?.price_forecast === true
 
   const [tab, setTab] = useState<'insights' | 'montecarlo'>('insights')
   const [input, setInput] = useState('')
@@ -40,7 +42,7 @@ export function Models() {
 
   const forecastQ = useVolForecast(entitled ? ticker : '', horizon, entitled)
   const sentimentQ = useSentiment(entitled ? ticker : '', entitled)
-  const priceQ = usePriceForecast(entitled ? ticker : '', horizon, entitled)
+  const priceQ = usePriceForecast(priceEntitled ? ticker : '', horizon, priceEntitled)
 
   const [underlying, setUnderlying] = useState('')
   const [expiry, setExpiry] = useState('')
@@ -60,7 +62,6 @@ export function Models() {
   if (
     forecastQ.error instanceof EntitlementError ||
     sentimentQ.error instanceof EntitlementError ||
-    priceQ.error instanceof EntitlementError ||
     mc.error instanceof EntitlementError
   ) {
     return <ModelsGate />
@@ -124,9 +125,18 @@ export function Models() {
               {sentimentQ.data && <SentimentGauge sentiment={sentimentQ.data} />}
             </div>
           )}
-          {priceQ.data && <PriceForecastPanel forecast={priceQ.data} />}
-          {priceQ.isLoading && ticker && (
-            <div className="animate-pulse rounded-lg border border-line bg-panel2 py-16" data-testid="price-loading" />
+          {priceEntitled ? (
+            <>
+              {priceQ.data && <PriceForecastPanel forecast={priceQ.data} />}
+              {priceQ.isLoading && ticker && (
+                <div className="animate-pulse rounded-lg border border-line bg-panel2 py-16" data-testid="price-loading" />
+              )}
+            </>
+          ) : (
+            <Link to="/billing" data-testid="price-upsell"
+              className="block rounded-lg border border-accent/40 bg-accent/5 p-4 text-sm text-txtDim hover:bg-accent/10">
+              📈 <span className="font-medium text-txt">AI price forecasts (ARIMA &amp; LSTM)</span> are a Premium feature. Upgrade →
+            </Link>
           )}
         </div>
       ) : (
