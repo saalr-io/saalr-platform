@@ -1,4 +1,6 @@
 import type { PriceForecast, PriceModel } from '../../lib/models'
+import { InfoHint } from '../../components/InfoHint'
+import { hintProps } from '../../content/helpHints'
 
 const W = 380
 const H = 200
@@ -31,6 +33,7 @@ export function PriceForecastPanel({ forecast }: { forecast: PriceForecast }) {
     <figure className="rounded-lg border border-line bg-panel p-4" data-testid="price-forecast-panel">
       <figcaption className="mb-2 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">
         Price forecast · {horizon_days}d
+        <InfoHint {...hintProps('price-forecast')} />
         <span data-testid="pf-primary" className="rounded bg-accent/20 px-1.5 py-0.5 text-accent">{primary_model} wins backtest</span>
         {forecast.approximate && <span className="rounded border border-line px-1.5 py-0.5 text-txtFaint">approximate</span>}
       </figcaption>

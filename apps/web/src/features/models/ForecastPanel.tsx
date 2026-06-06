@@ -1,4 +1,6 @@
 import type { VolForecast } from '../../lib/models'
+import { InfoHint } from '../../components/InfoHint'
+import { hintProps } from '../../content/helpHints'
 
 const W = 360
 const H = 180
@@ -29,6 +31,7 @@ export function ForecastPanel({ forecast }: { forecast: VolForecast }) {
     <figure className="rounded-lg border border-line bg-panel p-4" data-testid="forecast-panel">
       <figcaption className="mb-2 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">
         Vol forecast · {forecast.horizon_days}d
+        <InfoHint {...hintProps('vol-forecast')} />
         <span data-testid="forecast-primary" className="rounded bg-accent/20 px-1.5 py-0.5 text-accent">{forecast.primary_model}</span>
         {forecast.approximate && <span className="rounded border border-line px-1.5 py-0.5 text-txtFaint">approximate</span>}
       </figcaption>

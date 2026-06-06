@@ -1,4 +1,6 @@
 import type { Sentiment } from '../../lib/models'
+import { InfoHint } from '../../components/InfoHint'
+import { hintProps } from '../../content/helpHints'
 
 const W = 240
 const H = 28
@@ -9,7 +11,7 @@ export function SentimentGauge({ sentiment }: { sentiment: Sentiment }) {
   if (!sentiment.has_data) {
     return (
       <div className="rounded-lg border border-line bg-panel p-4" data-testid="sentiment-empty">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">News sentiment</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">News sentiment <InfoHint {...hintProps('sentiment')} /></p>
         <p className="mt-3 text-sm text-txtFaint">No sentiment coverage yet for {sentiment.ticker}.</p>
       </div>
     )
@@ -17,7 +19,7 @@ export function SentimentGauge({ sentiment }: { sentiment: Sentiment }) {
   const cx = ((sentiment.score + 1) / 2) * W
   return (
     <div className="rounded-lg border border-line bg-panel p-4" data-testid="sentiment-panel">
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">News sentiment</p>
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">News sentiment <InfoHint {...hintProps('sentiment')} /></p>
       <div className="mt-3 flex items-baseline gap-2">
         <span data-testid="sentiment-label" className={`text-lg font-semibold ${LABEL_CLS[sentiment.label] ?? 'text-txt'}`}>
           {sentiment.label}

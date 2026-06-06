@@ -1,5 +1,6 @@
 import type { IvSurface, IvExpiry, IvStrike } from '../../lib/market'
 import { InfoHint } from '../../components/InfoHint'
+import { hintProps } from '../../content/helpHints'
 
 // react-router path (resolved under the /app basename); see InfoHint for why not a plain href
 const LESSON = '/education?lesson=volatility-surface'
@@ -119,11 +120,7 @@ export function IvCurves({ surface, expiry }: { surface: IvSurface; expiry: stri
         <figure className="rounded-lg border border-line bg-panel p-3">
           <figcaption className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">
             Smile · {expiry}
-            <InfoHint
-              title="IV smile"
-              body="The smile plots implied volatility by strike for one expiry. Its slope — the skew — shows where the market prices risk: out-of-the-money puts usually carry higher IV as crash insurance."
-              learnMoreTo={LESSON}
-            />
+            <InfoHint {...hintProps('vol-surface')} />
           </figcaption>
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" data-testid="iv-smile">
             <AxisLayer xTicks={smileXTicks} yTicks={smileYTicks} xTitle="strike" />

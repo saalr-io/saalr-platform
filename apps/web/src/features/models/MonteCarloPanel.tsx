@@ -1,4 +1,6 @@
 import type { MonteCarloResult } from '../../lib/models'
+import { InfoHint } from '../../components/InfoHint'
+import { hintProps } from '../../content/helpHints'
 
 const W = 360
 const H = 184
@@ -26,6 +28,7 @@ export function MonteCarloPanel({ result }: { result: MonteCarloResult }) {
   return (
     <div className="space-y-3 rounded-lg border border-line bg-panel p-4" data-testid="mc-panel">
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+        <span className="font-mono text-[10px] uppercase tracking-wider text-txtFaint">Simulation <InfoHint {...hintProps('monte-carlo')} /></span>
         <div>
           <span className="font-mono text-[10px] uppercase tracking-wider text-txtFaint">POP</span>{" "}
           <span data-testid="mc-pop" className="tnum text-lg font-semibold text-txt">{(result.pop * 100).toFixed(1)}%</span>
