@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from saalr_core.config import get_settings
 from saalr_core.db.session import create_engine, create_sessionmaker
-from saalr_core.marketdata.news import MassiveNewsProvider
+from saalr_core.marketdata.news_factory import build_news_provider
 from saalr_core.marketdata.provider import ProviderError
 from saalr_core.sentiment import pipeline, repo
 
@@ -26,7 +26,7 @@ async def _cmd_sentiment(args) -> None:
     settings = get_settings()
     engine = create_engine(settings.app_database_url)
     sm = create_sessionmaker(engine)
-    provider = MassiveNewsProvider(settings.massive_api_key)
+    provider = build_news_provider(settings)
     scorer = FinBertScorer()
     now = datetime.now(timezone.utc)
     try:
