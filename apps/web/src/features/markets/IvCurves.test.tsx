@@ -56,4 +56,15 @@ describe('IvCurves', () => {
     render(<IvCurves surface={SURFACE} expiry="2026-07-17" />)
     expect(screen.getAllByTestId('info-hint').length).toBeGreaterThanOrEqual(3)
   })
+
+  it('labels both axes on the smile and term-structure charts', () => {
+    render(<IvCurves surface={SURFACE} expiry="2026-07-17" />)
+    const smile = screen.getByTestId('iv-smile')
+    expect(smile.textContent).toContain('strike')   // x-axis title
+    expect(smile.textContent).toContain('IV %')     // y-axis title
+    expect(smile.textContent).toContain('95')       // min-strike tick
+    const term = screen.getByTestId('iv-term-structure')
+    expect(term.textContent).toContain('expiry')    // x-axis title
+    expect(term.textContent).toContain('07-17')     // first expiry tick (MM-DD)
+  })
 })
