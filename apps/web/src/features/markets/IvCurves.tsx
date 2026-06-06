@@ -1,9 +1,10 @@
 import type { IvSurface, IvExpiry, IvStrike } from '../../lib/market'
 import { InfoHint } from '../../components/InfoHint'
-import { hintProps } from '../../content/helpHints'
+import { hintProps, lessonPath } from '../../content/helpHints'
 
-// react-router path (resolved under the /app basename); see InfoHint for why not a plain href
-const LESSON = '/education?lesson=volatility-surface'
+// react-router path (resolved under the /app basename); see InfoHint for why not a plain href.
+// Single source of truth for the slug→route mapping lives in helpHints.lessonPath().
+const LESSON = lessonPath('volatility-surface')
 
 const W = 360
 const H = 180
