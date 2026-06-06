@@ -7,17 +7,17 @@ export { EntitlementError }
 export interface VolForecastAlt {
   model: string
   forecast: number[]
-  status: 'baseline' | 'underperforming_baseline'
+  status: 'baseline' | 'underperforming_baseline' | 'outperforms_baseline'
   delta_mae_vs_baseline: number
 }
 
 export interface VolForecast {
   horizon_days: number
-  primary_model: 'garch' | 'hv21'
+  primary_model: 'garch' | 'hv21' | 'har'
   primary_forecast: number[]
   primary_ci_95: [number, number][] | null
   alternative_models: VolForecastAlt[]
-  validation: { holdout_days: number; garch_mae: number; hv21_mae: number; lift: number }
+  validation: { holdout_days: number; garch_mae: number; hv21_mae: number; har_mae: number; lift: number }
   model: string
   iv_source: string
   approximate: boolean

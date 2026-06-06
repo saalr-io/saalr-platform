@@ -45,7 +45,7 @@ describe('Dashboard', () => {
   it('shows a watchlist row with forecast + sentiment for an entitled user', async () => {
     vi.spyOn(models, 'getVolForecast').mockResolvedValue({
       horizon_days: 10, primary_model: 'garch', primary_forecast: [20, 22], primary_ci_95: null,
-      alternative_models: [], validation: { holdout_days: 40, garch_mae: 0.5, hv21_mae: 0.6, lift: 0.1 },
+      alternative_models: [], validation: { holdout_days: 40, garch_mae: 0.5, hv21_mae: 0.6, har_mae: 0.45, lift: 0.1 },
       model: 'garch(1,1)', iv_source: 'realized_returns', approximate: true, params: { omega: 0.0001, alpha: 0.08, beta: 0.9 },
     })
     vi.spyOn(models, 'getSentiment').mockResolvedValue({

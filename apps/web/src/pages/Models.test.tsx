@@ -19,7 +19,7 @@ const FORECAST: models.VolForecast = {
   horizon_days: 10, primary_model: 'garch',
   primary_forecast: Array(10).fill(20), primary_ci_95: Array(10).fill([18, 22]),
   alternative_models: [{ model: 'hv21', forecast: Array(10).fill(19), status: 'baseline', delta_mae_vs_baseline: -0.1 }],
-  validation: { holdout_days: 40, garch_mae: 0.5, hv21_mae: 0.6, lift: 0.1 },
+  validation: { holdout_days: 40, garch_mae: 0.5, hv21_mae: 0.6, har_mae: 0.45, lift: 0.1 },
   model: 'garch(1,1)', iv_source: 'realized_returns', approximate: true,
   params: { omega: 0.0001, alpha: 0.08, beta: 0.9 },
 }

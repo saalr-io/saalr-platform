@@ -25,8 +25,6 @@ export function ForecastPanel({ forecast }: { forecast: VolForecast }) {
       ].join(' ')
     : null
 
-  const alt = forecast.alternative_models[0]
-
   return (
     <figure className="rounded-lg border border-line bg-panel p-4" data-testid="forecast-panel">
       <figcaption className="mb-2 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-txtDim">
@@ -43,13 +41,14 @@ export function ForecastPanel({ forecast }: { forecast: VolForecast }) {
         <div className="flex justify-between"><dt>lift</dt><dd className="tnum text-txt">{forecast.validation.lift.toFixed(3)}</dd></div>
         <div className="flex justify-between"><dt>garch MAE</dt><dd className="tnum">{forecast.validation.garch_mae.toFixed(3)}</dd></div>
         <div className="flex justify-between"><dt>hv21 MAE</dt><dd className="tnum">{forecast.validation.hv21_mae.toFixed(3)}</dd></div>
+        <div className="flex justify-between"><dt>har MAE</dt><dd className="tnum">{forecast.validation.har_mae.toFixed(3)}</dd></div>
         <div className="flex justify-between"><dt>ω/α/β</dt><dd className="tnum">{forecast.params.omega.toFixed(4)}/{forecast.params.alpha.toFixed(2)}/{forecast.params.beta.toFixed(2)}</dd></div>
       </dl>
-      {alt && (
-        <p className="mt-2 text-[11px] text-txtFaint" data-testid="forecast-alt">
-          alt: {alt.model} ({alt.status.replace(/_/g, " ")})
+      {forecast.alternative_models.map((a) => (
+        <p key={a.model} className="mt-2 text-[11px] text-txtFaint" data-testid="forecast-alt">
+          alt: {a.model} ({a.status.replace(/_/g, " ")})
         </p>
-      )}
+      ))}
     </figure>
   )
 }
