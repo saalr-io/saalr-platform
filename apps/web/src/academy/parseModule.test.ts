@@ -98,3 +98,33 @@ describe('parseModule', () => {
     expect(() => parseModule(noSlug)).toThrow('missing slug or title')
   })
 })
+
+const ALL_MODULE_RAWS = import.meta.glob(
+  '../../../../packages/content/saalr_content/modules/*.md',
+  { eager: true, query: '?raw', import: 'default' },
+) as Record<string, string>
+
+const NEW_LESSONS = [
+  ['80-volatility-forecasting.md', 'volatility-forecasting'],
+  ['90-price-forecasting.md', 'price-forecasting'],
+  ['100-monte-carlo-simulation.md', 'monte-carlo-simulation'],
+  ['110-market-sentiment.md', 'market-sentiment'],
+  ['120-options-strategy-playbook.md', 'options-strategy-playbook'],
+] as const
+
+describe('new help lessons', () => {
+  it('the modules directory resolves', () => {
+    const keys = Object.keys(ALL_MODULE_RAWS)
+    expect(keys.some((k) => k.includes('70-volatility-surface.md'))).toBe(true)
+  })
+
+  it.each(NEW_LESSONS)('%s parses, is free, and has the expected slug', (file, slug) => {
+    const key = Object.keys(ALL_MODULE_RAWS).find((k) => k.endsWith(file))
+    expect(key).toBeTruthy()
+    const m = parseModule(ALL_MODULE_RAWS[key!])
+    expect(m.slug).toBe(slug)
+    expect(m.minTier).toBe('free')
+    expect(m.title.length).toBeGreaterThan(0)
+    expect(m.body.length).toBeGreaterThan(200)
+  })
+})
