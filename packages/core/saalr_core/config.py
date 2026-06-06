@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str | None = None
     stripe_price_pro: str | None = None
     stripe_price_premium: str | None = None
+    stripe_price_pro_annual: str | None = None
+    stripe_price_premium_annual: str | None = None
     billing_success_url: str = "http://localhost:5173/app/billing/success"
     billing_cancel_url: str = "http://localhost:5173/app/billing/cancel"
     billing_portal_return_url: str = "http://localhost:5173/app/billing"

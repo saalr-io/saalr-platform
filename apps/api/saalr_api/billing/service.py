@@ -23,11 +23,23 @@ class WebhookVerificationError(Exception):
 
 def _price_map(settings) -> dict[str, str]:
     out = {}
-    if settings.stripe_price_pro:
-        out[settings.stripe_price_pro] = "pro"
-    if settings.stripe_price_premium:
-        out[settings.stripe_price_premium] = "premium"
+    for pid in (settings.stripe_price_pro, settings.stripe_price_pro_annual):
+        if pid:
+            out[pid] = "pro"
+    for pid in (settings.stripe_price_premium, settings.stripe_price_premium_annual):
+        if pid:
+            out[pid] = "premium"
     return out
+
+
+def _price_id(settings, tier: str, interval: str) -> str:
+    if tier == "pro":
+        monthly, annual = settings.stripe_price_pro, settings.stripe_price_pro_annual
+    else:
+        monthly, annual = settings.stripe_price_premium, settings.stripe_price_premium_annual
+    if interval == "annual" and annual:
+        return annual
+    return monthly
 
 
 async def get_subscription(session: AsyncSession, tenant_id: UUID) -> dict:
@@ -44,8 +56,9 @@ async def get_subscription(session: AsyncSession, tenant_id: UUID) -> dict:
 
 
 async def start_upgrade(session: AsyncSession, provider: PaymentProvider, settings,
-                        tenant_id: UUID, email: str, tier: str) -> dict:
-    price_id = settings.stripe_price_pro if tier == "pro" else settings.stripe_price_premium
+                        tenant_id: UUID, email: str, tier: str,
+                        interval: str = "monthly") -> dict:
+    price_id = _price_id(settings, tier, interval)
     existing = await repo.get_customer_id(session, tenant_id)
     customer_id = await provider.ensure_customer(
         tenant_id=str(tenant_id), email=email, existing_id=existing)
