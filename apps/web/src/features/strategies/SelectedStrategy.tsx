@@ -29,21 +29,23 @@ function LegRow({ leg, i }: { leg: Leg; i: number }) {
   )
 }
 
-export function SelectedStrategy({ config, onChange }: { config: StrategyConfig; onChange: () => void }) {
+export function SelectedStrategy({ config, onChange }: { config: StrategyConfig; onChange?: () => void }) {
   return (
     <div className="rounded-lg border border-line bg-panel p-3" data-testid="mc-selected">
       <div className="mb-2 flex items-center justify-between">
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-txtFaint">
           Selected strategy · <span className="text-txt">{config.underlying}</span>
         </p>
-        <button
-          type="button"
-          data-testid="mc-change"
-          onClick={onChange}
-          className="text-[11px] text-accent transition-colors hover:underline"
-        >
-          Change
-        </button>
+        {onChange && (
+          <button
+            type="button"
+            data-testid="mc-change"
+            onClick={onChange}
+            className="text-[11px] text-accent transition-colors hover:underline"
+          >
+            Change
+          </button>
+        )}
       </div>
       <ul className="space-y-1 font-mono text-xs">
         {config.legs.map((leg, i) => <LegRow key={i} leg={leg} i={i} />)}

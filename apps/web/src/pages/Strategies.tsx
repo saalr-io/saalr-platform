@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { usePaperTradeStrategy } from '../features/portfolio/usePaperTrade'
 import { LegEditor } from '../features/strategies/LegEditor'
 import { TemplatePicker } from '../features/strategies/TemplatePicker'
+import { SelectedStrategy } from '../features/strategies/SelectedStrategy'
 import { SavedList } from '../features/strategies/SavedList'
 import { PayoffChart } from '../features/strategies/PayoffChart'
 import { StatsPanel } from '../features/strategies/StatsPanel'
@@ -37,6 +38,7 @@ export function Strategies() {
   const [needUpgrade, setNeedUpgrade] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [readyKey, setReadyKey] = useState<string | null>(null)
   const location = useLocation()
   const navigate = useNavigate()
   useEffect(() => {
@@ -117,8 +119,19 @@ export function Strategies() {
         </div>
 
         {tab === 'ready' && (
-          <TemplatePicker underlying={config.underlying} expiry={firstExpiry(config)} atmStrike={atmStrike(config)}
-                          onApply={(c) => { setConfig(c); setTab('build') }} />
+          <div className="space-y-3">
+            <TemplatePicker underlying={config.underlying} expiry={firstExpiry(config)} atmStrike={atmStrike(config)}
+                            selectedKey={readyKey ?? undefined} onPick={setReadyKey} onApply={setConfig} />
+            {readyKey && (
+              <div className="space-y-2" data-testid="ready-selected">
+                <SelectedStrategy config={config} />
+                <button type="button" data-testid="ready-tweak" onClick={() => setTab('build')}
+                        className="rounded-md bg-accent px-4 py-1.5 text-xs font-medium text-canvas transition hover:opacity-90">
+                  Tweak in builder →
+                </button>
+              </div>
+            )}
+          </div>
         )}
         {tab === 'build' && <LegEditor config={config} onChange={setConfig} />}
         {tab === 'saved' && <SavedList onLoad={(s) => { setConfig(s.config); setTab('build') }} />}

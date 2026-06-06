@@ -4,7 +4,7 @@ import { useVolForecast, useSentiment, useMonteCarlo } from '../features/models/
 import { ForecastPanel } from '../features/models/ForecastPanel'
 import { SentimentGauge } from '../features/models/SentimentGauge'
 import { MonteCarloPanel } from '../features/models/MonteCarloPanel'
-import { SelectedStrategy } from '../features/models/SelectedStrategy'
+import { SelectedStrategy } from '../features/strategies/SelectedStrategy'
 import { ModelsGate } from '../features/models/ModelsGate'
 import { TemplatePicker } from '../features/strategies/TemplatePicker'
 import { EntitlementError } from '../lib/models'

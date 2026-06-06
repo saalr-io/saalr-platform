@@ -29,4 +29,10 @@ describe('SelectedStrategy', () => {
     fireEvent.click(screen.getByTestId('mc-change'))
     expect(onChange).toHaveBeenCalled()
   })
+
+  it('omits the Change button when onChange is not given', () => {
+    render(<SelectedStrategy config={CONFIG} />)
+    expect(screen.queryByTestId('mc-change')).toBeNull()
+    expect(screen.getAllByTestId(/^mc-leg-/)).toHaveLength(2)
+  })
 })
