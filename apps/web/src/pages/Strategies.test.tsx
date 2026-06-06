@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { Strategies } from './Strategies'
+import * as oms from '../lib/oms'
 
 function wrap(ui: React.ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -17,7 +18,7 @@ const pureResult = {
 }
 
 describe('Strategies page', () => {
-  beforeEach(() => vi.unstubAllGlobals())
+  beforeEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
   it('analyzes and renders the chart + stats', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -52,5 +53,24 @@ describe('Strategies page', () => {
     render(wrap(<Strategies />))
     fireEvent.click(screen.getByTestId('analyze-btn'))
     await waitFor(() => expect(screen.getByTestId('error-banner')).toBeInTheDocument())
+  })
+
+  it('paper-trades the current config', async () => {
+    // the builder's initial loads (templates + strategies) go through fetch
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (String(url).endsWith('/templates')) return new Response(JSON.stringify({ templates: [] }), { status: 200 })
+      if (String(url).endsWith('/v1/strategies')) return new Response(JSON.stringify({ strategies: [], next_cursor: null }), { status: 200 })
+      return new Response('{}', { status: 200 })
+    }))
+    // the paper-trade flow goes through the oms module (spied, bypassing fetch)
+    const list = vi.spyOn(oms, 'listBrokerAccounts').mockResolvedValue({ broker_accounts: [
+      { broker_account_id: 'a1', broker: 'paper', account_label: 'Practice', is_paper: true, status: 'active' } as never] })
+    const place = vi.spyOn(oms, 'placeStrategy').mockResolvedValue(
+      { broker_account_id: 'a1', results: [], placed: 2, rejected: 0 } as never)
+    render(wrap(<Strategies />))
+    fireEvent.click(screen.getByTestId('paper-trade-btn'))
+    await waitFor(() => expect(place).toHaveBeenCalled())
+    expect(list).toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByTestId('paper-trade-result')).toBeInTheDocument())
   })
 })

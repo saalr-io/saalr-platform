@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
+import { usePaperTradeStrategy } from '../features/portfolio/usePaperTrade'
 import { LegEditor } from '../features/strategies/LegEditor'
 import { TemplatePicker } from '../features/strategies/TemplatePicker'
 import { SavedList } from '../features/strategies/SavedList'
@@ -50,6 +51,7 @@ export function Strategies() {
   }, [location.state, navigate])
   const analyze = useAnalyze()
   const create = useCreateStrategy()
+  const paper = usePaperTradeStrategy()
 
   const missingPrices =
     !live && config.legs.some((l) => l.kind === 'option' && (l.entry_price === null || l.entry_price === undefined))
@@ -139,7 +141,17 @@ export function Strategies() {
                   className="rounded border border-line px-4 py-1 text-xs text-txtDim hover:text-txt">
             {create.isPending ? 'Saving…' : 'Save'}
           </button>
+          <button data-testid="paper-trade-btn" onClick={() => paper.mutate(config)} disabled={paper.isPending}
+                  className="rounded border border-line px-4 py-1 text-xs text-txtDim hover:text-txt disabled:opacity-40">
+            {paper.isPending ? 'Placing…' : 'Paper trade'}
+          </button>
           {saved && <span className="text-xs text-pos" data-testid="saved-ok">Saved ✓</span>}
+          {paper.data && (
+            <span className="text-xs text-txtDim" data-testid="paper-trade-result">
+              Placed {paper.data.placed}{paper.data.rejected > 0 ? ` · ${paper.data.rejected} rejected` : ''} ·{' '}
+              <Link to="/portfolio" className="text-accent hover:underline">Portfolio →</Link>
+            </span>
+          )}
         </div>
         {missingPrices && (
           <div className="mt-2 text-[11px] text-txtFaint" data-testid="price-hint">
