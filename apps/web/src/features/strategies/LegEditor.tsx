@@ -21,35 +21,45 @@ export function LegEditor({ config, onChange }: { config: StrategyConfig; onChan
         <input data-testid="underlying" className={FIELD} value={config.underlying}
                onChange={(e) => onChange({ ...config, underlying: e.target.value.toUpperCase() })} />
       </div>
+      {config.legs.some((l) => l.kind === 'option') && (
+        <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-wider text-txtFaint" data-testid="leg-header">
+          <span className="w-16">Side</span>
+          <span className="w-16">Type</span>
+          <span className="w-20">Strike</span>
+          <span className="w-32">Expiry</span>
+          <span className="w-16">Qty</span>
+          <span className="w-20">Price</span>
+        </div>
+      )}
       {config.legs.map((leg, i) => (
         <div key={i} className="flex items-center gap-2" data-testid={`leg-${i}`}>
           {leg.kind === 'option' ? (
             <>
-              <select className={FIELD} data-testid={`side-${i}`} value={leg.side}
+              <select className={`${FIELD} w-16`} aria-label="Side" data-testid={`side-${i}`} value={leg.side}
                       onChange={(e) => patchLeg(i, { side: e.target.value as OptionLeg['side'] })}>
                 <option>BUY</option><option>SELL</option>
               </select>
-              <select className={FIELD} data-testid={`type-${i}`} value={leg.option_type}
+              <select className={`${FIELD} w-16`} aria-label="Type" data-testid={`type-${i}`} value={leg.option_type}
                       onChange={(e) => patchLeg(i, { option_type: e.target.value as OptionLeg['option_type'] })}>
                 <option>CALL</option><option>PUT</option>
               </select>
-              <input className={`${FIELD} w-20`} data-testid={`strike-${i}`} type="number" value={leg.strike}
+              <input className={`${FIELD} w-20`} aria-label="Strike" data-testid={`strike-${i}`} type="number" value={leg.strike}
                      onChange={(e) => patchLeg(i, { strike: Number(e.target.value) })} />
-              <input className={`${FIELD} w-32`} data-testid={`expiry-${i}`} type="date" value={leg.expiry}
+              <input className={`${FIELD} w-32`} aria-label="Expiry" data-testid={`expiry-${i}`} type="date" value={leg.expiry}
                      onChange={(e) => patchLeg(i, { expiry: e.target.value })} />
-              <input className={`${FIELD} w-16`} data-testid={`qty-${i}`} type="number" value={leg.qty}
+              <input className={`${FIELD} w-16`} aria-label="Quantity" data-testid={`qty-${i}`} type="number" value={leg.qty}
                      onChange={(e) => patchLeg(i, { qty: Number(e.target.value) })} />
-              <input className={`${FIELD} w-20`} data-testid={`entry-${i}`} type="number" placeholder="price"
+              <input className={`${FIELD} w-20`} aria-label="Entry price" data-testid={`entry-${i}`} type="number" placeholder="price"
                      value={leg.entry_price ?? ''} onChange={(e) => patchLeg(i, { entry_price: e.target.value === '' ? null : Number(e.target.value) })} />
             </>
           ) : (
             <span className="text-xs text-txtDim">{leg.kind} leg</span>
           )}
-          <button className="text-xs text-red-400" data-testid={`remove-leg-${i}`}
+          <button type="button" aria-label="Remove leg" className="text-xs text-red-400" data-testid={`remove-leg-${i}`}
                   onClick={() => onChange({ ...config, legs: config.legs.filter((_, idx) => idx !== i) })}>✕</button>
         </div>
       ))}
-      <button className="rounded border border-line bg-panel px-3 py-1 text-xs text-txtDim hover:text-txt"
+      <button type="button" className="rounded border border-line bg-panel px-3 py-1 text-xs text-txtDim hover:text-txt"
               data-testid="add-leg" onClick={() => onChange({ ...config, legs: [...config.legs, newOptionLeg()] })}>
         + add leg
       </button>

@@ -125,8 +125,12 @@ export function Strategies() {
           <label className="flex items-center gap-1 text-[11px] text-txtDim">
             <input type="checkbox" data-testid="live-toggle" checked={live} onChange={(e) => setLive(e.target.checked)} /> live
           </label>
-          <input type="date" className="rounded border border-line bg-canvas px-2 py-1 text-xs text-txt"
-                 data-testid="target-date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} disabled={!live} />
+          <label className="flex items-center gap-1 text-[11px] text-txtDim">
+            Target date
+            <input type="date" className="rounded border border-line bg-canvas px-2 py-1 text-xs text-txt"
+                   aria-label="Target date" data-testid="target-date" value={targetDate}
+                   onChange={(e) => setTargetDate(e.target.value)} disabled={!live} />
+          </label>
           <button data-testid="analyze-btn" onClick={runAnalyze} disabled={analyze.isPending}
                   className="rounded bg-pos/20 px-4 py-1 text-xs text-pos hover:bg-pos/30">
             {analyze.isPending ? 'Analyzing…' : 'Analyze'}
