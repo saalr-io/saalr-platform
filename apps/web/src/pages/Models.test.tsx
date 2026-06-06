@@ -35,7 +35,7 @@ const MC: models.MonteCarloResult = {
 }
 
 describe('Models page', () => {
-  beforeEach(() => { vi.restoreAllMocks(); mockMe = { entitlements: { ml_forecast: true } } })
+  beforeEach(() => { vi.restoreAllMocks(); mockMe = { entitlements: { ml_forecast: true, news_sentiment: true } } })
 
   it('gates a free user and does not fetch', () => {
     mockMe = { entitlements: { ml_forecast: false } }

@@ -34,6 +34,7 @@ export function Models() {
   const { me } = useAuth()
   const entitled = me?.entitlements?.ml_forecast === true
   const priceEntitled = me?.entitlements?.price_forecast === true
+  const sentimentEntitled = me?.entitlements?.news_sentiment === true
 
   const [tab, setTab] = useState<'insights' | 'montecarlo'>('insights')
   const [input, setInput] = useState('')
@@ -41,7 +42,7 @@ export function Models() {
   const [horizon, setHorizon] = useState(10)
 
   const forecastQ = useVolForecast(entitled ? ticker : '', horizon, entitled)
-  const sentimentQ = useSentiment(entitled ? ticker : '', entitled)
+  const sentimentQ = useSentiment(sentimentEntitled ? ticker : '', sentimentEntitled)
   const priceQ = usePriceForecast(priceEntitled ? ticker : '', horizon, priceEntitled)
 
   const [underlying, setUnderlying] = useState('')
@@ -61,7 +62,6 @@ export function Models() {
   if (!entitled) return <ModelsGate />
   if (
     forecastQ.error instanceof EntitlementError ||
-    sentimentQ.error instanceof EntitlementError ||
     mc.error instanceof EntitlementError
   ) {
     return <ModelsGate />
