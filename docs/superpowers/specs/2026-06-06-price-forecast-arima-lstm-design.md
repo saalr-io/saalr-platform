@@ -60,20 +60,26 @@ price_fc)  ─┘                          to_thread)                       Fore
 - **History minimum:** reuse 250 closes; `< 250` raises `ValueError` (→ 422), consistent with
   `vol_forecast`.
 
-### Walk-forward validation
+### Walk-forward validation (multi-origin)
 
-Single-origin holdout (last `holdout_days` ≈ 40): forecast the holdout window from the origin
-`holdout_days` back, then per model compute **MAE on price** and **directional accuracy** (sign of
-cumulative move vs realized). `primary` = lowest holdout MAE. Single-origin (not multi-origin)
-bounds LSTM to two fits per cache-miss (full fit for the live forecast + train-subset fit for
-validation) to keep latency acceptable.
+Rolling multi-origin holdout over the last `holdout_days` (≈ 60). Choose `n_origins` (≈ 5)
+evenly-spaced origins inside the holdout window; at each origin, train each model on data up to
+that origin and forecast `horizon` (or to the window end, whichever is shorter) ahead, scoring
+against realized closes. Per model, aggregate across origins into a mean **MAE on price** and mean
+**directional accuracy** (sign of cumulative move vs realized). `primary` = lowest mean MAE.
+
+Cost note: ARIMA/naive refit cheaply, so the LSTM dominates — `n_origins + 1` LSTM fits per
+cache-miss (one per origin + the final full fit for the live forecast). `n_origins` is bounded
+(≈ 5) and epochs stay capped; combined with the 6h cache and `asyncio.to_thread` offload this
+keeps a cold request to a few seconds. `n_origins`/`holdout_days` are parameters on
+`price_forecast(...)` so tests can shrink them.
 
 ## Components / files
 
 ### Backend — `saalr_ml`
 - **Create** `packages/ml/saalr_ml/arima.py` — `arima_forecast(log_closes, horizon) -> (list[float] path, list[[lo,hi]] ci95, tuple order)`.
 - **Create** `packages/ml/saalr_ml/lstm.py` — `lstm_forecast(returns, horizon, last_close, seed=0, epochs=150) -> (list[float] path, list[[lo,hi]] ci95)`.
-- **Create** `packages/ml/saalr_ml/price_forecast.py` — `price_forecast(closes, horizon, holdout_days=40, seed=0) -> dict` (orchestrator + naive + walk-forward + primary selection).
+- **Create** `packages/ml/saalr_ml/price_forecast.py` — `price_forecast(closes, horizon, holdout_days=60, n_origins=5, seed=0) -> dict` (orchestrator + naive + multi-origin walk-forward + primary selection).
 - **Modify** `packages/ml/pyproject.toml` — add `statsmodels>=0.14`, `torch>=2.2`.
 
 ### Backend — API (`apps/api/saalr_api/forecast/`)
@@ -106,7 +112,7 @@ validation) to keep latency acceptable.
     { "model": "naive", "path": […], "ci_95": null, "expected_return_pct": 0.6,
       "direction": "up", "holdout_mae": 2.97, "directional_accuracy": 0.52 }
   ],
-  "validation": { "holdout_days": 40, "best_model": "naive" },
+  "validation": { "holdout_days": 60, "n_origins": 5, "best_model": "naive" },
   "approximate": true,
   "disclaimer": "Educational. Daily price direction is near-random; the naive baseline often wins."
 }
@@ -127,7 +133,8 @@ the `EntitlementError → ModelsGate` path already in `Models.tsx`.
 ## Performance / honesty guardrails
 
 - **Cache** results 6h (`vol_forecast_cache_ttl_seconds`); the LSTM only trains on cache-miss.
-- **Bound** the LSTM (hidden ≈ 16, 1 layer, epochs ≤ 150, lookback ≈ 20, few threads).
+- **Bound** the LSTM (hidden ≈ 16, 1 layer, epochs ≤ 150, lookback ≈ 20, few threads) and the
+  multi-origin validation (`n_origins` ≈ 5 ⇒ `n_origins + 1` LSTM fits per cache-miss).
 - **Offload** `price_forecast(...)` via `asyncio.to_thread` so torch training never blocks the
   event loop.
 - **Determinism:** seed torch + numpy ⇒ reproducible paths and reproducible tests.
@@ -138,8 +145,9 @@ the `EntitlementError → ModelsGate` path already in `Models.tsx`.
 
 - `packages/ml/tests/test_price_forecast.py` — path length == horizon; all finite; determinism
   (same seed ⇒ identical LSTM path); `< 250` raises `ValueError`; naive drift correctness;
-  `primary` == lowest holdout MAE on a synthetic trend+noise series. LSTM uses tiny epochs in
-  tests for speed.
+  `primary` == lowest mean holdout MAE across origins on a synthetic trend+noise series; the
+  multi-origin scorer produces one mean MAE + directional accuracy per model. LSTM uses tiny
+  epochs and tests shrink `n_origins`/`holdout_days` for speed.
 - `tests/integration/test_price_forecast.py` — 402 for free; 200 for premium with arima+lstm+naive
   all present and `len(path)==horizon`; 422 on short history; second call served from cache.
 - `apps/web/src/features/models/PriceForecastPanel.test.tsx` — renders three model paths + legend
@@ -147,7 +155,6 @@ the `EntitlementError → ModelsGate` path already in `Models.tsx`.
 
 ## Out of scope (YAGNI)
 
-- Multi-origin / rolling walk-forward (single-origin holdout only).
 - Exogenous regressors, multivariate models, GPU training.
 - Persisting trained model artifacts (retrain on cache-miss).
 - Intraday / non-US markets.
