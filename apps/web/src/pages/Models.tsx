@@ -4,6 +4,7 @@ import { useVolForecast, useSentiment, useMonteCarlo } from '../features/models/
 import { ForecastPanel } from '../features/models/ForecastPanel'
 import { SentimentGauge } from '../features/models/SentimentGauge'
 import { MonteCarloPanel } from '../features/models/MonteCarloPanel'
+import { SelectedStrategy } from '../features/models/SelectedStrategy'
 import { ModelsGate } from '../features/models/ModelsGate'
 import { TemplatePicker } from '../features/strategies/TemplatePicker'
 import { EntitlementError } from '../lib/models'
@@ -138,16 +139,18 @@ export function Models() {
           )}
 
           {config && (
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="font-mono text-[11px] text-txtDim" data-testid="mc-config-summary">{config.underlying} · {config.legs.length} legs</span>
-              <label className="flex items-center gap-2 text-xs text-txtDim">
-                <input data-testid="mc-use-sentiment" type="checkbox" checked={useSentimentDrift} onChange={(e) => setUseSentimentDrift(e.target.checked)} />
-                Apply sentiment drift
-              </label>
-              <button data-testid="mc-run" onClick={runMc} disabled={mc.isPending}
-                className="rounded-md bg-accent px-4 py-2 text-xs font-medium text-canvas transition hover:opacity-90 disabled:opacity-40">
-                {mc.isPending ? 'Simulating…' : 'Run simulation'}
-              </button>
+            <div className="space-y-3">
+              <SelectedStrategy config={config} onChange={() => setConfig(null)} />
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-xs text-txtDim">
+                  <input data-testid="mc-use-sentiment" type="checkbox" checked={useSentimentDrift} onChange={(e) => setUseSentimentDrift(e.target.checked)} />
+                  Apply sentiment drift
+                </label>
+                <button data-testid="mc-run" onClick={runMc} disabled={mc.isPending}
+                  className="rounded-md bg-accent px-4 py-2 text-xs font-medium text-canvas transition hover:opacity-90 disabled:opacity-40">
+                  {mc.isPending ? 'Simulating…' : 'Run simulation'}
+                </button>
+              </div>
             </div>
           )}
 
