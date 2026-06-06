@@ -35,13 +35,18 @@ async def _make_pro(admin_engine, tenant_id):
         await conn.execute(text("UPDATE subscriptions SET tier='pro' WHERE tenant_id=:t"), {"t": tenant_id})
 
 
-async def test_price_forecast_pro_returns_all_models(app_sessionmaker, admin_engine):
+async def _make_premium(admin_engine, tenant_id):
+    async with admin_engine.begin() as conn:
+        await conn.execute(text("UPDATE subscriptions SET tier='premium' WHERE tenant_id=:t"), {"t": tenant_id})
+
+
+async def test_price_forecast_premium_returns_all_models(app_sessionmaker, admin_engine):
     app = create_app()
     async with app.router.lifespan_context(app):
         async with _client(app) as c:
-            h = {"Authorization": "Bearer dev:pf-pro@x.com"}
+            h = {"Authorization": "Bearer dev:pf-premium@x.com"}
             tid = (await c.get("/me", headers=h)).json()["tenant"]["id"]
-            await _make_pro(admin_engine, tid)
+            await _make_premium(admin_engine, tid)
             await _seed_bars(admin_engine, "AAPL", n=300)
             r = await c.get("/v1/market/price-forecast?ticker=AAPL&horizon=5", headers=h)
             assert r.status_code == 200, r.text
@@ -62,7 +67,7 @@ async def test_price_forecast_free_tier_is_402(app_sessionmaker, admin_engine):
             await _seed_bars(admin_engine, "AAPL", n=300)
             r = await c.get("/v1/market/price-forecast?ticker=AAPL&horizon=5", headers=h)
             assert r.status_code == 402
-            assert r.json()["detail"]["error"]["code"] == "ENTITLEMENT_ML_FORECAST_REQUIRES_PRO"
+            assert r.json()["detail"]["error"]["code"] == "ENTITLEMENT_PRICE_FORECAST_REQUIRES_PREMIUM"
 
 
 async def test_price_forecast_insufficient_history_is_422(app_sessionmaker, admin_engine):
@@ -71,8 +76,21 @@ async def test_price_forecast_insufficient_history_is_422(app_sessionmaker, admi
         async with _client(app) as c:
             h = {"Authorization": "Bearer dev:pf-short@x.com"}
             tid = (await c.get("/me", headers=h)).json()["tenant"]["id"]
-            await _make_pro(admin_engine, tid)
+            await _make_premium(admin_engine, tid)
             await _seed_bars(admin_engine, "TINY", n=100)
             r = await c.get("/v1/market/price-forecast?ticker=TINY&horizon=5", headers=h)
             assert r.status_code == 422
             assert r.json()["detail"]["error"]["code"] == "INSUFFICIENT_HISTORY"
+
+
+async def test_price_forecast_pro_is_402(app_sessionmaker, admin_engine):
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:pf-pro2@x.com"}
+            tid = (await c.get("/me", headers=h)).json()["tenant"]["id"]
+            await _make_pro(admin_engine, tid)
+            await _seed_bars(admin_engine, "AAPL", n=300)
+            r = await c.get("/v1/market/price-forecast?ticker=AAPL&horizon=5", headers=h)
+            assert r.status_code == 402
+            assert r.json()["detail"]["error"]["code"] == "ENTITLEMENT_PRICE_FORECAST_REQUIRES_PREMIUM"
