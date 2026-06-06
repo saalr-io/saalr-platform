@@ -5,6 +5,8 @@ import { useRegime } from '../features/ideas/hooks'
 import { RegimePanel } from '../features/ideas/RegimePanel'
 import { RecoCard } from '../features/ideas/RecoCard'
 import { buildTemplate } from '../lib/strategies'
+import { usePaperTradeStrategy } from '../features/portfolio/usePaperTrade'
+import type { PaperState } from '../features/ideas/RecoCard'
 
 function defaultExpiry(): string {
   const d = new Date()
@@ -18,12 +20,34 @@ export function Ideas() {
   const [applyingKey, setApplyingKey] = useState<string | null>(null)
   const q = useRegime(ticker)
   const navigate = useNavigate()
+  const paper = usePaperTradeStrategy()
+  const [paperKey, setPaperKey] = useState<string | null>(null)
   const data = q.data
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
     const t = input.trim().toUpperCase()
     if (t) setTicker(t)
+  }
+
+  async function paperTrade(key: string) {
+    if (!data) return
+    setPaperKey(key)
+    try {
+      const config = await buildTemplate(key, {
+        underlying: data.ticker, expiry: defaultExpiry(), atm_strike: data.regime.last_close,
+      })
+      await paper.mutateAsync(config)
+    } catch {
+      setPaperKey(null)
+    }
+  }
+
+  function paperStateFor(key: string): PaperState {
+    if (paperKey !== key) return 'idle'
+    if (paper.isPending) return 'pending'
+    if (paper.data) return { placed: paper.data.placed, rejected: paper.data.rejected }
+    return 'idle'
   }
 
   async function apply(key: string) {
@@ -77,7 +101,14 @@ export function Ideas() {
           <div className="space-y-2">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-txtFaint">Recommended for this regime</p>
             {recos.slice(0, 5).map((r) => (
-              <RecoCard key={r.template_key} reco={r} onApply={apply} applying={applyingKey === r.template_key} />
+              <RecoCard
+                key={r.template_key}
+                reco={r}
+                onApply={apply}
+                applying={applyingKey === r.template_key}
+                onPaperTrade={paperTrade}
+                paperState={paperStateFor(r.template_key)}
+              />
             ))}
           </div>
         </div>
