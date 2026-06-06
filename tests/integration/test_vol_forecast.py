@@ -60,7 +60,7 @@ async def test_vol_forecast_pro_returns_both_models_and_persists_validation(app_
             assert body["primary_model"] in ("garch", "hv21")
             assert len(body["primary_forecast"]) == 10
             assert body["validation"]["holdout_days"] >= 1
-            assert len(body["alternative_models"]) == 1
+            assert len(body["alternative_models"]) == 2
 
     # a model_validation_runs row was written
     async with admin_engine.begin() as conn:
@@ -93,3 +93,21 @@ async def test_vol_forecast_insufficient_history_is_422(app_sessionmaker, admin_
             r = await c.get("/v1/market/vol-forecast?ticker=TINY&horizon=10", headers=h)
             assert r.status_code == 422
             assert r.json()["detail"]["error"]["code"] == "INSUFFICIENT_HISTORY"
+
+
+async def test_vol_forecast_includes_har(app_sessionmaker, admin_engine):
+    email = "vf-har@x.com"
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": f"Bearer dev:{email}"}
+            tid = (await c.get("/me", headers=h)).json()["tenant"]["id"]
+            await _make_pro(admin_engine, tid)
+            await _seed_bars(admin_engine, "AAPL", n=300)
+            r = await c.get("/v1/market/vol-forecast?ticker=AAPL&horizon=10", headers=h)
+            assert r.status_code == 200, r.text
+            body = r.json()
+            names = {body["primary_model"], *[a["model"] for a in body["alternative_models"]]}
+            assert names == {"garch", "hv21", "har"}
+            assert "har_mae" in body["validation"]
+            assert len(body["alternative_models"]) == 2
