@@ -8,12 +8,17 @@ class Entitlements:
     ml_forecast: bool
     research_agent: bool
     brokers: int
+    price_forecast: bool = False
+    news_sentiment: bool = False
 
 
 TIERS: dict[str, Entitlements] = {
-    "free": Entitlements(False, False, False, False, 0),
-    "pro": Entitlements(True, True, True, False, 2),
-    "premium": Entitlements(True, True, True, True, 4),
+    "free": Entitlements(False, False, False, False, 0,
+                         price_forecast=False, news_sentiment=False),
+    "pro": Entitlements(True, True, True, False, 2,
+                        price_forecast=False, news_sentiment=True),
+    "premium": Entitlements(True, True, True, True, 4,
+                            price_forecast=True, news_sentiment=True),
 }
 
 
