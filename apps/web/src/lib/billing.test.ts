@@ -24,7 +24,7 @@ describe('billing client', () => {
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(String(url)).toContain('/subscription/upgrade')
     expect(init.method).toBe('POST')
-    expect(JSON.parse(init.body as string)).toEqual({ tier: 'pro' })
+    expect(JSON.parse(init.body as string)).toEqual({ tier: 'pro', interval: 'monthly' })
     expect(r.checkout_url).toBe('https://stripe/c/1')
   })
 

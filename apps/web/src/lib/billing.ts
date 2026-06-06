@@ -38,8 +38,10 @@ export function getSubscription(): Promise<Subscription> {
   return request('/subscription')
 }
 
-export function startUpgrade(tier: 'pro' | 'premium'): Promise<{ checkout_url: string }> {
-  return request('/subscription/upgrade', { method: 'POST', body: JSON.stringify({ tier }) })
+export type Interval = 'monthly' | 'annual'
+
+export function startUpgrade(tier: 'pro' | 'premium', interval: Interval = 'monthly'): Promise<{ checkout_url: string }> {
+  return request('/subscription/upgrade', { method: 'POST', body: JSON.stringify({ tier, interval }) })
 }
 
 export function openPortal(): Promise<{ portal_url: string }> {

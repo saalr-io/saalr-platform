@@ -25,8 +25,26 @@ describe('PlanCards', () => {
     const redirect = vi.spyOn(billing, 'redirectTo').mockImplementation(() => {})
     render(wrap(<PlanCards current="free" />))
     fireEvent.click(screen.getByTestId('plan-pro').querySelector('button')!)
-    await waitFor(() => expect(billing.startUpgrade).toHaveBeenCalledWith('pro'))
+    await waitFor(() => expect(billing.startUpgrade).toHaveBeenCalledWith('pro', 'monthly'))
     await waitFor(() => expect(redirect).toHaveBeenCalledWith('https://stripe/c/x'))
+  })
+
+  it('defaults to monthly and upgrades monthly', async () => {
+    const spy = vi.spyOn(billing, 'startUpgrade').mockResolvedValue({ checkout_url: 'x' })
+    vi.spyOn(billing, 'redirectTo').mockImplementation(() => {})
+    render(wrap(<PlanCards current="free" />))
+    fireEvent.click(screen.getByRole('button', { name: /Upgrade to Pro/i }))
+    await waitFor(() => expect(spy).toHaveBeenCalledWith('pro', 'monthly'))
+  })
+
+  it('annual toggle shows the discount badge and upgrades annually', async () => {
+    const spy = vi.spyOn(billing, 'startUpgrade').mockResolvedValue({ checkout_url: 'x' })
+    vi.spyOn(billing, 'redirectTo').mockImplementation(() => {})
+    render(wrap(<PlanCards current="free" />))
+    fireEvent.click(screen.getByTestId('billing-interval-annual'))
+    expect(screen.getAllByTestId('annual-badge').length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: /Upgrade to Premium/i }))
+    await waitFor(() => expect(spy).toHaveBeenCalledWith('premium', 'annual'))
   })
 
   it('a Pro user sees Pro as current and only Premium upgradeable', () => {

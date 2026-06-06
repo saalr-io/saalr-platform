@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import * as billing from '../../lib/billing'
+import type { Interval } from '../../lib/billing'
 
 export function useSubscription() {
   return useQuery({ queryKey: ['subscription'], queryFn: billing.getSubscription, retry: false })
@@ -7,7 +8,8 @@ export function useSubscription() {
 
 export function useUpgrade() {
   return useMutation({
-    mutationFn: (tier: 'pro' | 'premium') => billing.startUpgrade(tier),
+    mutationFn: ({ tier, interval }: { tier: 'pro' | 'premium'; interval: Interval }) =>
+      billing.startUpgrade(tier, interval),
     onSuccess: (r) => billing.redirectTo(r.checkout_url),
   })
 }

@@ -12,7 +12,7 @@ function wrap(ui: React.ReactNode) {
 
 function UpgradeProbe() {
   const up = useUpgrade()
-  return <button onClick={() => up.mutate('pro')}>go</button>
+  return <button onClick={() => up.mutate({ tier: 'pro', interval: 'monthly' })}>go</button>
 }
 
 describe('billing hooks', () => {
