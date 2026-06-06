@@ -1,7 +1,8 @@
 import type { IvSurface, IvExpiry, IvStrike } from '../../lib/market'
 import { InfoHint } from '../../components/InfoHint'
 
-const LESSON = '/app/education?lesson=volatility-surface'
+// react-router path (resolved under the /app basename); see InfoHint for why not a plain href
+const LESSON = '/education?lesson=volatility-surface'
 
 const W = 360
 const H = 180
@@ -121,7 +122,7 @@ export function IvCurves({ surface, expiry }: { surface: IvSurface; expiry: stri
             <InfoHint
               title="IV smile"
               body="The smile plots implied volatility by strike for one expiry. Its slope — the skew — shows where the market prices risk: out-of-the-money puts usually carry higher IV as crash insurance."
-              learnMoreHref={LESSON}
+              learnMoreTo={LESSON}
             />
           </figcaption>
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" data-testid="iv-smile">
@@ -136,7 +137,7 @@ export function IvCurves({ surface, expiry }: { surface: IvSurface; expiry: stri
             <InfoHint
               title="ATM term structure"
               body="This plots at-the-money IV across expiries. An upward slope means the market expects more movement later (or before an event); an inverted slope signals near-term stress."
-              learnMoreHref={LESSON}
+              learnMoreTo={LESSON}
             />
           </figcaption>
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" data-testid="iv-term-structure">
@@ -151,7 +152,7 @@ export function IvCurves({ surface, expiry }: { surface: IvSurface; expiry: stri
         <InfoHint
           title="Model-priced IV"
           body="Saalr derives IV from a Black-Scholes fit to option mid-prices, not vendor greeks. It is directionally accurate and great for reading shape, but a single number is not an exact dealer quote."
-          learnMoreHref={LESSON}
+          learnMoreTo={LESSON}
         />
       </p>
     </div>

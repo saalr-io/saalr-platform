@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 /**
- * A small "?" badge that opens a styled help popover. Reusable app-wide.
+ * A small "?" badge that opens a styled help popover. Reusable inside the SPA.
  * Uses span elements so it can sit inline inside a figcaption or label.
+ * `learnMoreTo` is a react-router path (relative to the /app basename) — a plain
+ * <a> would not be routed into the nested router under Vike's client routing.
  */
 export function InfoHint({
-  title, body, learnMoreHref, label,
+  title, body, learnMoreTo, label,
 }: {
-  title: string; body: string; learnMoreHref?: string; label?: string
+  title: string; body: string; learnMoreTo?: string; label?: string
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLSpanElement | null>(null)
@@ -48,10 +51,10 @@ export function InfoHint({
         >
           <span className="block text-[11px] font-semibold text-txt">{title}</span>
           <span className="block text-[11px] leading-snug text-txtDim">{body}</span>
-          {learnMoreHref && (
-            <a href={learnMoreHref} className="block text-[11px] text-accent hover:underline">
+          {learnMoreTo && (
+            <Link to={learnMoreTo} className="block text-[11px] text-accent hover:underline">
               Learn more in OptionsAcademy →
-            </a>
+            </Link>
           )}
         </span>
       )}
