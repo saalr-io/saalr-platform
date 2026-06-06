@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     auth_provider: str = "dev"
     clerk_jwks_url: str | None = None
     clerk_issuer: str | None = None
+    # Dev convenience: comma-separated emails that the dev provider grants active
+    # premium by default (re-applied on every resolve so a subscriptions TRUNCATE in
+    # integration tests can't strand the founder on free). Ignored under AUTH_PROVIDER=clerk.
+    dev_premium_emails: str = "founder@saalr.com"
 
     # Magic link (dev)
     redis_url: str = "redis://localhost:6379/0"

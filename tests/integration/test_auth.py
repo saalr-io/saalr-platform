@@ -28,6 +28,32 @@ async def test_dev_login_and_me_bootstrap(app_sessionmaker):
             assert body["entitlements"]["research_agent"] is False
 
 
+async def test_dev_premium_email_defaults_to_premium(app_sessionmaker):
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            me = (await c.get("/me", headers={"Authorization": "Bearer dev:founder@saalr.com"})).json()
+    assert me["tier"] == "premium"
+    assert me["entitlements"]["vol_surface"] is True
+    assert me["entitlements"]["ml_forecast"] is True
+
+
+async def test_dev_premium_survives_subscriptions_truncate(admin_engine, app_sessionmaker):
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            h = {"Authorization": "Bearer dev:founder@saalr.com"}
+            first = (await c.get("/me", headers=h)).json()
+            assert first["tier"] == "premium"
+            # Integration suites TRUNCATE subscriptions on the shared DB; the founder must
+            # not be stranded on free — the resolver re-applies premium on the next call.
+            async with admin_engine.begin() as conn:
+                await conn.execute(text("TRUNCATE subscriptions CASCADE"))
+            again = (await c.get("/me", headers=h)).json()
+    assert again["tier"] == "premium"
+    assert again["tenant"]["id"] == first["tenant"]["id"]
+
+
 async def test_me_is_idempotent(app_sessionmaker):
     app = create_app()
     async with app.router.lifespan_context(app):

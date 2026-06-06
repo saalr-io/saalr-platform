@@ -1,13 +1,54 @@
 from collections.abc import AsyncIterator
+from dataclasses import replace
 
 from fastapi import Header, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from saalr_core.config import Settings
 from saalr_core.ids import new_id
 
-from .providers import AuthClaims, AuthError, Principal
+from .providers import AuthClaims, AuthError, DevAuthProvider, Principal
+
+
+def _dev_premium_emails(settings: Settings) -> set[str]:
+    return {e.strip().lower() for e in settings.dev_premium_emails.split(",") if e.strip()}
+
+
+async def _ensure_dev_premium(
+    sessionmaker: async_sessionmaker[AsyncSession], tenant_id: object
+) -> None:
+    """Dev-only: upsert an active premium subscription for an allowlisted tenant.
+
+    Idempotent and RLS-scoped (sets the tenant GUC so the app role's INSERT/UPDATE
+    satisfies the tenant_isolation policy). Re-applied on every resolve where the tenant
+    is not already premium, so an integration-suite ``TRUNCATE subscriptions`` cannot
+    strand the founder on free.
+    """
+    async with sessionmaker() as s:
+        async with s.begin():
+            await s.execute(
+                text("SELECT set_config('app.current_tenant', :tid, true)"),
+                {"tid": str(tenant_id)},
+            )
+            res = await s.execute(
+                text(
+                    "UPDATE subscriptions SET tier = 'premium' "
+                    "WHERE tenant_id = :tid AND status IN ('active', 'trialing')"
+                ),
+                {"tid": str(tenant_id)},
+            )
+            if res.rowcount == 0:
+                await s.execute(
+                    text(
+                        "INSERT INTO subscriptions (subscription_id, tenant_id, tier, status, "
+                        "provider, current_period_start, current_period_end) "
+                        "VALUES (:sid, :tid, 'premium', 'active', 'manual', "
+                        "now(), now() + interval '100 years')"
+                    ),
+                    {"sid": str(new_id()), "tid": str(tenant_id)},
+                )
 
 
 async def _resolve(session: AsyncSession, claims: AuthClaims) -> Principal | None:
@@ -69,6 +110,17 @@ async def get_principal(
             status_code=500,
             detail={"error": {"code": "INTERNAL", "message": "principal resolution failed"}},
         )
+
+    # Dev convenience — keep allowlisted dev accounts (e.g. the founder) on premium even
+    # after an integration-suite TRUNCATE drops their subscription. Never runs under Clerk.
+    settings: Settings = request.app.state.settings
+    if (
+        isinstance(provider, DevAuthProvider)
+        and principal.tier != "premium"
+        and principal.email in _dev_premium_emails(settings)
+    ):
+        await _ensure_dev_premium(sessionmaker, principal.tenant_id)
+        principal = replace(principal, tier="premium")
 
     # Phase 2 — request-scoped session with the RLS tenant GUC set.
     async with sessionmaker() as session:
