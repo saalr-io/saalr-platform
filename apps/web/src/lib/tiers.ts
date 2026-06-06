@@ -22,7 +22,7 @@ export const TIERS: TierCard[] = [
     features: [
       'Strategy builder & payoff analysis',
       'OptionsAcademy lessons',
-      'Strategy explainers',
+      'In-app help on every model & strategy',
     ],
   },
   {
@@ -31,7 +31,8 @@ export const TIERS: TierCard[] = [
     tagline: 'Live market data & models.',
     features: [
       'Live options chains & IV surface',
-      'GARCH vol forecasts & Monte-Carlo POP',
+      'GARCH & HAR vol forecasts · Monte-Carlo POP',
+      'News sentiment',
       'Grounded Q&A assistant',
       'Everything in Free',
     ],
@@ -42,6 +43,7 @@ export const TIERS: TierCard[] = [
     name: 'Premium',
     tagline: 'The full research desk.',
     features: [
+      'AI price forecasts (ARIMA & LSTM)',
       'Multi-agent Research Agent notes',
       'Higher run & rate limits',
       'Everything in Pro',

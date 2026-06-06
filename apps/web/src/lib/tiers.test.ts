@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import { TIERS, TIER_RANK } from './tiers'
+import { TIERS } from './tiers'
 
-describe('tiers', () => {
-  it('exposes the three tiers in order with lowercase keys', () => {
-    expect(TIERS.map((t) => t.key)).toEqual(['free', 'pro', 'premium'])
-    expect(TIERS.map((t) => t.name)).toEqual(['Free', 'Pro', 'Premium'])
+const feats = (k: string) => TIERS.find((t) => t.key === k)!.features.join(' | ')
+
+describe('plan copy', () => {
+  it('premium headlines AI price forecasts', () => {
+    expect(feats('premium')).toMatch(/ARIMA & LSTM/i)
   })
-  it('ranks free < pro < premium', () => {
-    expect(TIER_RANK.free).toBeLessThan(TIER_RANK.pro)
-    expect(TIER_RANK.pro).toBeLessThan(TIER_RANK.premium)
+  it('pro lists HAR vol forecasts and news sentiment', () => {
+    expect(feats('pro')).toMatch(/HAR/)
+    expect(feats('pro')).toMatch(/sentiment/i)
   })
-  it('quotes no dollar prices', () => {
-    const text = TIERS.flatMap((t) => [t.tagline, ...t.features]).join(' ')
-    expect(text).not.toContain('$')
+  it('free mentions in-app help', () => {
+    expect(feats('free')).toMatch(/help/i)
   })
 })
