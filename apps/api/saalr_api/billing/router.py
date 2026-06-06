@@ -40,7 +40,8 @@ async def upgrade(body: UpgradeRequest, request: Request,
             return {"checkout_url": cached}
     try:
         out = await service.start_upgrade(session, provider, settings,
-                                          principal.tenant_id, principal.email, body.tier)
+                                          principal.tenant_id, principal.email,
+                                          body.tier, body.interval)
     except Exception as exc:  # noqa: BLE001 - Stripe/API failure -> 502, never 500
         raise HTTPException(502, {"error": {"code": "BILLING_UNAVAILABLE",
                                             "message": "billing provider error"}}) from exc

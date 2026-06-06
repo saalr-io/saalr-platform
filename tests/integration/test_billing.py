@@ -95,7 +95,9 @@ def _price_map():
 
 class _Settings:
     stripe_price_pro = "price_pro"
+    stripe_price_pro_annual = "price_pro_annual"
     stripe_price_premium = "price_premium"
+    stripe_price_premium_annual = "price_premium_annual"
     billing_success_url = "http://x/success"
     billing_cancel_url = "http://x/cancel"
 
@@ -272,3 +274,25 @@ async def test_get_subscription_reports_has_customer(admin_engine, app_sessionma
         await repo.set_customer_id(s, tenant_id, "cus_hc")
     async with tenant_session(app_sessionmaker, tenant_id) as s:
         assert (await service.get_subscription(s, tenant_id))["has_customer"] is True
+
+
+async def test_upgrade_rejects_bad_interval(app_sessionmaker):
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        async with _client(app) as c:
+            r = await c.post("/subscription/upgrade", json={"tier": "pro", "interval": "weekly"},
+                             headers={"Authorization": "Bearer dev:bill-iv@x.com"})
+            assert r.status_code == 422
+
+
+async def test_upgrade_annual_accepted():
+    app = create_app()
+    async with app.router.lifespan_context(app):
+        app.state.payment_provider = StubProvider()
+        async with _client(app) as c:
+            await c.post("/auth/dev/login", json={"email": "annual@acme.com"})
+            r = await c.post("/subscription/upgrade",
+                             json={"tier": "pro", "interval": "annual"},
+                             headers=_auth("annual@acme.com"))
+    assert r.status_code == 200
+    assert r.json()["checkout_url"].startswith("https://stub.stripe/checkout/")
