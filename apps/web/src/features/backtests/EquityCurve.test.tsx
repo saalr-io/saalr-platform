@@ -14,4 +14,13 @@ describe('EquityCurve', () => {
     expect(screen.getByTestId('equity-line').getAttribute('points')!.trim().split(' ')).toHaveLength(3)
     expect(screen.getByTestId('equity-baseline')).toBeInTheDocument()
   })
+
+  it('labels the equity and date axes', () => {
+    render(<EquityCurve series={series} initialCapital={100000} />)
+    const fig = screen.getByTestId('equity-curve')
+    expect(fig.textContent).toContain('equity')      // y-axis title
+    expect(fig.textContent).toContain('date')        // x-axis title
+    expect(fig.textContent).toContain('$100k')       // initial-capital tick
+    expect(fig.textContent).toContain('2023-01-03')  // first date tick
+  })
 })
