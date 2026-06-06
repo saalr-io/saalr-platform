@@ -14,7 +14,7 @@ The Portfolio (`/app/portfolio`) is a working **paper-trading desk**: paper brok
 - **One combined slice:** the place-a-strategy plumbing **and** the guided beginner entry points (deferring only the strategy-grouped P&L view in Portfolio).
 - **Practice hub = the Ideas page** (reuses the regime + recommendation context); plus a Paper-trade button on the Strategies builder.
 - **Mechanism = a new backend endpoint** `POST /v1/orders/strategy` (reuses the existing per-order risk + paper-fill), not a client loop.
-- Orders are tagged with a shared **`strategy_id`** (the `OrderCreate` field already exists) so the deferred grouped-P&L view is a clean follow-up.
+- Legs are placed as **standalone paper orders (no `strategy_id`)** — the risk gate rejects any `strategy_id` whose strategy isn't in an executable (`paper`/`live`) FSM state, and reaching `paper` requires the `draft → backtested → paper` promotion path, which is too heavy for a one-click practice trade. (Grouped-P&L grouping is deferred; see Out of scope.)
 
 ## Goal
 
@@ -31,10 +31,10 @@ Ideas reco card ─┐                         Strategies builder ─┐
      placeStrategy({ broker_account_id, underlying, legs })
                               │
    POST /v1/orders/strategy ──► service.place_strategy():
-       one shared strategy_id → for each option/equity leg → service.place_order (risk + fill)
-       skip cash legs → collect per-leg {status, reject_code}
+       for each option/equity leg → service.place_order (risk + paper-fill), strategy_id=None
+       skip cash legs → catch per-leg reject → collect per-leg {status, reject_code}
                               │
-   result: { strategy_id, results[], placed, rejected } → "placed 2/2 → view in Portfolio →"
+   result: { results[], placed, rejected } → "placed 2/2 → view in Portfolio →"
 ```
 
 ## Backend (`apps/api/saalr_api/oms/`)
@@ -58,34 +58,42 @@ class StrategyOrderCreate(BaseModel):
 
 ### Service (`service.py`) — `place_strategy`
 ```
-async def place_strategy(session, principal, body: StrategyOrderCreate, request_id, factory) -> dict
+async def place_strategy(session, principal, body: StrategyOrderCreate, idem, request_id, factory) -> dict
 ```
-- Generate one `strategy_id = str(new_id())`.
-- For each leg, in order:
-  - `cash` → skip (collateral, not an order); record `{kind:"cash", status:"skipped"}`.
-  - `option` → `OrderCreate(broker_account_id, symbol=underlying, side, qty, order_type="market", option_type, strike, expiry, strategy_id, time_in_force="day")`.
-  - `equity` → `OrderCreate(broker_account_id, symbol=underlying, side, qty, order_type="market", strategy_id)`.
-  - Call the existing `service.place_order(session, principal, order, idempotency_key=f"{strategy_id}:{i}", request_id, factory)`; capture `{leg_index:i, kind, status, order_id?, reject_code?}` from its result.
-- Return `{ "strategy_id": strategy_id, "broker_account_id": ..., "results": [...], "placed": <# legs whose status is not "rejected" and not "skipped">, "rejected": <# legs with status "rejected"> }`.
-- Per-leg idempotency keys make a whole-strategy retry safe.
-- It composes `place_order` per leg, so **all existing risk checks and paper fills apply unchanged**; a rejected leg (e.g. `RISK_NO_MARKET_DATA`) is reported, not hidden.
+- For each leg `i`, in order:
+  - `cash` → skip; record `{"leg_index": i, "kind": "cash", "status": "skipped"}`.
+  - `option` → `OrderCreate(broker_account_id, symbol=underlying, side, qty, order_type="market", option_type, strike, expiry, time_in_force="day")` (**no `strategy_id`**).
+  - `equity` → `OrderCreate(broker_account_id, symbol=underlying, side, qty, order_type="market")`.
+  - `place_order` **raises `HTTPException` on a reject** (`RISK_NO_MARKET_DATA`, a risk gate, an inactive account), so wrap each call:
+    ```python
+    try:
+        res = await place_order(session, principal, order, f"{idem}:{i}", request_id, factory)
+        results.append({"leg_index": i, "kind": leg.kind, "status": res["status"], "order_id": res["order_id"]})
+    except HTTPException as exc:
+        code = exc.detail["error"]["code"] if isinstance(exc.detail, dict) else str(exc.detail)
+        results.append({"leg_index": i, "kind": leg.kind, "status": "rejected", "reject_code": code})
+    ```
+- Return `{ "broker_account_id": str(body.broker_account_id), "results": [...], "placed": <# results whose status is not "rejected"/"skipped">, "rejected": <# results with status "rejected"> }`.
+- Per-leg idempotency keys (`f"{idem}:{i}"`) make a whole-strategy retry safe; a leg placed before a later reject stays placed (no rollback) — the per-leg result is the honest record.
 
 ### Router (`router.py`)
 ```python
 @router.post("/v1/orders/strategy")
 async def place_strategy(body: StrategyOrderCreate, request: Request,
+                         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
                          ctx=Depends(get_principal)) -> dict:
     session, principal = ctx
     factory = getattr(request.app.state, "alpaca_adapter_factory", None)
-    return await service.place_strategy(session, principal, body, _request_id(request), factory)
+    idem = idempotency_key or str(new_id())
+    return await service.place_strategy(session, principal, body, idem, _request_id(request), factory)
 ```
 Ungated like the rest of the OMS (auth-only). No DB migration (reuses `orders`/`positions`; `strategy_id` column already exists on orders).
 
 ## Frontend
 
 ### Client (`apps/web/src/lib/oms.ts`)
-- Types: `StrategyLeg` (kind/side/qty/option_type/strike/expiry/amount), `StrategyOrderResult { strategy_id; results: { leg_index:number; kind:string; status:string; order_id?:string; reject_code?:string }[]; placed:number; rejected:number }`.
-- `placeStrategy(body: { broker_account_id, underlying, legs }): Promise<StrategyOrderResult>` → `POST /v1/orders/strategy`.
+- Types: `StrategyLeg` (kind/side/qty/option_type/strike/expiry/amount), `StrategyOrderResult { results: { leg_index:number; kind:string; status:string; order_id?:string; reject_code?:string }[]; placed:number; rejected:number }`.
+- `placeStrategy(body: { broker_account_id, underlying, legs }): Promise<StrategyOrderResult>` → `POST /v1/orders/strategy` with an `Idempotency-Key: crypto.randomUUID()` header (one per user click, so a network retry is safe).
 
 ### Hook (`apps/web/src/features/portfolio/usePaperTrade.ts`)
 - `usePaperTradeStrategy()` → a mutation taking a `StrategyConfig`:
@@ -113,8 +121,8 @@ Ungated like the rest of the OMS (auth-only). No DB migration (reuses `orders`/`
 
 ## Testing
 **Backend (`tests/integration/test_oms.py` or a new `test_paper_strategy.py`):**
-- `place_strategy` places one order per option/equity leg, **skips cash legs**, and all placed orders share one `strategy_id`.
-- The result reports `placed`/`rejected` counts and per-leg status; a leg that the risk layer rejects appears as `rejected` with its code (others still placed).
+- `place_strategy` places one order per option/equity leg and **skips cash legs** (a covered-call config → 2 orders + 0 for any cash leg).
+- The result reports `placed`/`rejected` counts and per-leg status; a leg the risk layer rejects appears as `rejected` with its code while the others stay placed.
 - Idempotency: re-posting the same strategy doesn't duplicate orders (per-leg keys).
 
 **Web:**
@@ -124,7 +132,7 @@ Ungated like the rest of the OMS (auth-only). No DB migration (reuses `orders`/`
 - `Strategies`: the Paper-trade button places the current config (mocked hook) and shows the result.
 
 ## Out of scope (deferred)
-- **Strategy-grouped positions + live P&L** in the Portfolio (slice 3) — the shared `strategy_id` tag makes it a clean follow-up.
+- **Strategy-grouped positions + live P&L** in the Portfolio (slice 3). Since legs here are placed un-grouped (no `strategy_id`), grouping will need its own mechanism — either a lightweight paper-trade batch id persisted on the orders, or the full "save → backtest → promote to paper" FSM path for serious strategies. Deferred.
 - A separate `/app/practice` wizard (the Ideas page is the hub for now).
 - Limit/stop order types for legs (market only), and editing legs before placing (use the builder for that).
 - Live (non-paper) strategy placement — Practice/paper only here.
