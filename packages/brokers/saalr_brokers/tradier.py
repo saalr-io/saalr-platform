@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from datetime import datetime
 from decimal import Decimal
 
-from .base import BrokerError
+import httpx
+
+from .base import BrokerAdapter, BrokerError
 from .occ import occ_symbol
-from .types import BrokerPosition
+from .types import BrokerFill, BrokerOrder, BrokerOrderResult, BrokerPosition
+
+_SANDBOX = "https://sandbox.tradier.com/v1"
+_LIVE = "https://api.tradier.com/v1"
 
 
 class TradierError(BrokerError):
@@ -94,3 +101,74 @@ def parse_balance(body: dict) -> Decimal:
         if b.get(k) is not None:
             return Decimal(str(b[k]))
     return Decimal(0)
+
+
+class TradierAdapter(BrokerAdapter):
+    """BrokerAdapter over the Tradier REST API (sandbox when is_paper)."""
+
+    def __init__(self, access_token: str, account_id: str, is_paper: bool = True, *, client=None) -> None:
+        self._token = access_token
+        self._account_id = account_id
+        self._base = _SANDBOX if is_paper else _LIVE
+        self._client = client
+
+    def _http(self) -> httpx.AsyncClient:
+        if self._client is None:
+            self._client = httpx.AsyncClient(base_url=self._base, timeout=20.0)
+        return self._client
+
+    def _headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._token}", "Accept": "application/json"}
+
+    async def _request(self, method: str, path: str, *, data=None, params=None) -> dict:
+        try:
+            r = await self._http().request(method, path, headers=self._headers(),
+                                           data=data, params=params)
+            if r.status_code >= 400:
+                # Tradier error payloads carry {"errors": {"error": [...]}}; surface the text.
+                try:
+                    errs = r.json().get("errors", {}).get("error")
+                except Exception:
+                    errs = None
+                raise TradierError(
+                    "; ".join(errs) if isinstance(errs, list) else (str(errs) or f"http {r.status_code}"))
+            return r.json()
+        except TradierError:
+            raise
+        except httpx.HTTPError as exc:
+            raise TradierError(str(exc)) from exc
+
+    async def submit_order(self, order: BrokerOrder, idempotency_key: str) -> BrokerOrderResult:
+        try:
+            body = await self._request(
+                "POST", f"/accounts/{self._account_id}/orders",
+                data=build_order_form(order, idempotency_key))
+        except TradierError as exc:
+            return BrokerOrderResult("", "rejected", str(exc))
+        o = body.get("order", {})
+        if map_status(o.get("status", "")) == "rejected":
+            return BrokerOrderResult(str(o.get("id", "")), "rejected", str(o.get("status")))
+        return BrokerOrderResult(str(o.get("id", "")), "submitted")
+
+    async def cancel_order(self, broker_order_id: str) -> bool:
+        try:
+            await self._request("DELETE", f"/accounts/{self._account_id}/orders/{broker_order_id}")
+            return True
+        except TradierError:
+            return False
+
+    async def get_orders(self, since: datetime | None = None) -> list[dict]:
+        body = await self._request("GET", f"/accounts/{self._account_id}/orders")
+        return parse_orders(body)  # since-filtering is best-effort; Tradier lacks a clean 'after' param
+
+    async def get_positions(self) -> list[BrokerPosition]:
+        body = await self._request("GET", f"/accounts/{self._account_id}/positions")
+        return parse_positions(body)
+
+    async def get_account_balance(self) -> Decimal:
+        body = await self._request("GET", f"/accounts/{self._account_id}/balances")
+        return parse_balance(body)
+
+    async def stream_executions(self) -> AsyncIterator[BrokerFill]:
+        raise NotImplementedError("reconcile via get_orders polling")
+        yield  # unreachable; makes this an async generator so it satisfies the ABC contract
