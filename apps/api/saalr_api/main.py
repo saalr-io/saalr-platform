@@ -16,6 +16,7 @@ from saalr_core.db.session import create_engine, create_sessionmaker
 from saalr_core.tiers import entitlements_for
 
 from saalr_core.marketdata.massive import MassiveProvider
+from saalr_core.marketdata.aggregates import MassiveAggregatesProvider
 from saalr_core.marketdata.rates import FredRateProvider
 
 from saalr_core.queue.backtest_queue import ensure_group
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
         await ensure_group(app.state.redis)
         await ensure_research_group(app.state.redis)
         app.state.market_provider = MassiveProvider(settings.massive_api_key)
+        app.state.aggregates_provider = MassiveAggregatesProvider(settings.massive_api_key)
         app.state.rate_provider = FredRateProvider(
             settings.fred_api_key, settings.risk_free_rate_fallback
         )

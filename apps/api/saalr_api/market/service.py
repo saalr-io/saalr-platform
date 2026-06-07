@@ -69,7 +69,11 @@ class MarketService:
         cached = await self._redis.get(key)
         if cached:
             return json.loads(cached)
+        return await self._build_and_persist(session, ticker, market, key)
 
+    async def _build_and_persist(
+        self, session: AsyncSession, ticker: str, market: str, key: str
+    ) -> dict:
         chain = await self._provider.get_option_chain(ticker, market)
         curve = await self._rates.get_curve()
         as_of_date = datetime.fromisoformat(chain.as_of).date()
@@ -87,6 +91,12 @@ class MarketService:
         }
         await self._redis.set(key, json.dumps(payload), ex=self._ttl)
         return payload
+
+    async def capture_snapshot(self, session: AsyncSession, ticker: str, market: str) -> dict:
+        """Force a fresh provider fetch + persist a new timestamped snapshot, bypassing the
+        read cache (but refreshing it). Used by the dev seed endpoint to accumulate ΔOI history."""
+        key = f"mdq:chain:v1:{market}:{ticker.upper()}"
+        return await self._build_and_persist(session, ticker, market, key)
 
     async def iv_surface(self, session, ticker, market) -> dict:
         payload = await self._computed_chain(session, ticker, market)
