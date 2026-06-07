@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import type { Contract } from '../../lib/market'
+import type { Contract, OiWindow, OiBaseline } from '../../lib/market'
 
 interface Row { strike: number; call?: Contract; put?: Contract }
 
@@ -24,12 +24,20 @@ const pct = (v: number) => `${(v * 100).toFixed(1)}%`
 const g3 = (v: number) => v.toFixed(3)
 const px = (v: number) => v.toFixed(2)
 const kfmt = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))
+const dfmt = (v: number | null | undefined): string => {
+  if (v === null || v === undefined) return '—'
+  const sign = v > 0 ? '+' : v < 0 ? '-' : ''
+  const a = Math.abs(v)
+  return `${sign}${a >= 1000 ? `${(a / 1000).toFixed(1)}k` : a}`
+}
+const dcls = (v: number | null | undefined): string =>
+  v == null ? 'text-txtFaint' : v > 0 ? 'text-pos' : v < 0 ? 'text-neg' : 'text-txtDim'
 
 type Mode = 'default' | 'greeks'
 type Win = 10 | 20 | 'all'
 
 // Column definitions per mode. `bar` flags the OI column for the inline magnitude bar.
-interface ColDef { key: string; label: string; val: (c: Contract) => string; bar?: boolean }
+interface ColDef { key: string; label: string; val: (c: Contract) => string; bar?: boolean; cls?: (c: Contract) => string }
 
 const DEFAULT_COLS: ColDef[] = [
   { key: 'oi', label: 'OI', val: (c) => kfmt(c.open_interest), bar: true },
@@ -73,7 +81,10 @@ function SideCells({
                 style={{ width: `${Math.round((c!.open_interest / maxOi) * 100)}%` }}
               />
             )}
-            <span className="relative">{c ? col.val(c) : '—'}</span>
+            <span
+              data-testid={col.key === 'chg' ? `chg-${side}-${strike}` : undefined}
+              className={`relative ${c && col.cls ? col.cls(c) : ''}`}
+            >{c ? col.val(c) : '—'}</span>
           </td>
         )
       })}
@@ -81,9 +92,12 @@ function SideCells({
   )
 }
 
-export function ChainTable({ contracts, spot }: { contracts: Contract[]; spot: number }) {
+export function ChainTable({ contracts, spot, oiBaselines }: {
+  contracts: Contract[]; spot: number; oiBaselines?: Record<OiWindow, OiBaseline | null>
+}) {
   const [mode, setMode] = useState<Mode>('default')
   const [win, setWin] = useState<Win>(10)
+  const [oiWin, setOiWin] = useState<OiWindow>('day')
   const atmRef = useRef<HTMLTableRowElement | null>(null)
 
   const allRows = useMemo(() => pivot(contracts), [contracts])
@@ -107,7 +121,12 @@ export function ChainTable({ contracts, spot }: { contracts: Contract[]; spot: n
     return <p className="py-8 text-center text-sm text-txtFaint" data-testid="chain-empty">No chain for this expiry.</p>
   }
 
-  const cols = mode === 'greeks' ? GREEK_COLS : DEFAULT_COLS
+  const chgCol: ColDef = {
+    key: 'chg', label: 'Chg',
+    val: (c) => dfmt(c.oi_change?.[oiWin] ?? null),
+    cls: (c) => dcls(c.oi_change?.[oiWin] ?? null),
+  }
+  const cols = mode === 'greeks' ? GREEK_COLS : [chgCol, ...DEFAULT_COLS]
   const span = cols.length
   // index of the first row at/above spot — the spot line goes just before it
   const spotIdx = rows.findIndex((r) => r.strike >= spot)
@@ -127,6 +146,21 @@ export function ChainTable({ contracts, spot }: { contracts: Contract[]; spot: n
             </button>
           ))}
         </div>
+        {mode === 'default' && (
+          <div className="flex items-center gap-1 text-txtFaint">
+            <span className="font-mono text-[9px] uppercase tracking-wider">Chg OI</span>
+            {(['day', '1h', '3h', '4h'] as OiWindow[]).map((w) => (
+              <button
+                key={w}
+                data-testid={`oi-window-${w}`}
+                onClick={() => setOiWin(w)}
+                className={`rounded px-2 py-0.5 ${oiWin === w ? 'bg-panel text-txt' : 'text-txtDim hover:text-txt'}`}
+              >
+                {w === 'day' ? 'Day' : w}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="ml-auto flex items-center gap-1 text-txtFaint">
           <span className="font-mono text-[9px] uppercase tracking-wider">Strikes</span>
           {([10, 20, 'all'] as Win[]).map((w) => (
@@ -141,6 +175,14 @@ export function ChainTable({ contracts, spot }: { contracts: Contract[]; spot: n
           ))}
         </div>
       </div>
+
+      {mode === 'default' && (
+        <p data-testid="oi-baseline-note" className="text-[10px] text-txtFaint">
+          {oiBaselines?.[oiWin]
+            ? `Chg OI vs ${new Date(oiBaselines[oiWin]!.ts).toLocaleTimeString()} (${oiBaselines[oiWin]!.elapsed_label} ago)`
+            : 'Chg OI — no earlier snapshot in range.'}
+        </p>
+      )}
 
       <div className="max-h-[70vh] overflow-auto rounded-lg border border-line">
         <table className="tnum w-full min-w-[680px] font-mono text-[11px]" data-testid="chain-table">

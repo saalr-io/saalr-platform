@@ -69,4 +69,29 @@ describe('ChainTable', () => {
     expect(screen.getByTestId('chain-spot-line').textContent).toContain('101')
     expect(screen.getByTestId('oi-bar-call-101')).toBeInTheDocument()
   })
+
+  it('shows the Chg OI column and switches values by window', () => {
+    const c: Contract = {
+      ...C(180, 'CALL', 0.26, 500),
+      oi_change: { day: 12400, '1h': -2100, '3h': 0, '4h': 500 },
+    }
+    render(<ChainTable contracts={[c]} spot={185}
+      oiBaselines={{ day: { ts: '2026-05-30T10:00:00+00:00', elapsed_label: '~4h30m' },
+        '1h': null, '3h': null, '4h': null }} />)
+    const cell = screen.getByTestId('chg-call-180')
+    expect(cell.textContent).toContain('+12.4k')
+    expect(cell.className).toContain('text-pos')
+    expect(screen.getByTestId('oi-baseline-note').textContent).toContain('~4h30m')
+    fireEvent.click(screen.getByTestId('oi-window-1h'))
+    expect(screen.getByTestId('chg-call-180').textContent).toContain('-2.1k')
+    expect(screen.getByTestId('chg-call-180').className).toContain('text-neg')
+  })
+
+  it('renders an em-dash and a no-baseline note when oi_change is missing', () => {
+    render(<ChainTable contracts={[C(180, 'CALL', 0.26, 500)]} spot={185}
+      oiBaselines={{ day: null, '1h': null, '3h': null, '4h': null }} />)
+    expect(screen.getByTestId('chg-call-180').textContent).toContain('—')
+    expect((screen.getByTestId('oi-baseline-note').textContent ?? '').toLowerCase())
+      .toContain('no earlier snapshot')
+  })
 })

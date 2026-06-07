@@ -31,6 +31,13 @@ export interface IvSurface {
   freshness_ms: number
 }
 
+export type OiWindow = 'day' | '1h' | '3h' | '4h'
+
+export interface OiBaseline {
+  ts: string
+  elapsed_label: string
+}
+
 export interface Contract {
   expiry: string
   strike: number
@@ -40,6 +47,7 @@ export interface Contract {
   last: number
   volume: number
   open_interest: number
+  oi_change?: Record<OiWindow, number | null>
   ours: Greeks
   vendor: { iv: number; delta: number; gamma: number; theta: number; vega: number }
 }
@@ -52,6 +60,7 @@ export interface Chain {
   model: string
   risk_free_source: string
   contracts: Contract[]
+  oi_baselines?: Record<OiWindow, OiBaseline | null>
 }
 
 async function get<T>(path: string): Promise<T> {
