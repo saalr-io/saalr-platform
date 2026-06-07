@@ -41,6 +41,7 @@ from .sentiment.router import router as sentiment_router
 from .regime.router import router as regime_router
 from .onboarding.router import router as onboarding_router
 from .strategies.router import router as strategies_router
+from .account.router import router as account_router
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _logger = logging.getLogger("saalr.auth")
@@ -108,6 +109,7 @@ def create_app() -> FastAPI:
     app.include_router(billing_router)
     app.include_router(marketing_router)
     app.include_router(onboarding_router)
+    app.include_router(account_router)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
@@ -132,6 +134,11 @@ def create_app() -> FastAPI:
                 status_code=404,
                 detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": "tenant not found"}},
             )
+        urow = (await session.execute(
+            text("SELECT marketing_opt_in, preferred_tz, preferred_locale, deletion_requested_at "
+                 "FROM users WHERE user_id = :u"),
+            {"u": str(principal.user_id)},
+        )).first()
         return {
             "user": {"id": str(principal.user_id), "email": principal.email},
             "tenant": {
@@ -141,6 +148,10 @@ def create_app() -> FastAPI:
             },
             "tier": principal.tier,
             "entitlements": entitlements_for(principal.tier),
+            "marketing_opt_in": bool(urow.marketing_opt_in) if urow else False,
+            "preferred_tz": (urow.preferred_tz if urow else None) or "UTC",
+            "preferred_locale": (urow.preferred_locale if urow else None) or "en-US",
+            "deletion_requested": bool(urow.deletion_requested_at) if (urow and urow.deletion_requested_at) else False,
         }
 
     @app.post("/auth/dev/login")
