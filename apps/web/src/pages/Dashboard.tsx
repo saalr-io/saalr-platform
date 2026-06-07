@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useBrokerAccounts, usePositions, useOrders } from '../features/portfolio/hooks'
 import { useIvSurface } from '../features/markets/hooks'
 import { getVolForecast, getSentiment } from '../lib/models'
+import { GettingStarted } from '../features/onboarding/GettingStarted'
 import { StatStrip } from '../features/dashboard/StatStrip'
 import { PortfolioOverview } from '../features/dashboard/PortfolioOverview'
 import { WatchlistTable, type WatchRow } from '../features/dashboard/WatchlistTable'
@@ -65,6 +66,7 @@ export function Dashboard() {
 
   return (
     <div className="animate-fadeUp space-y-5">
+      <GettingStarted />
       <div>
         <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">// Dashboard</p>
         <h2 className="mt-1 text-xl font-semibold tracking-tight">Overview</h2>
