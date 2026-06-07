@@ -29,7 +29,7 @@ class User(Base):
     preferred_tz: Mapped[str] = mapped_column(Text, nullable=False, server_default="UTC")
     preferred_locale: Mapped[str] = mapped_column(Text, nullable=False, server_default="en-US")
     marketing_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
-    unsubscribe_token: Mapped[str | None] = mapped_column(Text)
+    unsubscribe_token: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, unique=True, server_default=func.gen_random_uuid())
     deletion_requested_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
 
