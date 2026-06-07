@@ -12,9 +12,20 @@ export function Education() {
   const [searchParams] = useSearchParams()
   const complete = useCompleteStep()
   const readLessonFired = useRef(false)
+  // Credit the onboarding `read_lesson` step only on an EXPLICIT pick (a click or a
+  // ?lesson= deep-link) — never when the list merely defaults to the first lesson on
+  // catalog load. Idempotent on the backend; the ref avoids duplicate fires per mount.
+  function selectLesson(slug: string) {
+    setSelectedSlug(slug)
+    if (!readLessonFired.current) {
+      readLessonFired.current = true
+      complete.mutate('read_lesson')
+    }
+  }
   useEffect(() => {
     const lesson = searchParams.get('lesson')
-    if (lesson) setSelectedSlug(lesson)
+    if (lesson) selectLesson(lesson)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
   const { data, isLoading } = useModules()
 
@@ -25,14 +36,7 @@ export function Education() {
   // Derived selection: an explicit pick wins; otherwise default to the first
   // lesson once the catalog loads (no render-phase setState).
   const activeSlug = selectedSlug ?? modules[0]?.slug ?? null
-  const setActiveSlug = setSelectedSlug
-
-  useEffect(() => {
-    if (activeSlug && !readLessonFired.current) {
-      readLessonFired.current = true
-      complete.mutate('read_lesson')
-    }
-  }, [activeSlug, complete])
+  const setActiveSlug = selectLesson
 
   return (
     <div className="animate-fadeUp space-y-6">

@@ -17,8 +17,8 @@ class OptInRequest(BaseModel):
 
 class ProfilePatch(BaseModel):
     model_config = ConfigDict(extra="forbid")  # unknown keys -> 422
-    preferred_tz: str | None = Field(default=None, max_length=64)
-    preferred_locale: str | None = Field(default=None, max_length=64)
+    preferred_tz: str | None = Field(default=None, min_length=1, max_length=64)
+    preferred_locale: str | None = Field(default=None, min_length=1, max_length=64)
 
 
 @router.post("/me/marketing/opt-in")
