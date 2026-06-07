@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Saalr — logo concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink-dark: #eef2f7;     /* logo ink on dark */
+    --ink-light: #0b1f33;    /* deep navy ink on light/paper */
+    --acc: #4da3ff;
+    --canvas: #070a0f;
+    --panel: #0e131b;
+    --line: #1d2632;
+    --dim: #8b95a7;
+    --faint: #5b6678;
+    --paper: #f3f1ea;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--canvas); color: var(--ink-dark);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(900px 500px at 85% -10%, #0e1a28 0%, rgba(7,10,15,0) 60%),
+      linear-gradient(to right, rgba(255,255,255,.015) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,.015) 1px, transparent 1px);
+    background-size: auto, 32px 32px, 32px 32px;
+    background-attachment: fixed;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 56px 28px 96px; }
+  .kicker { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: var(--acc); }
+  h1 { font-family: 'Spectral', serif; font-weight: 600; font-size: 34px; margin: 10px 0 4px; letter-spacing: .01em; }
+  .sub { color: var(--dim); max-width: 60ch; line-height: 1.6; }
+  .concept { margin-top: 44px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel); }
+  .concept > header { display: flex; align-items: baseline; gap: 12px; padding: 16px 22px; border-bottom: 1px solid var(--line); }
+  .concept h2 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .01em; }
+  .tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+  .tag.rec { color: #04110d; background: var(--acc); border-radius: 999px; padding: 3px 9px; }
+  .desc { color: var(--dim); font-size: 13px; padding: 0 22px 14px; line-height: 1.6; }
+  .hero { display: grid; place-items: center; padding: 60px 22px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border-top: 1px solid var(--line); }
+  .cell { background: var(--panel); padding: 30px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .cell.paper { background: var(--paper); }
+  .cell .lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+  .cell.paper .lbl { color: #8a8475; }
+  .ink-d { color: var(--ink-dark); }
+  .ink-l { color: var(--ink-light); }
+  .favrow { display: flex; align-items: center; gap: 22px; }
+  .favrow .ico { display: grid; place-items: center; }
+  /* the small UI bar mock */
+  .bar { display: flex; align-items: center; gap: 11px; background: rgba(7,10,15,.7); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+  .bar.paper { background: var(--paper); border-color: #ddd8cb; }
+  svg { display: block; }
+  .note { margin-top: 56px; color: var(--dim); font-size: 13px; line-height: 1.7; border-left: 2px solid var(--acc); padding-left: 16px; }
+  .note b { color: var(--ink-dark); font-weight: 600; }
+  code { font-family: 'IBM Plex Mono', monospace; background: #131a24; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-size: 12px; color: #cdd6e3; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">▌ Saalr brand</p>
+  <h1>Logo concepts</h1>
+  <p class="sub">Three institutional directions in the spirit of Goldman Sachs, Citadel and Jane Street: monochrome, typographic, restrained — no gradients, no flashy icon. Each shown large, on paper, as a standalone mark, and at favicon sizes so you can judge how it holds up small.</p>
+
+  <!-- ============ A — HERITAGE ============ -->
+  <section class="concept">
+    <header>
+      <h2>A · Heritage</h2>
+      <span class="tag rec">Recommended</span>
+      <span class="tag">Spectral serif · closest to Goldman / Jane Street</span>
+    </header>
+    <p class="desc">A pure engraved-serif wordmark with wide tracking — quiet authority, nothing to date it. The descriptor lockup mirrors how the firms pair a name with a single sober line. Reads as established, research-grade, old-money-with-a-quant-edge.</p>
+    <div class="hero">
+      <!-- big lockup on dark -->
+      <svg width="430" height="118" viewBox="0 0 430 118" class="ink-d" role="img" aria-label="SAALR">
+        <text x="215" y="62" text-anchor="middle" font-family="Spectral, serif" font-weight="500" font-size="62" letter-spacing="14" fill="currentColor">SAALR</text>
+        <line x1="96" y1="84" x2="334" y2="84" stroke="currentColor" stroke-width="1" opacity=".35"/>
+        <text x="215" y="103" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="11" letter-spacing="7" fill="currentColor" opacity=".62">OPTIONS&#160;ANALYTICS</text>
+      </svg>
+    </div>
+    <div class="grid">
+      <div class="cell paper">
+        <span class="lbl">On paper</span>
+        <svg width="300" height="78" viewBox="0 0 430 118" class="ink-l" role="img" aria-label="SAALR">
+          <text x="215" y="62" text-anchor="middle" font-family="Spectral, serif" font-weight="500" font-size="62" letter-spacing="14" fill="currentColor">SAALR</text>
+          <line x1="96" y1="84" x2="334" y2="84" stroke="currentColor" stroke-width="1" opacity=".3"/>
+          <text x="215" y="103" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="11" letter-spacing="7" fill="currentColor" opacity=".6">OPTIONS&#160;ANALYTICS</text>
+        </svg>
+      </div>
+      <div class="cell">
+        <span class="lbl">Icon · serif S in a ruled square</span>
+        <div class="favrow ink-d">
+          <span class="ico"><svg width="56" height="56" viewBox="0 0 48 48"><rect x="3.5" y="3.5" width="41" height="41" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="24" y="33" text-anchor="middle" font-family="Spectral, serif" font-weight="500" font-size="28" fill="currentColor">S</text></svg></span>
+          <span class="ico"><svg width="32" height="32" viewBox="0 0 48 48"><rect x="3.5" y="3.5" width="41" height="41" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><text x="24" y="33" text-anchor="middle" font-family="Spectral, serif" font-weight="500" font-size="28" fill="currentColor">S</text></svg></span>
+          <span class="ico"><svg width="20" height="20" viewBox="0 0 48 48"><rect x="3.5" y="3.5" width="41" height="41" rx="3" fill="none" stroke="currentColor" stroke-width="3"/><text x="24" y="33" text-anchor="middle" font-family="Spectral, serif" font-weight="500" font-size="28" fill="currentColor">S</text></svg></span>
+        </div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="cell">
+        <span class="lbl">In the app top bar</span>
+        <div class="bar ink-d">
+          <svg width="22" height="22" viewBox="0 0 48 48"><rect x="3.5" y="3.5" width="41" height="41" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"/><text x="24" y="33" text-anchor="middle" font-family="Spectral, serif" font-weight="500" font-size="28" fill="currentColor">S</text></svg>
+          <svg width="92" height="22" viewBox="0 0 200 48"><text x="0" y="34" font-family="Spectral, serif" font-weight="500" font-size="34" letter-spacing="6" fill="currentColor">SAALR</text></svg>
+          <span class="tag" style="margin-left:4px">RESEARCH&nbsp;TERMINAL</span>
+        </div>
+      </div>
+      <div class="cell paper">
+        <span class="lbl">Mixed-case alternative</span>
+        <svg width="180" height="56" viewBox="0 0 220 70" class="ink-l"><text x="0" y="50" font-family="Spectral, serif" font-weight="600" font-size="54" letter-spacing="1" fill="currentColor">Saalr</text></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ B — MONOGRAM ============ -->
+  <section class="concept">
+    <header>
+      <h2>B · Monogram</h2>
+      <span class="tag">Geometric · Citadel-leaning</span>
+    </header>
+    <p class="desc">A custom monoline “S” inside a hairline square — an ownable mark that works as an app icon and favicon, paired with a clean grotesque wordmark. Modern quant fund: precise, systematic, confident.</p>
+    <div class="hero">
+      <svg width="360" height="86" viewBox="0 0 360 86" class="ink-d" role="img" aria-label="SAALR">
+        <g transform="translate(8,19)">
+          <rect x="1" y="1" width="46" height="46" rx="9" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M31.5 17 C31.5 13 28 11.5 24 11.5 C18.5 11.5 16.5 14.5 16.5 18 C16.5 21.8 20.5 23.2 24 24.5 C27.8 25.9 31.5 27.4 31.5 31 C31.5 34.6 28 36.5 24 36.5 C19.5 36.5 16.5 34.8 16.5 31.5" fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        <text x="78" y="58" font-family="'IBM Plex Sans', sans-serif" font-weight="600" font-size="46" letter-spacing="5" fill="currentColor">SAALR</text>
+      </svg>
+    </div>
+    <div class="grid">
+      <div class="cell paper">
+        <span class="lbl">On paper</span>
+        <svg width="260" height="62" viewBox="0 0 360 86" class="ink-l" role="img" aria-label="SAALR">
+          <g transform="translate(8,19)">
+            <rect x="1" y="1" width="46" height="46" rx="9" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M31.5 17 C31.5 13 28 11.5 24 11.5 C18.5 11.5 16.5 14.5 16.5 18 C16.5 21.8 20.5 23.2 24 24.5 C27.8 25.9 31.5 27.4 31.5 31 C31.5 34.6 28 36.5 24 36.5 C19.5 36.5 16.5 34.8 16.5 31.5" fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+          <text x="78" y="58" font-family="'IBM Plex Sans', sans-serif" font-weight="600" font-size="46" letter-spacing="5" fill="currentColor">SAALR</text>
+        </svg>
+      </div>
+      <div class="cell">
+        <span class="lbl">Mark · favicon sizes</span>
+        <div class="favrow ink-d">
+          <span class="ico"><svg width="56" height="56" viewBox="0 0 48 48"><rect x="1" y="1" width="46" height="46" rx="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M31.5 17 C31.5 13 28 11.5 24 11.5 C18.5 11.5 16.5 14.5 16.5 18 C16.5 21.8 20.5 23.2 24 24.5 C27.8 25.9 31.5 27.4 31.5 31 C31.5 34.6 28 36.5 24 36.5 C19.5 36.5 16.5 34.8 16.5 31.5" fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="ico"><svg width="32" height="32" viewBox="0 0 48 48"><rect x="1" y="1" width="46" height="46" rx="9" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M31.5 17 C31.5 13 28 11.5 24 11.5 C18.5 11.5 16.5 14.5 16.5 18 C16.5 21.8 20.5 23.2 24 24.5 C27.8 25.9 31.5 27.4 31.5 31 C31.5 34.6 28 36.5 24 36.5 C19.5 36.5 16.5 34.8 16.5 31.5" fill="none" stroke="currentColor" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="ico"><svg width="20" height="20" viewBox="0 0 48 48"><rect x="1" y="1" width="46" height="46" rx="9" fill="none" stroke="currentColor" stroke-width="3"/><path d="M31.5 17 C31.5 13 28 11.5 24 11.5 C18.5 11.5 16.5 14.5 16.5 18 C16.5 21.8 20.5 23.2 24 24.5 C27.8 25.9 31.5 27.4 31.5 31 C31.5 34.6 28 36.5 24 36.5 C19.5 36.5 16.5 34.8 16.5 31.5" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="cell">
+        <span class="lbl">Solid badge variant (reversed)</span>
+        <svg width="56" height="56" viewBox="0 0 48 48"><rect x="1" y="1" width="46" height="46" rx="9" fill="var(--ink-dark)"/><path d="M31.5 17 C31.5 13 28 11.5 24 11.5 C18.5 11.5 16.5 14.5 16.5 18 C16.5 21.8 20.5 23.2 24 24.5 C27.8 25.9 31.5 27.4 31.5 31 C31.5 34.6 28 36.5 24 36.5 C19.5 36.5 16.5 34.8 16.5 31.5" fill="none" stroke="var(--canvas)" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="cell paper">
+        <span class="lbl">Solid badge on paper</span>
+        <svg width="56" height="56" viewBox="0 0 48 48"><rect x="1" y="1" width="46" height="46" rx="9" fill="var(--ink-light)"/><path d="M31.5 17 C31.5 13 28 11.5 24 11.5 C18.5 11.5 16.5 14.5 16.5 18 C16.5 21.8 20.5 23.2 24 24.5 C27.8 25.9 31.5 27.4 31.5 31 C31.5 34.6 28 36.5 24 36.5 C19.5 36.5 16.5 34.8 16.5 31.5" fill="none" stroke="var(--paper)" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ C — TERMINAL ============ -->
+  <section class="concept">
+    <header>
+      <h2>C · Terminal</h2>
+      <span class="tag">Options-native · matches the app you already built</span>
+    </header>
+    <p class="desc">The mark is a long-call payoff curve abstracted to its essence — flat, then the kink, then the climb, with a single node. It says “options” without a cliché. Monospace wordmark ties it straight into the research-terminal UI. The one place a restrained accent earns its keep.</p>
+    <div class="hero">
+      <svg width="360" height="80" viewBox="0 0 360 80" class="ink-d" role="img" aria-label="SAALR">
+        <g transform="translate(6,16)">
+          <rect x="1" y="1" width="46" height="46" rx="4" fill="none" stroke="currentColor" stroke-width="2"/>
+          <polyline points="11,34 25,34 38,13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="38" cy="13" r="3.2" fill="var(--acc)"/>
+        </g>
+        <text x="76" y="52" font-family="'IBM Plex Mono', monospace" font-weight="500" font-size="42" letter-spacing="4" fill="currentColor">SAALR</text>
+      </svg>
+    </div>
+    <div class="grid">
+      <div class="cell paper">
+        <span class="lbl">On paper (accent holds)</span>
+        <svg width="260" height="58" viewBox="0 0 360 80" class="ink-l" role="img" aria-label="SAALR">
+          <g transform="translate(6,16)">
+            <rect x="1" y="1" width="46" height="46" rx="4" fill="none" stroke="currentColor" stroke-width="2"/>
+            <polyline points="11,34 25,34 38,13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="38" cy="13" r="3.2" fill="var(--acc)"/>
+          </g>
+          <text x="76" y="52" font-family="'IBM Plex Mono', monospace" font-weight="500" font-size="42" letter-spacing="4" fill="currentColor">SAALR</text>
+        </svg>
+      </div>
+      <div class="cell">
+        <span class="lbl">Mark · favicon sizes</span>
+        <div class="favrow ink-d">
+          <span class="ico"><svg width="56" height="56" viewBox="0 0 48 48"><rect x="1" y="1" width="46" height="46" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><polyline points="11,34 25,34 38,13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="38" cy="13" r="3.2" fill="var(--acc)"/></svg></span>
+          <span class="ico"><svg width="32" height="32" viewBox="0 0 48 48"><rect x="1" y="1" width="46" height="46" rx="4" fill="none" stroke="currentColor" stroke-width="2.6"/><polyline points="11,34 25,34 38,13" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="38" cy="13" r="3.6" fill="var(--acc)"/></svg></span>
+          <span class="ico"><svg width="20" height="20" viewBox="0 0 48 48"><rect x="1" y="1" width="46" height="46" rx="4" fill="none" stroke="currentColor" stroke-width="3.4"/><polyline points="11,34 25,34 38,13" fill="none" stroke="currentColor" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="38" cy="13" r="4.4" fill="var(--acc)"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="cell">
+        <span class="lbl">In the app top bar (replaces the gradient S)</span>
+        <div class="bar ink-d">
+          <svg width="22" height="22" viewBox="0 0 48 48"><rect x="1" y="1" width="46" height="46" rx="4" fill="none" stroke="currentColor" stroke-width="2.6"/><polyline points="11,34 25,34 38,13" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="38" cy="13" r="3.6" fill="var(--acc)"/></svg>
+          <svg width="86" height="20" viewBox="0 0 200 44"><text x="0" y="34" font-family="'IBM Plex Mono', monospace" font-weight="500" font-size="34" letter-spacing="3" fill="currentColor">SAALR</text></svg>
+          <span class="tag" style="margin-left:4px">RESEARCH&nbsp;TERMINAL</span>
+        </div>
+      </div>
+      <div class="cell">
+        <span class="lbl">Monochrome (no accent) variant</span>
+        <svg width="56" height="56" viewBox="0 0 48 48" class="ink-d"><rect x="1" y="1" width="46" height="46" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><polyline points="11,34 25,34 38,13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="38" cy="13" r="3.2" fill="currentColor"/></svg>
+      </div>
+    </div>
+  </section>
+
+  <p class="note">
+    <b>My recommendation:</b> <b>A (Heritage)</b> is the truest match to Goldman / Jane Street — a serif wordmark is the most timeless, institutional choice and ages the best. <b>C (Terminal)</b> is the strongest <i>fit for the product you’ve actually built</i> (it slots into the existing research-terminal UI and gives you a real app icon). A common, strong outcome is a hybrid: <b>the Heritage serif wordmark + the Terminal payoff mark as the icon/favicon</b> — wordmark for the brand, mark for the app.<br><br>
+    Tell me which direction (or hybrid) you want and any tweak — casing (<code>SAALR</code> vs <code>Saalr</code>), serif vs mono, with/without the accent node — and I’ll wire it into the app: a reusable <code>&lt;Logo /&gt;</code> component in the Topbar + landing, an SVG favicon, and the marketing footer wordmark.
+  </p>
+</div>
+</body>
+</html>

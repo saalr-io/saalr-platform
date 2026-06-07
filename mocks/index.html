@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Saalr — UX Mockup (dark research terminal)</title>
+<style>
+  :root {
+    --bg: #070a0f;
+    --panel: #0e131b;
+    --panel-2: #131a24;
+    --line: #1d2632;
+    --line-soft: #161d27;
+    --txt: #e7ecf3;
+    --txt-dim: #8b95a7;
+    --txt-faint: #5b6678;
+    --pos: #2ee6a6;
+    --pos-dim: #145c45;
+    --neg: #ff5d73;
+    --neg-dim: #5c1f2a;
+    --warn: #ffc24b;
+    --accent: #4da3ff;
+    --accent-2: #9b7bff;
+    --mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+    --sans: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(1200px 700px at 80% -10%, #0d1622 0%, var(--bg) 60%);
+    color: var(--txt);
+    font-family: var(--sans);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .pos { color: var(--pos); }
+  .neg { color: var(--neg); }
+  .warn { color: var(--warn); }
+  .dim { color: var(--txt-dim); }
+  .faint { color: var(--txt-faint); }
+  .up::before { content: "▲ "; font-size: 9px; }
+  .down::before { content: "▼ "; font-size: 9px; }
+
+  /* layout */
+  .app { display: grid; grid-template-columns: 220px 1fr; grid-template-rows: 52px 1fr; height: 100vh; }
+  .topbar { grid-column: 1 / 3; display: flex; align-items: center; gap: 18px;
+    padding: 0 18px; border-bottom: 1px solid var(--line); background: rgba(10,14,20,.7); backdrop-filter: blur(8px); }
+  .sidebar { border-right: 1px solid var(--line); padding: 14px 10px; overflow:auto; }
+  .main { overflow: auto; padding: 18px 22px 40px; }
+
+  /* brand */
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.5px; }
+  .brand .mark { width:26px; height:26px; border-radius:7px; background: linear-gradient(135deg, var(--pos), var(--accent)); display:grid; place-items:center; color:#04110d; font-weight:800; }
+  .brand small { color: var(--txt-faint); font-weight:500; letter-spacing:2px; font-size:9px; }
+
+  .tenant { display:flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid var(--line); border-radius:8px; background:var(--panel); }
+  .tenant .dot { width:8px; height:8px; border-radius:50%; background:var(--pos); box-shadow:0 0 8px var(--pos); }
+  .tier { font-size:9px; letter-spacing:1px; text-transform:uppercase; padding:2px 7px; border-radius:20px;
+    background: linear-gradient(135deg, rgba(155,123,255,.25), rgba(77,163,255,.18)); border:1px solid #34406b; color:#cdbcff; }
+  .spacer { flex:1; }
+  .search { display:flex; align-items:center; gap:8px; padding:6px 12px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--txt-faint); width:240px; }
+  .clock { font-family:var(--mono); color:var(--txt-dim); font-size:12px; }
+  .apistat { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--txt-dim); }
+  .apistat .dot { width:8px; height:8px; border-radius:50%; background:var(--pos); box-shadow:0 0 8px var(--pos); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  /* nav */
+  .navlabel { font-size:9px; letter-spacing:1.5px; color:var(--txt-faint); text-transform:uppercase; margin:14px 8px 6px; }
+  .nav a { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; color:var(--txt-dim);
+    text-decoration:none; cursor:pointer; font-weight:500; }
+  .nav a:hover { background: var(--panel); color: var(--txt); }
+  .nav a.active { background: linear-gradient(90deg, rgba(46,230,166,.10), transparent); color:var(--txt); box-shadow: inset 2px 0 0 var(--pos); }
+  .nav a .ico { width:16px; text-align:center; opacity:.8; }
+  .nav a .badge { margin-left:auto; font-size:9px; background:var(--panel-2); border:1px solid var(--line); padding:1px 6px; border-radius:10px; color:var(--txt-faint); }
+
+  /* panels */
+  .grid { display:grid; gap:14px; }
+  .panel { background: linear-gradient(180deg, var(--panel) 0%, #0b1018 100%); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .panel h3 { margin:0 0 2px; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--txt-dim); font-weight:600; }
+  .panel .sub { color:var(--txt-faint); font-size:11px; margin-bottom:10px; }
+  .row { display:flex; align-items:center; justify-content:space-between; }
+  h2.view-title { font-size:18px; margin:0 0 2px; font-weight:650; letter-spacing:.2px; }
+  .view-sub { color:var(--txt-dim); margin:0 0 16px; font-size:12px; }
+
+  /* KPI */
+  .kpis { grid-template-columns: repeat(5, 1fr); }
+  .kpi .label { font-size:10px; letter-spacing:.6px; color:var(--txt-faint); text-transform:uppercase; }
+  .kpi .val { font-size:22px; margin-top:6px; }
+  .kpi .delta { font-size:11px; margin-top:4px; }
+  .kpi .spark { margin-top:8px; }
+
+  /* tables */
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--txt-faint); font-weight:600; padding:7px 8px; border-bottom:1px solid var(--line); }
+  td { padding:9px 8px; border-bottom:1px solid var(--line-soft); }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background: rgba(255,255,255,.015); }
+  .pill { font-size:9px; letter-spacing:.5px; text-transform:uppercase; padding:2px 8px; border-radius:20px; border:1px solid; font-family:var(--sans); }
+  .pill.live { color:var(--pos); border-color:var(--pos-dim); background:rgba(46,230,166,.08); }
+  .pill.paper { color:var(--accent); border-color:#1f3a5c; background:rgba(77,163,255,.08); }
+  .pill.bt { color:var(--txt-dim); border-color:var(--line); background:var(--panel-2); }
+  .pill.paused { color:var(--warn); border-color:#5c4a1f; background:rgba(255,194,75,.08); }
+  .tk { font-weight:700; }
+  .barmeter { height:6px; border-radius:4px; background:var(--panel-2); overflow:hidden; }
+  .barmeter > i { display:block; height:100%; background:linear-gradient(90deg,var(--pos),#7cf0c8); }
+
+  /* model cards */
+  .model { display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--line-soft); }
+  .model:last-child { border-bottom:none; }
+  .model .glyph { width:34px; height:34px; border-radius:9px; display:grid; place-items:center; font-size:14px; border:1px solid var(--line); background:var(--panel-2); }
+  .tag-ok { color:var(--pos); border:1px solid var(--pos-dim); background:rgba(46,230,166,.08); padding:2px 8px; border-radius:6px; font-size:10px; }
+  .tag-warn { color:var(--warn); border:1px solid #5c4a1f; background:rgba(255,194,75,.08); padding:2px 8px; border-radius:6px; font-size:10px; }
+  .meter2 { display:flex; gap:2px; margin-top:8px; }
+  .meter2 i { height:18px; flex:1; background:var(--panel-2); border-radius:2px; }
+
+  .legtable td, .legtable th { padding:7px 8px; }
+  .hint { font-size:10px; color:var(--txt-faint); }
+  .glassbox { border:1px dashed #2a3647; border-radius:8px; padding:10px 12px; background:rgba(77,163,255,.04); font-size:11px; color:var(--txt-dim); }
+  .glassbox b { color:var(--txt); }
+
+  .view { display:none; }
+  .view.active { display:block; animation: fade .2s ease; }
+  @keyframes fade { from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none} }
+
+  .mock-banner { position:fixed; bottom:12px; right:14px; font-size:10px; color:var(--txt-faint);
+    background:var(--panel); border:1px solid var(--line); padding:5px 10px; border-radius:20px; letter-spacing:.5px; }
+  .heat { display:grid; grid-template-columns: 64px repeat(7, 1fr); gap:3px; font-size:10px; }
+  .heat .cell { height:30px; border-radius:4px; display:grid; place-items:center; font-family:var(--mono); color:#04110d; font-size:10px; }
+  .heat .hd { color:var(--txt-faint); display:grid; place-items:center; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand"><span class="mark">S</span> Saalr <small>RESEARCH TERMINAL</small></div>
+    <div class="tenant"><span class="dot"></span> Acme Capital <span class="tier">Premium</span></div>
+    <div class="spacer"></div>
+    <div class="search">⌕ <span>Search ticker, strategy…</span></div>
+    <div class="clock" id="clock">09:41:22 EDT</div>
+    <div class="apistat"><span class="dot"></span> API live · 41ms</div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="navlabel">Trade</div>
+    <nav class="nav">
+      <a class="active" data-view="dashboard"><span class="ico">◧</span> Dashboard</a>
+      <a data-view="markets"><span class="ico">◴</span> Markets &amp; Vol</a>
+      <a data-view="strategy"><span class="ico">⟁</span> Strategies <span class="badge">4</span></a>
+      <a data-view="models"><span class="ico">◈</span> Models</a>
+    </nav>
+    <div class="navlabel">Learn &amp; Research</div>
+    <nav class="nav">
+      <a data-view="dashboard"><span class="ico">✦</span> Research Agent <span class="badge">AI</span></a>
+      <a data-view="dashboard"><span class="ico">▤</span> OptionsAcademy</a>
+      <a data-view="dashboard"><span class="ico">▦</span> Portfolio</a>
+    </nav>
+    <div class="navlabel">System</div>
+    <nav class="nav">
+      <a data-view="system"><span class="ico">◍</span> System Status</a>
+      <a data-view="dashboard"><span class="ico">⚙</span> Settings</a>
+    </nav>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- ============ DASHBOARD ============ -->
+    <section class="view active" id="dashboard">
+      <h2 class="view-title">Good morning, Alice</h2>
+      <p class="view-sub">Acme Capital · US markets open · 4 active strategies · last sync 12s ago</p>
+
+      <div class="grid kpis">
+        <div class="panel kpi">
+          <div class="label">Portfolio Value</div>
+          <div class="val num">$248,392</div>
+          <div class="delta pos up num">$4,512 · 1.84% today</div>
+          <svg class="spark" width="100%" height="28" viewBox="0 0 120 28" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#2ee6a6" stroke-width="1.5" points="0,22 12,20 24,23 36,16 48,18 60,12 72,14 84,8 96,11 108,5 120,6"/>
+          </svg>
+        </div>
+        <div class="panel kpi">
+          <div class="label">Day P&amp;L</div>
+          <div class="val num pos">+$4,512.77</div>
+          <div class="delta dim num">realized $1,180 · open $3,332</div>
+          <svg class="spark" width="100%" height="28" viewBox="0 0 120 28" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#2ee6a6" stroke-width="1.5" points="0,18 15,19 30,14 45,16 60,10 75,13 90,7 105,9 120,4"/>
+          </svg>
+        </div>
+        <div class="panel kpi">
+          <div class="label">Portfolio Greeks</div>
+          <div class="val num" style="font-size:15px; margin-top:8px;">
+            Δ <span class="pos">+142.6</span>&nbsp; Γ <span class="neg">−8.3</span>
+          </div>
+          <div class="delta num dim">Θ <span class="pos">+$312/d</span> · ν <span class="neg">−1,204</span></div>
+        </div>
+        <div class="panel kpi">
+          <div class="label">30-day Sharpe</div>
+          <div class="val num">1.47</div>
+          <div class="delta dim num">Sortino 1.92 · maxDD −8.3%</div>
+        </div>
+        <div class="panel kpi">
+          <div class="label">Buying Power</div>
+          <div class="val num">$86,240</div>
+          <div class="delta dim num">margin used 41%</div>
+          <div class="barmeter" style="margin-top:8px"><i style="width:41%"></i></div>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns: 1.6fr 1fr; margin-top:14px;">
+        <!-- equity curve -->
+        <div class="panel">
+          <div class="row"><h3>Equity Curve · 90d</h3><span class="hint">vs SPY buy &amp; hold</span></div>
+          <svg width="100%" height="190" viewBox="0 0 600 190" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="eq" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#2ee6a6" stop-opacity=".28"/>
+                <stop offset="100%" stop-color="#2ee6a6" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="150" x2="600" y2="150" stroke="#1d2632"/>
+            <line x1="0" y1="100" x2="600" y2="100" stroke="#161d27"/>
+            <line x1="0" y1="50" x2="600" y2="50" stroke="#161d27"/>
+            <polyline fill="none" stroke="#3a4456" stroke-width="1.5" stroke-dasharray="4 4"
+              points="0,150 60,148 120,142 180,146 240,136 300,140 360,132 420,128 480,134 540,122 600,120"/>
+            <path fill="url(#eq)" stroke="none"
+              d="M0,150 60,144 120,138 180,128 240,130 300,116 360,110 420,96 480,102 540,78 600,66 L600,190 L0,190 Z"/>
+            <polyline fill="none" stroke="#2ee6a6" stroke-width="2"
+              points="0,150 60,144 120,138 180,128 240,130 300,116 360,110 420,96 480,102 540,78 600,66"/>
+            <circle cx="600" cy="66" r="3.5" fill="#2ee6a6"/>
+          </svg>
+          <div class="row" style="margin-top:8px;">
+            <span class="hint">Saalr <span class="pos num">+18.7%</span></span>
+            <span class="hint">SPY <span class="num dim">+9.1%</span></span>
+            <span class="hint">alpha <span class="pos num">+9.6%</span></span>
+          </div>
+        </div>
+
+        <!-- sentiment / news exposure -->
+        <div class="panel">
+          <h3>News Sentiment · FinBERT</h3>
+          <div class="sub">time-decayed, confidence-weighted · last 24h</div>
+          <div id="sent"></div>
+          <div class="glassbox" style="margin-top:6px">SPY signal gated to <b>neutral</b> earlier today — only 3 low-confidence headlines. Saalr won't force a directional read from thin data.</div>
+        </div>
+      </div>
+
+      <!-- active strategies -->
+      <div class="panel" style="margin-top:14px;">
+        <div class="row"><h3>Active Strategies</h3><span class="hint">POP = Monte-Carlo probability of profit (10k paths, GARCH vol)</span></div>
+        <table>
+          <thead><tr><th>Strategy</th><th>Underlying</th><th>Expiry</th><th>State</th><th>POP</th><th>Δ</th><th>Θ/day</th><th>Open P&amp;L</th><th>Sharpe</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="tk">Iron Condor</span></td><td class="num">SPY</td><td class="num dim">Jun 21</td>
+              <td><span class="pill live">live</span></td>
+              <td><div class="num">68%</div><div class="barmeter" style="width:70px;margin-top:4px"><i style="width:68%"></i></div></td>
+              <td class="num">+4.2</td><td class="num pos">+$118</td><td class="num pos">+$1,240</td><td class="num">1.62</td>
+            </tr>
+            <tr>
+              <td><span class="tk">Covered Call</span></td><td class="num">AAPL</td><td class="num dim">Jul 19</td>
+              <td><span class="pill paper">paper</span></td>
+              <td><div class="num">74%</div><div class="barmeter" style="width:70px;margin-top:4px"><i style="width:74%"></i></div></td>
+              <td class="num">−38.0</td><td class="num pos">+$64</td><td class="num pos">+$320</td><td class="num">1.35</td>
+            </tr>
+            <tr>
+              <td><span class="tk">Put Credit Spread</span></td><td class="num">NVDA</td><td class="num dim">Jun 28</td>
+              <td><span class="pill live">live</span></td>
+              <td><div class="num">61%</div><div class="barmeter" style="width:70px;margin-top:4px"><i style="width:61%"></i></div></td>
+              <td class="num">+12.5</td><td class="num pos">+$92</td><td class="num neg">−$185</td><td class="num">0.94</td>
+            </tr>
+            <tr>
+              <td><span class="tk">Calendar Spread</span></td><td class="num">QQQ</td><td class="num dim">—</td>
+              <td><span class="pill bt">backtested</span></td>
+              <td class="num dim">71%</td>
+              <td class="num dim">—</td><td class="num dim">—</td><td class="num dim">—</td><td class="num">1.48</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ MARKETS & VOL ============ -->
+    <section class="view" id="markets">
+      <h2 class="view-title">Markets &amp; Volatility</h2>
+      <p class="view-sub">SPY · spot <span class="num">548.20</span> <span class="num pos up">0.74%</span> · IV rank 38 · data: Polygon · 0.9s fresh</p>
+
+      <div class="grid" style="grid-template-columns: 1.1fr 1fr;">
+        <div class="panel">
+          <div class="row"><h3>Implied Vol Surface</h3><span class="hint">call IV · by strike × expiry</span></div>
+          <div class="heat" id="surface" style="margin-top:10px"></div>
+        </div>
+        <div class="panel">
+          <h3>GARCH Vol Forecast vs Realized</h3>
+          <div class="sub">GARCH(1,1) · baseline HV21 · 30d horizon</div>
+          <svg width="100%" height="170" viewBox="0 0 560 170" preserveAspectRatio="none">
+            <line x1="0" y1="130" x2="560" y2="130" stroke="#1d2632"/>
+            <polyline fill="none" stroke="#3a4456" stroke-width="1.5" stroke-dasharray="4 4"
+              points="0,96 80,98 160,90 240,94 320,88 400,92 480,86 560,90"/>
+            <polyline fill="none" stroke="#4da3ff" stroke-width="2"
+              points="0,100 80,92 160,96 240,84 320,80 400,86 480,72 560,76"/>
+            <polyline fill="none" stroke="#2ee6a6" stroke-width="2"
+              points="0,104 80,95 160,93 240,86 320,78 400,83 480,70 560,72"/>
+          </svg>
+          <div class="row" style="margin-top:6px">
+            <span class="hint"><span class="pos">━</span> realized</span>
+            <span class="hint"><span style="color:#4da3ff">━</span> GARCH</span>
+            <span class="hint"><span style="color:#3a4456">┄</span> HV21 baseline</span>
+            <span class="hint num">GARCH MAE <span class="pos">−0.018</span> vs baseline</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:14px">
+        <div class="row"><h3>SPY Options Chain · Jun 21</h3><span class="hint">Greeks live · Premium tier</span></div>
+        <table>
+          <thead><tr><th>Strike</th><th>Type</th><th>Bid</th><th>Ask</th><th>Last</th><th>IV</th><th>Δ</th><th>Γ</th><th>Θ</th><th>OI</th></tr></thead>
+          <tbody>
+            <tr><td class="num">540</td><td>Put</td><td class="num">3.10</td><td class="num">3.20</td><td class="num">3.15</td><td class="num">19.8%</td><td class="num">−0.28</td><td class="num">0.012</td><td class="num">−0.09</td><td class="num dim">14,201</td></tr>
+            <tr><td class="num">545</td><td>Put</td><td class="num">4.45</td><td class="num">4.55</td><td class="num">4.50</td><td class="num">18.9%</td><td class="num">−0.39</td><td class="num">0.015</td><td class="num">−0.11</td><td class="num dim">22,890</td></tr>
+            <tr><td class="num">550</td><td>Call</td><td class="num">5.20</td><td class="num">5.30</td><td class="num">5.25</td><td class="num">17.6%</td><td class="num">0.52</td><td class="num">0.016</td><td class="num">−0.12</td><td class="num dim">31,455</td></tr>
+            <tr><td class="num">555</td><td>Call</td><td class="num">3.05</td><td class="num">3.15</td><td class="num">3.10</td><td class="num">18.2%</td><td class="num">0.36</td><td class="num">0.014</td><td class="num">−0.10</td><td class="num dim">18,770</td></tr>
+            <tr><td class="num">560</td><td>Call</td><td class="num">1.70</td><td class="num">1.80</td><td class="num">1.75</td><td class="num">19.5%</td><td class="num">0.23</td><td class="num">0.011</td><td class="num">−0.08</td><td class="num dim">9,330</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ STRATEGY DETAIL ============ -->
+    <section class="view" id="strategy">
+      <div class="row">
+        <div>
+          <h2 class="view-title">Iron Condor · SPY <span class="pill live">live</span></h2>
+          <p class="view-sub">Jun 21 expiry · 27 DTE · opened 6 days ago · GARCH-vol sizing</p>
+        </div>
+        <div style="text-align:right" class="hint">net credit <span class="num pos">$6.20</span> · max loss <span class="num neg">−$18.80</span> · 1 contract</div>
+      </div>
+
+      <div class="grid" style="grid-template-columns: 1.4fr 1fr;">
+        <div class="panel">
+          <div class="row"><h3>Payoff at Expiry</h3><span class="hint">breakevens <span class="num">532.0</span> / <span class="num">566.0</span></span></div>
+          <svg width="100%" height="220" viewBox="0 0 560 220">
+            <defs>
+              <linearGradient id="pf" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#2ee6a6" stop-opacity=".22"/><stop offset="100%" stop-color="#2ee6a6" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="120" x2="560" y2="120" stroke="#27313f"/>
+            <text x="6" y="134" fill="#5b6678" font-size="9">0</text>
+            <!-- profit zone fill -->
+            <path d="M150,120 200,70 360,70 410,120 Z" fill="url(#pf)"/>
+            <!-- payoff line -->
+            <polyline fill="none" stroke="#2ee6a6" stroke-width="2.5"
+              points="20,168 150,168 200,70 360,70 410,168 540,168"/>
+            <!-- spot marker -->
+            <line x1="280" y1="20" x2="280" y2="200" stroke="#4da3ff" stroke-dasharray="3 3" stroke-width="1"/>
+            <text x="286" y="30" fill="#4da3ff" font-size="9">spot 548</text>
+            <text x="150" y="186" fill="#5b6678" font-size="9">532</text>
+            <text x="395" y="186" fill="#5b6678" font-size="9">566</text>
+            <text x="205" y="62" fill="#2ee6a6" font-size="9">max +$620</text>
+            <text x="430" y="182" fill="#ff5d73" font-size="9">−$1,880</text>
+          </svg>
+        </div>
+
+        <div class="panel">
+          <h3>Probability of Profit</h3>
+          <div class="sub">Monte Carlo · 10,000 GBM paths · GARCH σ 17.9%</div>
+          <div style="font-size:34px" class="num pos">68.4%</div>
+          <div class="hint num" style="margin-bottom:10px">expected value <span class="pos">+$112</span> · CVaR(5%) <span class="neg">−$1,640</span></div>
+          <svg width="100%" height="90" viewBox="0 0 320 90" preserveAspectRatio="none">
+            <g fill="#ff5d73" opacity=".7">
+              <rect x="2" y="74" width="10" height="16"/><rect x="14" y="66" width="10" height="24"/>
+              <rect x="26" y="60" width="10" height="30"/><rect x="38" y="52" width="10" height="38"/>
+            </g>
+            <g fill="#2ee6a6" opacity=".85">
+              <rect x="50" y="40" width="10" height="50"/><rect x="62" y="28" width="10" height="62"/>
+              <rect x="74" y="20" width="10" height="70"/><rect x="86" y="16" width="10" height="74"/>
+              <rect x="98" y="22" width="10" height="68"/><rect x="110" y="30" width="10" height="60"/>
+              <rect x="122" y="38" width="10" height="52"/><rect x="134" y="46" width="10" height="44"/>
+              <rect x="146" y="54" width="10" height="36"/><rect x="158" y="62" width="10" height="28"/>
+              <rect x="170" y="70" width="10" height="20"/><rect x="182" y="76" width="10" height="14"/>
+            </g>
+          </svg>
+          <div class="hint">P&amp;L distribution at expiry · green = profit region</div>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns: 1.4fr 1fr; margin-top:14px;">
+        <div class="panel">
+          <h3>Legs</h3>
+          <table class="legtable">
+            <thead><tr><th>Action</th><th>Type</th><th>Strike</th><th>Qty</th><th>Price</th><th>IV</th><th>Δ</th></tr></thead>
+            <tbody>
+              <tr><td class="pos">SELL</td><td>Put</td><td class="num">545</td><td class="num">1</td><td class="num">4.50</td><td class="num">18.9%</td><td class="num">−0.39</td></tr>
+              <tr><td class="neg">BUY</td><td>Put</td><td class="num">540</td><td class="num">1</td><td class="num">3.15</td><td class="num">19.8%</td><td class="num">−0.28</td></tr>
+              <tr><td class="pos">SELL</td><td>Call</td><td class="num">555</td><td class="num">1</td><td class="num">3.10</td><td class="num">18.2%</td><td class="num">0.36</td></tr>
+              <tr><td class="neg">BUY</td><td>Call</td><td class="num">560</td><td class="num">1</td><td class="num">1.75</td><td class="num">19.5%</td><td class="num">0.23</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <h3>Backtest · 2025-01 → 2026-04</h3>
+          <div class="grid" style="grid-template-columns:1fr 1fr; gap:10px; margin-top:6px">
+            <div><div class="hint">Total return</div><div class="num" style="font-size:18px">+18.7%</div></div>
+            <div><div class="hint">Sharpe</div><div class="num pos" style="font-size:18px">1.62</div></div>
+            <div><div class="hint">Win rate</div><div class="num" style="font-size:18px">71%</div></div>
+            <div><div class="hint">Max DD</div><div class="num neg" style="font-size:18px">−8.3%</div></div>
+          </div>
+          <div class="glassbox" style="margin-top:12px">Meets the <b>paper→live</b> gate: Sharpe ≥ 1.0 with realistic costs, ≥ 14 paper days, MFA confirmed. Seed &amp; version pinned for deterministic replay.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MODELS ============ -->
+    <section class="view" id="models">
+      <h2 class="view-title">Models · Glass-Box Reporting</h2>
+      <p class="view-sub">Every model shows its baseline, its delta, and a kill switch. When a model loses to its baseline, the product says so.</p>
+
+      <div class="panel">
+        <div class="model">
+          <div class="glyph">◈</div>
+          <div style="flex:1">
+            <div class="row"><div><b>GARCH(1,1)</b> · volatility forecast <span class="faint">· SPY, QQQ · US</span></div><span class="tag-ok">Validated ✓</span></div>
+            <div class="hint" style="margin:4px 0 0">baseline <b>HV21</b> · cohort SPY_QQQ_Q3_2026 · OOS holdout</div>
+            <div class="meter2" id="m1"></div>
+            <div class="hint num" style="margin-top:6px">ΔMAE vs baseline <span class="pos">−0.018</span> · t-stat <span class="pos">2.31</span> · live 30d: beating baseline · report published</div>
+          </div>
+        </div>
+        <div class="model">
+          <div class="glyph">◇</div>
+          <div style="flex:1">
+            <div class="row"><div><b>LSTM</b> · price sequence <span class="faint">· per-ticker</span></div><span class="tag-warn">Using baseline (ARIMA)</span></div>
+            <div class="hint" style="margin:4px 0 0">baseline <b>ARIMA</b> · trailing 30d</div>
+            <div class="meter2" id="m2"></div>
+            <div class="hint num" style="margin-top:6px">ΔMAE vs baseline <span class="warn">+0.024</span> — underperforming. UI shows ARIMA as the primary forecast; LSTM flagged, not used.</div>
+          </div>
+        </div>
+        <div class="model">
+          <div class="glyph">✦</div>
+          <div style="flex:1">
+            <div class="row"><div><b>FinBERT</b> · sentiment <span class="faint">· ProsusAI</span></div><span class="tag-ok">Active</span></div>
+            <div class="hint" style="margin:4px 0 0">confidence-gated · half-life 72h</div>
+            <div class="hint num" style="margin-top:6px">SPY <span class="pos">+0.32 bullish</span> (41 headlines) · NVDA <span class="pos">+0.58</span> · AAPL <span class="neg">−0.12</span> · low-confidence → neutral</div>
+          </div>
+        </div>
+      </div>
+      <div class="glassbox" style="margin-top:14px">No externally published "validated" claim exists without a linked out-of-sample report. If a model fails holdout, its status is downgraded automatically and marketing copy must follow.</div>
+    </section>
+
+    <!-- ============ SYSTEM STATUS (this is the real first slice) ============ -->
+    <section class="view" id="system">
+      <h2 class="view-title">System Status</h2>
+      <p class="view-sub">This is the page the first frontend slice actually ships — wired live to the API <span class="num">GET /healthz</span>.</p>
+      <div class="grid" style="grid-template-columns: repeat(3,1fr);">
+        <div class="panel"><div class="label dim">API</div><div class="val num pos" style="font-size:20px;margin-top:6px">● operational</div><div class="hint num">/healthz 200 · 41ms · polling 5s</div></div>
+        <div class="panel"><div class="label dim">Database</div><div class="val num pos" style="font-size:20px;margin-top:6px">● connected</div><div class="hint num">Postgres 16 · TimescaleDB · RLS on</div></div>
+        <div class="panel"><div class="label dim">Build</div><div class="val num" style="font-size:20px;margin-top:6px">v0.1.0</div><div class="hint num">scaffold + data-layer · 11 tests green</div></div>
+      </div>
+      <div class="glassbox" style="margin-top:14px">Everything above this box is a <b>mockup of future slices</b> (markets, strategies, models). The System Status page is what the foundation slice delivers now; the rest light up as backend endpoints land.</div>
+    </section>
+
+  </div>
+</div>
+
+<div class="mock-banner">MOCKUP · static · not wired to data</div>
+
+<script>
+  // view switching
+  const links = document.querySelectorAll('.nav a[data-view]');
+  links.forEach(a => a.addEventListener('click', () => {
+    const v = a.dataset.view;
+    document.querySelectorAll('.view').forEach(s => s.classList.toggle('active', s.id === v));
+    links.forEach(x => x.classList.toggle('active', x === a));
+    document.querySelector('.main').scrollTop = 0;
+  }));
+
+  // live-ish clock
+  setInterval(() => {
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      d.toTimeString().slice(0,8) + ' EDT';
+  }, 1000);
+
+  // sentiment bars
+  const sent = [['NVDA',0.58],['SPY',0.32],['QQQ',0.21],['AAPL',-0.12],['TSLA',-0.41]];
+  document.getElementById('sent').innerHTML = sent.map(([t,v]) => {
+    const pos = v >= 0, w = Math.abs(v)*100;
+    return `<div style="display:flex;align-items:center;gap:8px;margin:7px 0">
+      <span class="num" style="width:44px">${t}</span>
+      <div style="flex:1;display:flex;justify-content:${pos?'flex-start':'flex-end'};${pos?'':'flex-direction:row-reverse'}">
+        <div style="height:8px;width:${w}%;border-radius:4px;background:${pos?'var(--pos)':'var(--neg)'}"></div>
+      </div>
+      <span class="num ${pos?'pos':'neg'}" style="width:46px;text-align:right">${v>0?'+':''}${v.toFixed(2)}</span>
+    </div>`;
+  }).join('');
+
+  // vol surface heatmap
+  const exps = ['7d','14d','21d','35d','60d','90d','180d'];
+  const strikes = ['540','545','550','555','560'];
+  const base = [ [22,21,20,20,21,22,23],[20,19,18,18,19,21,22],[18,17,17,17,18,20,21],[19,18,18,18,19,20,22],[21,20,19,19,20,21,23] ];
+  function ivColor(v){ const t=(v-16)/(24-16); const r=Math.round(46+t*180), g=Math.round(230-t*150), b=Math.round(166-t*80); return `rgb(${r},${g},${b})`; }
+  let html = '<div class="hd"></div>' + exps.map(e=>`<div class="hd">${e}</div>`).join('');
+  strikes.forEach((s,i)=>{ html += `<div class="hd" style="justify-content:flex-end;padding-right:6px">${s}</div>`;
+    base[i].forEach(v=>{ html += `<div class="cell" style="background:${ivColor(v)}">${v}.${(Math.random()*9|0)}</div>`; }); });
+  document.getElementById('surface').innerHTML = html;
+
+  // model confidence meters
+  function meter(id, n, good){ document.getElementById(id).innerHTML =
+    Array.from({length:12},(_,i)=>`<i style="background:${i<n?(good?'var(--pos)':'var(--warn)'):'var(--panel-2)'}"></i>`).join(''); }
+  meter('m1',9,true); meter('m2',5,false);
+</script>
+</body>
+</html>

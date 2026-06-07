@@ -1,0 +1,14 @@
+[project]
+name = "saalr-ml-models"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Placeholder package (no modules yet); allow hatchling to build an empty wheel
+# so `uv sync --all-packages` doesn't fail on file selection.
+[tool.hatch.build.targets.wheel]
+bypass-selection = true

@@ -1,0 +1,317 @@
+PDF_PAGE_COUNT: 16
+
+--- PAGE 1 ---
+S A A L R
+Research-Grade Options Analytics for Retail
+H o n e s t  M L   ·   M u l t i- B r o k e r   ·   M u l t i- G e o g r a p h y
+Pre-revenue. Solo founder. Three codebases shipped. Signal-validation experiment scheduled Q3 2026.
+Seed Round |   $2M target   |   24-month plan to $1M ARR
+Pre-Seed   ·   Drafted Q2 2026   ·   Confidential
+
+--- PAGE 2 ---
+P R O B L E M
+Retail options: toys, scams, and a missing middle.
+Across the US and India, the same gap: tools are either too simple to give edge, or too hyped to be honest.
+The Loss Rate
+India: 91% of retail F&O traders lose (SEBI 2024). US: ~70% of retail 
+options traders lose (SEC). Same broken pattern, two geographies.
+Toys for Retail
+Robinhood, Streak: no vol surface, no Greeks aggregation, no 
+honest performance reporting. Retail gets the broker, not the brain.
+Scams Above
+"AI signal" Discords, options-tip Telegram groups, alpha-promising 
+YouTubers. The trust deficit is real and growing.
+Missing Middle
+Bloomberg-grade analytics sit behind $30K/year terminals. No 
+honest, research-grade options platform exists at retail price points 
+across both geographies.
+Sources: SEBI Circular Feb 2025 · SEBI F&O Study 2024 · NSE Market Pulse Dec 2025 · OCC Retail Options Data
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 2 / 16
+
+--- PAGE 3 ---
+I N F L E C T I O N
+Institutional tooling at retail price points.
+Open-source ML, broker APIs, and LLM-augmented sentiment have collapsed the cost curve. Defensible value now lives in integration 
+depth, honest model reporting, brand of rigor, and multi-geography distribution — not magic AI.
+F R O M TO
+Robinhood-simple Research-grade
+"AI says buy" Honest models
+Black-box signals Glass-box math
+US-only or India-only Both, one codebase
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 3 / 16
+
+--- PAGE 4 ---
+S O L U T I O N
+One platform. Honest analytics. US first.
+Saalr is the unified options analytics platform for serious retail traders. Vol surface and Greeks for free, sentiment-aware probability 
+for premium, broker-integrated execution for live trading.
+1 Pro-Grade Analytics
+Vol surface, Greeks, multi-leg P&L, sentiment-adjusted POP. 
+Bloomberg-grade depth at $15-49/month.
+2 Honest ML Engine
+GARCH for vol. Monte Carlo for POP. FinBERT for sentiment. LSTM 
+reported against ARIMA baseline. No "AI says buy" buttons.
+3 Education Funnel
+OptionsAcademy: 50+ free modules. Engaged retail traders at near-
+zero CAC. Same playbook as Zerodha Varsity and TastyTrade.
+4 Multi-Broker Reach
+US: Alpaca, IBKR. India: Zerodha, Angel One. One platform, two 
+markets. We never custody user capital.
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 4 / 16
+
+--- PAGE 5 ---
+M O A T
+Four sources of defensibility — none of them magic AI.
+W H A T  C O M P E T I T O R S  L A C K W H A T  W E  A R E  B U I L D I N G
+Integrated vol surface + Greeks IV by strike × expiry composed with portfolio-level Greeks aggregation
+Sentiment-adjusted Monte Carlo POP GARCH vol × FinBERT score composed into a single drift input
+ARIMA-baselined ML reporting Failed models retired; baseline-vs-model performance shown in UI
+50+ module education library OptionsAcademy: Greeks, IV rank, strategy mechanics — no BS
+Multi-broker reach Alpaca + IBKR (US), Zerodha + Angel One (India), one codebase
+Brand of intellectual honesty Public commitment: no "AI says buy." Earned trust in a scammy market.
+Why this compounds:  integration depth + brand equity + content library + multi-geography are slow to build and slow to copy. Magic AI is not.
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 5 / 16
+
+--- PAGE 6 ---
+C U R R E N T  S T A T E
+Three codebases shipped solo, pre-revenue.
+C O D E B A S E S  S H I P P E D
+OptionsAcademy
+Live — public, free, no monetization
+OptionsWorld (US MVP)
+Live at optionsworld.ai — GARCH, FinBERT, Monte Carlo, multi-leg builder
+Options Academy on Azure
+Live at optionsacademy.ai — clean Zerodha-inspired landing, full app 
+behind it
+E N G I N E  C O M P O N E N T S  B U I L T
+• GARCH vol forecasting
+• FinBERT news sentiment with recency half-life
+• Monte Carlo POP with sentiment-adjusted drift
+• LSTM vs. ARIMA harness
+• Multi-leg builder + payoff diagrams
+• Vol surface + Greeks aggregation
+B R O K E R  I N T E G R A T I O N S  ( C O D E  C O M P L E T E )
+US:  Alpaca, IBKR, Robinhood scaffolding
+India:  Zerodha (Kite Connect), Angel One, ICICI Direct, HDFC Securities
+0 paying customers.   Public sites live but pre-marketing.   RA licensing: personal Month 3 / corporate Month 12.
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 6 / 16
+The Saalr platform unifies these three into one product post-seed.
+
+--- PAGE 7 ---
+V A L I D A T I O N  P L A N
+Earn the right to claim engine validation.
+The next 12 months are not "scale." They are proving the engine works — and retiring it publicly if it doesn't.
+Phase 0
+Q3 2026 · 8 weeks
+Signal validation
+GARCH OOS vs. naïve baseline on SPY/QQQ. FinBERT lift on 30-min forward IV. Holdout test. Public results. If signals fail, models 
+retired; product repositions around vol surface + Greeks + education.
+Phase 1
+Q4 2026 · 12 weeks
+First paid US cohort
+OptionsWorld free → $15 paid funnel. Target: first 50 paying users. Measure real CAC, retention, ARPU. No claims until measured.
+Phase 2
+Q1–Q2 2027
+India launch
+India entity stood up, RA filing in progress, Zerodha integration first user. Sensibull-adjacent positioning. Target: first 50 Indian paying 
+users.
+Phase 3
+Q3–Q4 2027
+Series A readiness
+$1M ARR run-rate. 70%+ retention measured on real cohorts.
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 7 / 16
+
+--- PAGE 8 ---
+T A R G E T S
+18-month targets, not actuals.
+We have not hit any of these yet. We are raising to hit them.
+M E T R I C T O D A Y T A R G E T  ( M O N T H  1 8  P O S T - S E E D )
+Free users < 100 5,000
+Paying users 0 200 ($15 + $49 mix)
+ARR $0 $80K
+Blended ARPU n/a $33
+Retention (6-mo) n/a 70%+
+Geographies live US (partial) US + India
+Brokers user-validated 0 4 (Alpaca, IBKR, Zerodha, Angel One)
+ML claims Built, not validated GARCH + FinBERT validated OOS, public
+Unit-economics targets ($33 ARPU, $22 CAC, $190 LTV, ~6× LTV/CAC) follow US B2C fintech benchmarks. They are not yet measured — Phase 1 produces the first real 
+cohort.
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 8 / 16
+
+--- PAGE 9 ---
+W H Y  N O W
+Two big markets. Mature ML stack. Trust collapsing on 
+incumbents.
+10M+
+US retail options traders
+4× volume since 2020 (OCC)
+9.6M
+India retail F&O traders
+4× algo growth since 2020 (NSE FY24)
+$0
+Marginal cost of the ML stack
+FinBERT / FinGPT / GARCH open-source; LLM APIs cheap
+Retail trust in AI-trading is falling
+Overfit strategies failing publicly — "no AI says buy" cuts through
+Sources: NSE Market Pulse Dec 2025 · OCC Retail Options Data · SEBI 2024
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 9 / 16
+
+--- PAGE 10 ---
+M A R K E T
+TAM · SAM · SOM
+TAM
+$21.4B
+Global retail trading software; options 
+analytics is the fastest-growing slice.
+S A M
+$3.2B
+US + India retail options tools (~16M 
+traders × $200/yr).
+SOM
+$480M
+~1.2M paying users at $33/mo blended 
+ARPU by Year 5 (15% SAM penetration).
+Sources: Grand View Research 2026 · NSE FY24 · OCC · FIA
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 10 / 16
+
+--- PAGE 11 ---
+C O M P E T I T I O N
+Code complete, not yet validated. Where we sit.
+C a p a b i l i t y S a a l r S t r e a k  ( I N ) O p t i o n s A I  ( U S ) T a s t y T r a d e  ( U S )
+Honest ML reporting Planned ✓ ✗ Partial ✗
+Vol surface + Greeks Built ✓ ✗ ✓ Partial
+Sentiment-adjusted POP Built ✓ ✗ Partial ✗
+Multi-broker reach Built ✓ Broker-tied ✓ Broker-tied
+Education funnel Built ✓ ✗ ✗ ✓
+US + India coverage Built ✓ ✗ ✗ ✗
+Free tier + paid Planned ✓ ✓ Partial ✓
+Legend:  Legend: Built = product code shipped, user-validation pending. Code complete = engineering done, no production user has exercised it yet. Planned = roadmap. No 
+"shipped & validated with paying users" claim anywhere yet.
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 11 / 16
+
+--- PAGE 12 ---
+T E A M
+Solo today. Hiring the gaps with the seed.
+SP
+Sreekanth Payyavula
+Founder & CEO
+IIT  ·  IIM Calcutta  ·  EPAT (QuantInsti)
+20+ years engineering leadership
+Walmart · Verizon · AT&T · Infosys
+30 years personal trading
+Indian + US equity and options markets
+Shipped solo: 3 production codebases
+P O S T - S E E D  H I R I N G  P L A N
+1 CTO / Co-Founder
+Senior eng with quant/ML background. Owns architecture, ML pipelines, 
+broker rails. Top of hiring list.
+2 Head of Growth
+B2C growth lead with US + India fintech experience. Owns free → paid 
+conversion.
+3 Senior quant/ML engineer
+US-based. Vol modelling, sentiment pipelines, OOS testing harness.
+4 Content lead — OptionsAcademy
+Education funnel ownership; 50+ modules to 100+, weekly cadence.
+5 India ops lead
+Entity setup, RA filing, Zerodha/Angel One integrations live.
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 12 / 16
+
+--- PAGE 13 ---
+M L  S T A C K
+ML where it adds signal. Stats where it doesn't.
+No "AI says buy" buttons — now or ever.
+Shipped (validation pending)
+• GARCH for volatility (mean-reverting, forecastable)
+• Monte Carlo with GARCH vol for POP
+• FinBERT sentiment with recency half-life
+• LSTM reported alongside ARIMA baseline
+Validation in progress · Q3 2026
+• OOS lift testing on SPY 30-min forward IV
+• Holdout periods, t-stat reporting
+• Retire-on-fail discipline
+• Public reporting — including failures
+Honest guardrails (now and forever)
+• Low-confidence sentiment defaults to neutral
+• No "AI predicts UP" buttons; no signal subs
+• Failed models retired publicly
+• UI shows model vs. baseline vs. random
+Technical foundation
+• Multi-cloud: Azure + GCP · Docker · CI/CD
+• Broker abstraction layer reused across rails
+• Open-source: arch · HF · PyTorch · numpy/numba
+• SOC 2 prep post-seed
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 13 / 16
+
+--- PAGE 14 ---
+P R O J E C T I O N S
+Projections, not actuals. Year 1 = seed close.
+0.1 1.0
+3.0
+10.0
+25.0
+0
+5
+10
+15
+20
+25
+30
+Y1 Y2 Y3 Y4 Y5
+Targeted ARR ($M) P R I C I N G
+Free
+$0
+OptionsAcademy + basic vol surface
+Pro
+$15/mo
+Full analytics, single broker
+Premium
+$49/mo
+Multi-broker · sentiment-adjusted POP 
+· portfolio analytics
+U N I T  E C O N O M I C S  ( t a r g e t ,  u n m e a s u r e d )
+$33/mo
+Blended ARPU
+$22
+CAC
+$190
+LTV
+~6×
+LTV / CAC
+72→82%+
+Gross margin
+Growth assumptions follow US + India retail-fintech benchmarks. Not guaranteed. Sources: OCC · NSE FY24 · B2C SaaS public comparables.
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 14 / 16
+
+--- PAGE 15 ---
+T H E  A S K
+$2M seed · 18 months runway
+$2M
+Seed · Institutional + strategic angels
+U S E  O F  F U N D S
+Engineering & hiring 40%
+Growth 25%
+Sales & BD 15%
+Infrastructure 10%
+Ops 10%
+M I L E S T O N E S  W E  C O M M I T  T O
+M3 Signal validation results published — kill or confirm 
+GARCH/FinBERT alpha
+M6 First 50 paying US users · real CAC/retention measured
+M12 $50k ARR - India launch initiated
+M18 $80K ARR · 5K free / 200 paying users
+M24 $$1M ARR · ~30K free / ~2,500 paying users
+W H A T  W E  W O N ' T  D O :   custody user capital  ·  sell "AI says buy" 
+signals  ·  claim engine validation before it exists  ·  onboard users to live 
+trading before paper-trade validation
+SAALR · Seed Deck v2 · Confidential · Drafted 2026-05-26 15 / 16
+M30 $3M ARR (Series A trigger)
+
+--- PAGE 16 ---
+S A A L R
+Honest options analytics for retail traders.
+U S  f i r s t .   I n d i a  n e x t .
+Sreekanth Payyavula
+Founder & CEO   ·   IIT  ·  IIM Calcutta  ·  EPAT Certified  ·  20+ yrs AI & Eng Leadership
+www.saalr.io sreekanth@saalr.io LinkedIn: /in/sreekanthconnect
+Confidential   ·   Pre-seed   ·   Drafted 2026-05-26
+

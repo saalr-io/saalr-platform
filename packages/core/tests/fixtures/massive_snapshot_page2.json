@@ -1,0 +1,13 @@
+{
+  "results": [
+    {
+      "details": {"contract_type": "call", "strike_price": 190, "expiration_date": "2026-06-21"},
+      "last_quote": {"bid": 2.1, "ask": 2.3},
+      "day": {"close": 2.2, "volume": 500},
+      "open_interest": 900,
+      "implied_volatility": 0.241,
+      "greeks": {"delta": 0.33, "gamma": 0.018, "theta": -0.03, "vega": 0.09}
+    }
+  ],
+  "next_url": null
+}

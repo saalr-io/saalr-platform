@@ -1,0 +1,39 @@
+# Build every Saalr service/worker image locally:
+#   docker compose -f infra/docker/docker-compose.build.yml build
+# Produces saalr/<app>:local images (run alongside docker-compose.yml + localport for a local stack).
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    image: saalr/api:local
+  ingest-worker:
+    build:
+      context: ../..
+      dockerfile: apps/ingest-worker/Dockerfile
+    image: saalr/ingest-worker:local
+  backtest-worker:
+    build:
+      context: ../..
+      dockerfile: apps/backtest-worker/Dockerfile
+    image: saalr/backtest-worker:local
+  oms-worker:
+    build:
+      context: ../..
+      dockerfile: apps/oms-worker/Dockerfile
+    image: saalr/oms-worker:local
+  ml-worker:
+    build:
+      context: ../..
+      dockerfile: apps/ml-worker/Dockerfile
+    image: saalr/ml-worker:local
+  research-agent:
+    build:
+      context: ../..
+      dockerfile: apps/research-agent/Dockerfile
+    image: saalr/research-agent:local
+  content-worker:
+    build:
+      context: ../..
+      dockerfile: apps/content-worker/Dockerfile
+    image: saalr/content-worker:local
