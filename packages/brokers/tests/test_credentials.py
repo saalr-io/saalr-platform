@@ -29,3 +29,14 @@ def test_build_alpaca_adapter_returns_adapter_without_importing_sdk():
     adapter = build_alpaca_adapter("env:ALPACA_LIVE", False, EnvCredentialResolver(env))
     assert isinstance(adapter, AlpacaAdapter)
     assert adapter._is_paper is False
+
+
+def test_build_tradier_adapter_maps_token_and_account_id():
+    from saalr_brokers.credentials import build_tradier_adapter
+    from saalr_brokers.tradier import TradierAdapter
+
+    resolver = EnvCredentialResolver({"TRADIER_SANDBOX_KEY": "tok", "TRADIER_SANDBOX_SECRET": "VA123"})
+    adapter = build_tradier_adapter("env:TRADIER_SANDBOX", True, resolver)
+    assert isinstance(adapter, TradierAdapter)
+    assert adapter._token == "tok" and adapter._account_id == "VA123"
+    assert adapter._base.startswith("https://sandbox.")

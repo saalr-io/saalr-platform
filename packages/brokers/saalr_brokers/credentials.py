@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from typing import Protocol, runtime_checkable
 
 from .alpaca import AlpacaAdapter
+from .tradier import TradierAdapter
 
 
 class CredentialError(Exception):
@@ -48,6 +49,14 @@ def build_alpaca_adapter(
     """Resolve credentials and construct an AlpacaAdapter (SDK-free until a method runs)."""
     key, secret = resolver.resolve(credential_ref, is_paper)
     return AlpacaAdapter(key, secret, is_paper=is_paper)
+
+
+def build_tradier_adapter(
+    credential_ref: str, is_paper: bool, resolver: CredentialResolver
+) -> TradierAdapter:
+    """Resolve (access_token, account_id) from the (key, secret) slots and construct a TradierAdapter."""
+    token, account_id = resolver.resolve(credential_ref, is_paper)
+    return TradierAdapter(token, account_id, is_paper=is_paper)
 
 
 class SecretsManagerResolver:
