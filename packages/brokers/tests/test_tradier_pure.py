@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
+import pytest
+
 from saalr_brokers.tradier import (
     build_order_form, map_status, parse_balance, parse_orders, parse_positions,
 )
@@ -30,6 +32,20 @@ def test_build_order_form_option_open_side_and_occ():
     assert f["side"] == "sell_to_open"          # sell -> sell_to_open (open-only)
     assert f["type"] == "market" and f["duration"] == "day"
     assert "price" not in f                       # market has no price
+
+
+def test_build_order_form_option_side_is_case_insensitive():
+    o = BrokerOrder(symbol="AAPL", side="BUY", qty=1, order_type="market",
+                    option_type="CALL", strike=Decimal("180"), expiry=date(2026, 9, 18))
+    assert build_order_form(o, "x")["side"] == "buy_to_open"
+
+
+def test_build_order_form_unknown_option_side_raises():
+    from saalr_brokers.tradier import TradierError
+    o = BrokerOrder(symbol="AAPL", side="weird", qty=1, order_type="market",
+                    option_type="CALL", strike=Decimal("180"), expiry=date(2026, 9, 18))
+    with pytest.raises(TradierError):
+        build_order_form(o, "x")
 
 
 def test_map_status():

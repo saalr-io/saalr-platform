@@ -43,12 +43,15 @@ def build_order_form(order, tag: str) -> dict[str, str]:
         "tag": tag[:40],
     }
     if order.option_type:
+        side = _OPTION_SIDE.get(order.side.lower())
+        if side is None:
+            raise TradierError(f"unsupported option side {order.side!r}")
         form["class"] = "option"
         form["option_symbol"] = occ_symbol(order.symbol, order.expiry, order.option_type, order.strike)
-        form["side"] = _OPTION_SIDE[order.side]
+        form["side"] = side
     else:
         form["class"] = "equity"
-        form["side"] = order.side
+        form["side"] = order.side.lower()
     if order.limit_price is not None and order.order_type in ("limit", "stop_limit"):
         form["price"] = str(order.limit_price)
     if order.stop_price is not None and order.order_type in ("stop", "stop_limit"):
