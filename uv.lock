@@ -1182,9 +1182,12 @@ version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "saalr-api" },
+    { name = "saalr-backtest-worker" },
     { name = "saalr-brokers" },
     { name = "saalr-core" },
+    { name = "saalr-ingest-worker" },
     { name = "saalr-ml" },
+    { name = "saalr-research-agent" },
 ]
 
 [package.dev-dependencies]
@@ -1201,9 +1204,12 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "saalr-api", editable = "apps/api" },
+    { name = "saalr-backtest-worker", editable = "apps/backtest-worker" },
     { name = "saalr-brokers", editable = "packages/brokers" },
     { name = "saalr-core", editable = "packages/core" },
+    { name = "saalr-ingest-worker", editable = "apps/ingest-worker" },
     { name = "saalr-ml", editable = "packages/ml" },
+    { name = "saalr-research-agent", editable = "apps/research-agent" },
 ]
 
 [package.metadata.requires-dev]
