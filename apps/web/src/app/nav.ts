@@ -41,6 +41,7 @@ const EXTRA_LABELS: Record<string, string> = {
   '/billing/success': 'Success',
   '/billing/cancel': 'Cancelled',
   '/start': 'Get Started',
+  '/dev': 'Dev Seed',
 }
 
 const LABEL_OF: Record<string, string> = {}

@@ -18,6 +18,7 @@ import { Backtests } from '../pages/Backtests'
 import { Ideas } from '../pages/Ideas'
 import { Start } from '../pages/Start'
 import { Settings } from '../pages/Settings'
+import { DevSeed } from '../pages/DevSeed'
 
 /**
  * The authenticated SPA route table. Mounted under a <BrowserRouter basename="/app">
@@ -50,6 +51,7 @@ export function AppRoutes() {
         <Route path="start" element={<Start />} />
         <Route path="system" element={<SystemStatus />} />
         <Route path="settings" element={<Settings />} />
+        {import.meta.env.DEV && <Route path="dev" element={<DevSeed />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

@@ -41,6 +41,21 @@ export function Sidebar() {
           ))}
         </div>
       ))}
+      {import.meta.env.DEV && (
+        <div>
+          <div className="mx-2 mb-1 mt-5 font-mono text-[9px] uppercase tracking-[2px] text-txtFaint">Dev</div>
+          <NavLink
+            to="/dev"
+            className={({ isActive }) =>
+              `group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${
+                isActive ? 'bg-panel text-txt' : 'text-txtDim hover:bg-panel/60 hover:text-txt'
+              }`
+            }
+          >
+            Dev Seed
+          </NavLink>
+        </div>
+      )}
       <div className="mt-auto px-2 pt-6 font-mono text-[9px] leading-relaxed text-txtFaint">
         v0.1.0 · foundation
         <br />
