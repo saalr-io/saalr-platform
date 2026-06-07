@@ -1,7 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { Education } from './Education'
+
+vi.mock('../features/onboarding/hooks', () => ({
+  useCompleteStep: () => ({ mutate: vi.fn() }),
+}))
 
 vi.mock('../features/academy/hooks', () => ({
   useModules: () => ({
@@ -21,7 +26,12 @@ vi.mock('../features/academy/SearchBox', () => ({ SearchBox: () => <div /> }))
 vi.mock('../features/academy/AskAssistant', () => ({ AskAssistant: () => <div /> }))
 
 function wrap(initial: string) {
-  return render(<MemoryRouter initialEntries={[initial]}><Education /></MemoryRouter>)
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={[initial]}><Education /></MemoryRouter>
+    </QueryClientProvider>
+  )
 }
 
 describe('Education deep-link', () => {

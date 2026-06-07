@@ -1,7 +1,8 @@
 import type React from 'react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRegime } from '../features/ideas/hooks'
+import { useCompleteStep } from '../features/onboarding/hooks'
 import { RegimePanel } from '../features/ideas/RegimePanel'
 import { RecoCard } from '../features/ideas/RecoCard'
 import { buildTemplate } from '../lib/strategies'
@@ -22,7 +23,16 @@ export function Ideas() {
   const navigate = useNavigate()
   const paper = usePaperTradeStrategy()
   const [paperKey, setPaperKey] = useState<string | null>(null)
+  const complete = useCompleteStep()
+  const seeRegimeFired = useRef(false)
   const data = q.data
+
+  useEffect(() => {
+    if (data && !seeRegimeFired.current) {
+      seeRegimeFired.current = true
+      complete.mutate('see_regime')
+    }
+  }, [data, complete])
 
   function submit(e: React.FormEvent) {
     e.preventDefault()

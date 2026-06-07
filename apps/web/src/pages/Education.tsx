@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useCompleteStep } from '../features/onboarding/hooks'
 import { ModuleList } from '../features/academy/ModuleList'
 import { ModuleReader } from '../features/academy/ModuleReader'
 import { SearchBox } from '../features/academy/SearchBox'
@@ -9,6 +10,8 @@ import { useModules } from '../features/academy/hooks'
 export function Education() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
   const [searchParams] = useSearchParams()
+  const complete = useCompleteStep()
+  const readLessonFired = useRef(false)
   useEffect(() => {
     const lesson = searchParams.get('lesson')
     if (lesson) setSelectedSlug(lesson)
@@ -23,6 +26,13 @@ export function Education() {
   // lesson once the catalog loads (no render-phase setState).
   const activeSlug = selectedSlug ?? modules[0]?.slug ?? null
   const setActiveSlug = setSelectedSlug
+
+  useEffect(() => {
+    if (activeSlug && !readLessonFired.current) {
+      readLessonFired.current = true
+      complete.mutate('read_lesson')
+    }
+  }, [activeSlug, complete])
 
   return (
     <div className="animate-fadeUp space-y-6">

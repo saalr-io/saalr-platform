@@ -16,6 +16,7 @@ import { Models } from '../pages/Models'
 import { Dashboard } from '../pages/Dashboard'
 import { Backtests } from '../pages/Backtests'
 import { Ideas } from '../pages/Ideas'
+import { Start } from '../pages/Start'
 
 /**
  * The authenticated SPA route table. Mounted under a <BrowserRouter basename="/app">
@@ -45,6 +46,7 @@ export function AppRoutes() {
         <Route path="billing/success" element={<BillingSuccess />} />
         <Route path="billing/cancel" element={<BillingCancel />} />
         <Route path="portfolio" element={<Portfolio />} />
+        <Route path="start" element={<Start />} />
         <Route path="system" element={<SystemStatus />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

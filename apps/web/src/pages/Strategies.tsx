@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { usePaperTradeStrategy } from '../features/portfolio/usePaperTrade'
+import { useCompleteStep } from '../features/onboarding/hooks'
 import { LegEditor } from '../features/strategies/LegEditor'
 import { TemplatePicker } from '../features/strategies/TemplatePicker'
 import { SelectedStrategy } from '../features/strategies/SelectedStrategy'
@@ -54,6 +55,9 @@ export function Strategies() {
   const analyze = useAnalyze()
   const create = useCreateStrategy()
   const paper = usePaperTradeStrategy()
+  const complete = useCompleteStep()
+  const buildStrategyFired = useRef(false)
+  const paperTradeFired = useRef(false)
 
   const missingPrices =
     !live && config.legs.some((l) => l.kind === 'option' && (l.entry_price === null || l.entry_price === undefined))
@@ -77,7 +81,16 @@ export function Strategies() {
     setSaved(false)
     create.mutate(
       { name: `${config.underlying} strategy`, config },
-      { onSuccess: () => setSaved(true), onError: (e) => setErrorMsg(e.message || 'Save failed.') },
+      {
+        onSuccess: () => {
+          setSaved(true)
+          if (!buildStrategyFired.current) {
+            buildStrategyFired.current = true
+            complete.mutate('build_strategy')
+          }
+        },
+        onError: (e) => setErrorMsg(e.message || 'Save failed.'),
+      },
     )
   }
 
@@ -154,7 +167,14 @@ export function Strategies() {
                   className="rounded border border-line px-4 py-1 text-xs text-txtDim hover:text-txt">
             {create.isPending ? 'Saving…' : 'Save'}
           </button>
-          <button data-testid="paper-trade-btn" onClick={() => paper.mutate(config)} disabled={paper.isPending}
+          <button data-testid="paper-trade-btn" onClick={() => paper.mutate(config, {
+            onSuccess: () => {
+              if (!paperTradeFired.current) {
+                paperTradeFired.current = true
+                complete.mutate('paper_trade')
+              }
+            },
+          })} disabled={paper.isPending}
                   className="rounded border border-line px-4 py-1 text-xs text-txtDim hover:text-txt disabled:opacity-40">
             {paper.isPending ? 'Placing…' : 'Paper trade'}
           </button>
