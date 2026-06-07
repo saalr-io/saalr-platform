@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CHAR, ForeignKey, Index, String, Text, func
+from sqlalchemy import CHAR, Boolean, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, TIMESTAMP, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,6 +28,13 @@ class User(Base):
     clerk_user_id: Mapped[str | None] = mapped_column(Text, unique=True)
     preferred_tz: Mapped[str] = mapped_column(Text, nullable=False, server_default="UTC")
     preferred_locale: Mapped[str] = mapped_column(Text, nullable=False, server_default="en-US")
+    # Marketing/account columns (DB-backed via migrations 0013/0014; the /me + account
+    # endpoints read them through raw SQL, so the ORM model mirrors them for consistency).
+    marketing_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    unsubscribe_token: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, server_default=text("gen_random_uuid()"), unique=True
+    )
+    deletion_requested_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
 
 class Membership(Base):
