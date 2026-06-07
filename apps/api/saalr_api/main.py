@@ -39,6 +39,7 @@ from .oms.router import router as oms_router
 from .research.router import router as research_router
 from .sentiment.router import router as sentiment_router
 from .regime.router import router as regime_router
+from .onboarding.router import router as onboarding_router
 from .strategies.router import router as strategies_router
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -106,6 +107,7 @@ def create_app() -> FastAPI:
     app.include_router(research_router)
     app.include_router(billing_router)
     app.include_router(marketing_router)
+    app.include_router(onboarding_router)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:

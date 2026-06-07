@@ -18,7 +18,7 @@ TENANT_TABLES = [
     "executions", "orders", "positions", "broker_accounts", "backtests",
     "strategies", "billing_events", "subscriptions", "api_keys",
     "memberships", "audit_log", "user_progress", "llm_usage", "research_notes",
-    "research_transcripts", "tenants",
+    "research_transcripts", "onboarding_progress", "tenants",
 ]
 
 
