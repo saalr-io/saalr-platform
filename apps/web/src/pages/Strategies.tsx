@@ -31,7 +31,7 @@ function firstExpiry(c: StrategyConfig): string {
 }
 
 export function Strategies() {
-  const [tab, setTab] = useState<Tab>('build')
+  const [tab, setTab] = useState<Tab>('ready')
   const [config, setConfig] = useState<StrategyConfig>(INITIAL)
   const [live, setLive] = useState(false)
   const [targetDate, setTargetDate] = useState('')
