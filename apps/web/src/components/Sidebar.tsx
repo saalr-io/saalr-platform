@@ -1,27 +1,5 @@
 import { NavLink } from 'react-router-dom'
-
-const SECTIONS: { label: string; items: [string, string][] }[] = [
-  {
-    label: 'Trade',
-    items: [
-      ['/', 'Dashboard'],
-      ['/markets', 'Markets & Vol'],
-      ['/strategies', 'Strategies'],
-      ['/backtests', 'Backtests'],
-      ['/models', 'Models'],
-    ],
-  },
-  {
-    label: 'Learn & Research',
-    items: [
-      ['/ideas', 'Trade Ideas'],
-      ['/research', 'Research Agent'],
-      ['/education', 'OptionsAcademy'],
-      ['/portfolio', 'Portfolio'],
-    ],
-  },
-  { label: 'System', items: [['/billing', 'Billing'], ['/settings', 'Settings'], ['/system', 'System Status']] },
-]
+import { SECTIONS } from '../app/nav'
 
 export function Sidebar() {
   return (

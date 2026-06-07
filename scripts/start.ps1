@@ -73,6 +73,16 @@ $api = Start-Process -FilePath 'uv' -PassThru -NoNewWindow `
     -ArgumentList @('run', 'uvicorn', 'saalr_api.main:create_app', '--factory', '--host', '127.0.0.1', '--port', "$ApiPort") `
     -RedirectStandardOutput $apiLog -RedirectStandardError "$apiLog.err"
 
+# Backtest worker: consumes the Redis-Streams job queue. Without it, backtests
+# are accepted (202, status 'queued') but never run, so the UI polls forever.
+# Inherits the same APP_DATABASE_URL / REDIS_URL this script exported, so it
+# always points at the same DB/Redis as the API.
+$workerLog = Join-Path $Root "logs/backtest-worker-$stamp.log"
+Write-Host "Starting backtest worker (log: $workerLog)" -ForegroundColor Cyan
+$worker = Start-Process -FilePath 'uv' -PassThru -NoNewWindow `
+    -ArgumentList @('run', '--package', 'saalr-backtest-worker', 'python', '-m', 'backtest_worker', 'consume') `
+    -RedirectStandardOutput $workerLog -RedirectStandardError "$workerLog.err"
+
 try {
     for ($i = 0; $i -lt 20; $i++) {
         try { Invoke-WebRequest "http://localhost:$ApiPort/healthz" -UseBasicParsing -TimeoutSec 2 | Out-Null; break }
@@ -91,8 +101,12 @@ try {
     }
 }
 finally {
+    if ($worker -and -not $worker.HasExited) {
+        Write-Host "`nStopping backtest worker (PID $($worker.Id))..." -ForegroundColor Yellow
+        Stop-Process -Id $worker.Id -Force -ErrorAction SilentlyContinue
+    }
     if ($api -and -not $api.HasExited) {
-        Write-Host "`nStopping API (PID $($api.Id))..." -ForegroundColor Yellow
+        Write-Host "Stopping API (PID $($api.Id))..." -ForegroundColor Yellow
         Stop-Process -Id $api.Id -Force -ErrorAction SilentlyContinue
     }
 }

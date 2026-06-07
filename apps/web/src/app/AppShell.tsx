@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { Topbar } from '../components/Topbar'
 import { Sidebar } from '../components/Sidebar'
+import { Breadcrumbs } from '../components/Breadcrumbs'
 
 export function AppShell() {
   return (
@@ -8,6 +9,7 @@ export function AppShell() {
       <Topbar />
       <Sidebar />
       <main className="overflow-auto p-5">
+        <Breadcrumbs />
         <Outlet />
       </main>
     </div>
