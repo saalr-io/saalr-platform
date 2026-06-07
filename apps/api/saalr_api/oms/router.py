@@ -20,6 +20,16 @@ def _request_id(request: Request) -> str:
     return request.headers.get("X-Request-Id") or str(new_id())
 
 
+def _adapter_factories(request: Request):
+    """Merge the per-broker registry with the legacy alpaca factory (back-compat)."""
+    s = request.app.state
+    reg = dict(getattr(s, "adapter_factories", {}) or {})
+    legacy = getattr(s, "alpaca_adapter_factory", None)
+    if legacy is not None:
+        reg["alpaca"] = legacy  # an explicitly-set legacy factory wins (tests stub it post-lifespan)
+    return reg or None
+
+
 def _acct_out(a) -> dict:
     return {"broker_account_id": str(a.broker_account_id), "broker": a.broker,
             "account_label": a.account_label, "is_paper": a.is_paper, "status": a.status}
@@ -42,7 +52,7 @@ def _order_out(o) -> dict:
 async def create_account(body: BrokerAccountCreate,
                          ctx: tuple[AsyncSession, Principal] = Depends(get_principal)) -> dict:
     session, principal = ctx
-    if body.broker not in ("paper", "alpaca"):
+    if body.broker not in ("paper", "alpaca", "tradier"):
         raise HTTPException(400, {"error": {"code": "BROKER_NOT_SUPPORTED",
                                             "message": "broker not supported"}})
     if body.broker == "alpaca":
@@ -52,6 +62,9 @@ async def create_account(body: BrokerAccountCreate,
         a = await repo.create_broker_account(session, principal.tenant_id, principal.user_id,
                                              "alpaca", body.account_label, body.is_paper,
                                              body.credential_ref)
+    elif body.broker == "tradier":
+        a = await repo.create_broker_account(session, principal.tenant_id, principal.user_id,
+                                             "tradier", body.account_label, True, "env:TRADIER_SANDBOX")
     else:
         a = await repo.create_broker_account(session, principal.tenant_id, principal.user_id,
                                              "paper", body.account_label, True)
@@ -69,9 +82,9 @@ async def place(body: OrderCreate, request: Request,
                 idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
                 ctx: tuple[AsyncSession, Principal] = Depends(get_principal)) -> dict:
     session, principal = ctx
-    factory = getattr(request.app.state, "alpaca_adapter_factory", None)
+    factories = _adapter_factories(request)
     return await service.place_order(session, principal, body, idempotency_key,
-                                     _request_id(request), factory)
+                                     _request_id(request), factories)
 
 
 @router.post("/v1/orders/strategy")
@@ -79,9 +92,9 @@ async def place_strategy(body: StrategyOrderCreate, request: Request,
                          idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
                          ctx: tuple[AsyncSession, Principal] = Depends(get_principal)) -> dict:
     session, principal = ctx
-    factory = getattr(request.app.state, "alpaca_adapter_factory", None)
+    factories = _adapter_factories(request)
     idem = idempotency_key or str(new_id())
-    return await service.place_strategy(session, principal, body, idem, _request_id(request), factory)
+    return await service.place_strategy(session, principal, body, idem, _request_id(request), factories)
 
 
 @router.get("/v1/orders")
@@ -116,8 +129,8 @@ async def get_one(order_id: UUID, ctx: tuple[AsyncSession, Principal] = Depends(
 async def cancel(order_id: UUID, request: Request,
                  ctx: tuple[AsyncSession, Principal] = Depends(get_principal)) -> dict:
     session, principal = ctx
-    factory = getattr(request.app.state, "alpaca_adapter_factory", None)
-    return await service.cancel_order(session, principal, str(order_id), _request_id(request), factory)
+    factories = _adapter_factories(request)
+    return await service.cancel_order(session, principal, str(order_id), _request_id(request), factories)
 
 
 @router.get("/v1/positions")

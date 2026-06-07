@@ -9,7 +9,11 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from saalr_brokers.credentials import build_alpaca_adapter, make_credential_resolver
+from saalr_brokers.credentials import (
+    build_alpaca_adapter,
+    build_tradier_adapter,
+    make_credential_resolver,
+)
 from saalr_content.loader import load_catalog
 from saalr_core.config import get_settings
 from saalr_core.db.session import create_engine, create_sessionmaker
@@ -86,6 +90,12 @@ def create_app() -> FastAPI:
         app.state.alpaca_adapter_factory = lambda account: build_alpaca_adapter(
             account.credential_ref, account.is_paper, resolver
         )
+        app.state.adapter_factories = {
+            "alpaca": app.state.alpaca_adapter_factory,
+            "tradier": lambda account: build_tradier_adapter(
+                account.credential_ref, account.is_paper, resolver
+            ),
+        }
         app.state.catalog = load_catalog()
         app.state.embedding_provider = make_embedding_provider(settings)
         app.state.chat_provider = make_chat_provider(settings)
