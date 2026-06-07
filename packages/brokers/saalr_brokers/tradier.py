@@ -66,9 +66,14 @@ def _as_list(node) -> list:
     return node if isinstance(node, list) else [node]
 
 
+def _items(body: dict, key: str, child: str) -> list:
+    """Tradier wraps collections as {key: {child: <obj|list>}} (or 'null'). Return the rows."""
+    node = body.get(key)
+    return _as_list(node.get(child) if isinstance(node, dict) else node)
+
+
 def parse_orders(body: dict) -> list[dict]:
-    node = body.get("orders")
-    orders = _as_list(node.get("order") if isinstance(node, dict) else node)
+    orders = _items(body, "orders", "order")
     out: list[dict] = []
     for o in orders:
         fap = o.get("avg_fill_price")
@@ -86,8 +91,7 @@ def parse_orders(body: dict) -> list[dict]:
 
 
 def parse_positions(body: dict) -> list[BrokerPosition]:
-    node = body.get("positions")
-    positions = _as_list(node.get("position") if isinstance(node, dict) else node)
+    positions = _items(body, "positions", "position")
     out: list[BrokerPosition] = []
     for p in positions:
         qty = int(p.get("quantity") or 0)
