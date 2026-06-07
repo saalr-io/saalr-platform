@@ -20,7 +20,7 @@ const SECTIONS: { label: string; items: [string, string][] }[] = [
       ['/portfolio', 'Portfolio'],
     ],
   },
-  { label: 'System', items: [['/billing', 'Billing'], ['/system', 'System Status']] },
+  { label: 'System', items: [['/billing', 'Billing'], ['/settings', 'Settings'], ['/system', 'System Status']] },
 ]
 
 export function Sidebar() {

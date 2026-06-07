@@ -16,6 +16,10 @@ export interface Me {
   tenant: { id: string; display_name: string; country_code: string }
   tier: string
   entitlements: Record<string, boolean | number>
+  marketing_opt_in?: boolean
+  preferred_tz?: string
+  preferred_locale?: string
+  deletion_requested?: boolean
 }
 
 export function authHeaders(): Record<string, string> {
