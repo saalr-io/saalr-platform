@@ -43,6 +43,7 @@ from .regime.router import router as regime_router
 from .onboarding.router import router as onboarding_router
 from .strategies.router import router as strategies_router
 from .account.router import router as account_router
+from .dev.router import router as dev_router
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _logger = logging.getLogger("saalr.auth")
@@ -112,6 +113,7 @@ def create_app() -> FastAPI:
     app.include_router(marketing_router)
     app.include_router(onboarding_router)
     app.include_router(account_router)
+    app.include_router(dev_router)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
