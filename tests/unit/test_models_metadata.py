@@ -9,6 +9,10 @@ EXPECTED_TABLES = {
     "audit_log",
     "bars", "options_chain_snapshots", "instruments",
     "config_kv",
+    "research_notes", "research_transcripts",
+    "content_embeddings", "user_progress",
+    "news_sentiment",
+    "llm_usage",
 }
 
 
