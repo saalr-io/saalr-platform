@@ -12,6 +12,8 @@ from saalr_core.pricing.surface import build_surface
 from saalr_core.pricing.types import ContractGreeks, Greeks, OptionKind, OptionParams
 
 from .snapshots import persist_chain
+from . import oi_repo
+from .oi_change import WINDOWS, elapsed_label, pick_baseline_ts
 
 _MODEL = BSMModel()
 
@@ -119,6 +121,25 @@ class MarketService:
         rows = payload["contracts"]
         if expiry:
             rows = [r for r in rows if r["expiry"] == expiry]
+
+        hist = await oi_repo.load_oi_history(session, payload["ticker"], market)
+        as_of = datetime.fromisoformat(payload["as_of"])
+        ts_list = sorted(hist.keys())
+        baseline_ts = {w: pick_baseline_ts(ts_list, as_of, w) for w in WINDOWS}
+        oi_baselines = {
+            w: ({"ts": bts.isoformat(), "elapsed_label": elapsed_label(as_of, bts)} if bts else None)
+            for w, bts in baseline_ts.items()
+        }
+        for r in rows:
+            key = (r["expiry"], round(float(r["strike"]), 4), r["type"])
+            cur = r.get("open_interest")
+            change: dict[str, int | None] = {}
+            for w in WINDOWS:
+                bts = baseline_ts[w]
+                base = hist.get(bts, {}).get(key) if bts is not None else None
+                change[w] = (cur - base) if (base is not None and cur is not None) else None
+            r["oi_change"] = change
+
         return {
             "ticker": payload["ticker"],
             "market": payload["market"],
@@ -127,6 +148,7 @@ class MarketService:
             "model": "bsm",
             "risk_free_source": payload["risk_free_source"],
             "contracts": rows,
+            "oi_baselines": oi_baselines,
         }
 
 
