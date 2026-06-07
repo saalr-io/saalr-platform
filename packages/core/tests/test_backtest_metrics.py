@@ -1,5 +1,4 @@
 # packages/core/tests/test_backtest_metrics.py
-import math
 
 import pytest
 
