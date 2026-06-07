@@ -6,6 +6,12 @@ import { IvCurves } from '../features/markets/IvCurves'
 import { MarketsGate } from '../features/markets/MarketsGate'
 import { EntitlementError } from '../lib/market'
 
+function dteDays(expiry: string): number | null {
+  if (!expiry) return null
+  const ms = new Date(`${expiry}T00:00:00Z`).getTime() - Date.now()
+  return Number.isFinite(ms) ? Math.max(0, Math.round(ms / 86_400_000)) : null
+}
+
 export function Markets() {
   const { me } = useAuth()
   const entitled = me?.entitlements?.vol_surface === true
@@ -91,6 +97,11 @@ export function Markets() {
             >
               {surface.expiries.map((x) => <option key={x.expiry} value={x.expiry}>{x.expiry}</option>)}
             </select>
+            {dteDays(activeExpiry) !== null && (
+              <span data-testid="expiry-dte" className="font-mono text-[11px] text-txtFaint">
+                {dteDays(activeExpiry)}d
+              </span>
+            )}
           </div>
 
           <div className="flex gap-2 border-b border-line">
@@ -120,7 +131,8 @@ export function Markets() {
             </p>
           ) : chainQ.data ? (
             chainQ.data.contracts.length > 0 ? (
-              <ChainTable contracts={chainQ.data.contracts} spot={surface.spot} />
+              <ChainTable contracts={chainQ.data.contracts} spot={surface.spot}
+                oiBaselines={chainQ.data.oi_baselines} />
             ) : (
               <p className="py-8 text-center text-sm text-txtFaint" data-testid="chain-none">
                 No chain for {activeExpiry}.

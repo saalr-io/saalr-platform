@@ -43,5 +43,7 @@ describe('Markets page', () => {
     await waitFor(() => expect(screen.getByTestId('markets-header').textContent).toMatch(/100/))
     expect(screen.getByTestId('tab-vol')).toBeInTheDocument()
     expect(screen.getByTestId('iv-smile')).toBeInTheDocument()
+    // DTE label appears next to the expiry selector
+    expect(screen.getByTestId('expiry-dte').textContent).toMatch(/\d+d/)
   })
 })
