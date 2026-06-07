@@ -2,22 +2,14 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 
-from .base import BrokerAdapter
+from .base import BrokerAdapter, BrokerError
+from .occ import occ_symbol
 from .types import BrokerFill, BrokerOrder, BrokerOrderResult, BrokerPosition
 
-
-class BrokerError(Exception):
-    """Wraps an alpaca SDK/transport error so callers don't see raw alpaca exceptions."""
-
-
-def occ_symbol(root: str, expiry: date, option_type: str, strike: float | Decimal) -> str:
-    """OCC option symbol: ROOT + YYMMDD + C/P + strike*1000 zero-padded to 8 digits."""
-    cp = "C" if option_type.upper() in ("CALL", "CE") else "P"
-    strike_milli = int((Decimal(str(strike)) * 1000).to_integral_value())  # Decimal-native: no float drift
-    return f"{root.upper()}{expiry:%y%m%d}{cp}{strike_milli:08d}"
+__all__ = ["AlpacaAdapter", "BrokerError", "map_status", "occ_symbol"]
 
 
 _ALPACA_STATUS: dict[str, str] = {

@@ -8,6 +8,10 @@ from decimal import Decimal
 from .types import BrokerFill, BrokerOrder, BrokerOrderResult, BrokerPosition
 
 
+class BrokerError(Exception):
+    """Base error for broker adapters (transport/SDK/HTTP failures). Never carries secrets."""
+
+
 class BrokerAdapter(ABC):
     """The contract every broker adapter implements (LLD §6). Paper and live alike."""
 
