@@ -15,5 +15,5 @@
     "noUnusedParameters": true,
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src", "pages", "vite.config.ts"]
+  "include": ["src", "pages", "desktop", "vite.config.ts", "vite.desktop.config.ts"]
 }
