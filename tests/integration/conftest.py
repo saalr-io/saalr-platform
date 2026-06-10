@@ -15,7 +15,7 @@ APP_URL = os.environ.setdefault(
 )
 
 TENANT_TABLES = [
-    "executions", "orders", "positions", "broker_accounts", "backtests",
+    "executions", "orders", "positions", "broker_accounts", "backtests", "discovery_runs",
     "strategies", "billing_events", "subscriptions", "api_keys",
     "memberships", "audit_log", "user_progress", "llm_usage", "research_notes",
     "research_transcripts", "onboarding_progress", "tenants",
