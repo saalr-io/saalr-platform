@@ -1,0 +1,35 @@
+{
+  "_schema": {
+    "description": "Golden fixtures: hand-verified strategy analytics for regression. Architect Phase 7 expects every PAYOFF/PROB closed-form invariant to also have at least one golden case here. Values verified independently (by hand or QuantLib/py_vollib) BEFORE the implementation existed — never copied from implementation output.",
+    "verification_field": "verified_by must name the independent source: 'hand', 'quantlib', 'py_vollib'",
+    "tolerances": { "payoff": 1e-6, "pop": 0.01, "greeks": 1e-4 }
+  },
+  "cases": [
+    {
+      "id": "PCS-GOLDEN-001",
+      "label": "put_credit_spread",
+      "verified_by": "hand",
+      "market": { "spot": 105.0, "vol": 0.30, "rate": 0.05, "div_yield": 0.0 },
+      "legs": [
+        { "kind": "P", "strike": 100.0, "expiry_days": 30, "qty": -1, "entry_price": 1.7158 },
+        { "kind": "P", "strike": 95.0,  "expiry_days": 30, "qty":  1, "entry_price": 0.6181 }
+      ],
+      "expected": {
+        "net_credit": 1.0977,
+        "max_profit": 1.0977,
+        "max_loss": 3.9023,
+        "breakevens": [98.9023],
+        "pop_closed_form_lognormal": 0.7409,
+        "position_greeks": { "delta": 0.1153, "vega": -0.0533, "theta": 0.0096 },
+        "payoff_samples": [
+          { "terminal": 90.0,  "payoff": -3.9023 },
+          { "terminal": 95.0,  "payoff": -3.9023 },
+          { "terminal": 98.9023, "payoff": 0.0 },
+          { "terminal": 100.0, "payoff": 1.0977 },
+          { "terminal": 120.0, "payoff": 1.0977 }
+        ]
+      },
+      "_note": "Entry prices are Black-Scholes at the stated market for convenience; replace expected greeks/pop with your independently recomputed values when wiring real model conventions (theta/day vs theta/year, vega per vol point vs per 1.00)."
+    }
+  ]
+}
