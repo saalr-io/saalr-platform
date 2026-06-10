@@ -243,6 +243,10 @@ failed-run persistence.
 
 ## Out of scope / deferred
 
+- **Equity/cash-leg templates** (covered call, collar, protective put, cash-secured put). This
+  slice's generator enumerates **option-only** structures; equity-bearing templates need
+  share-count / collateral handling deferred to a later slice. `families` selection filters to
+  option-only template keys.
 - GARCH-σ (and skew-aware per-leg IV) as alternative MC vol sources.
 - Discovery UI (a later front-end slice).
 - Containerize/daemonize the discovery worker (an ops slice, like ingest-worker 7).
