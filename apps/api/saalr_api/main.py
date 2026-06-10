@@ -25,6 +25,7 @@ from saalr_core.marketdata.aggregates import MassiveAggregatesProvider
 from saalr_core.marketdata.rates import FredRateProvider
 
 from saalr_core.queue.backtest_queue import ensure_group
+from saalr_core.queue.discovery_queue import ensure_group as ensure_discovery_group
 from saalr_core.queue.research_queue import ensure_group as ensure_research_group
 from saalr_core.llm.cost import monthly_cap
 from saalr_core.rag.chat import make_chat_provider
@@ -35,6 +36,7 @@ from .auth import Principal, get_auth_provider, get_principal
 from .auth.magic import consume_link, request_link
 from .backtests.router import router as backtests_router
 from .billing import router as billing_router
+from .discovery.router import router as discovery_router
 from .marketing.router import router as marketing_router
 from .billing.provider import make_payment_provider
 from .content.router import router as content_router
@@ -78,6 +80,7 @@ def create_app() -> FastAPI:
         app.state.redis = aioredis.from_url(settings.redis_url, decode_responses=True)
         await ensure_group(app.state.redis)
         await ensure_research_group(app.state.redis)
+        await ensure_discovery_group(app.state.redis)
         app.state.market_provider = MassiveProvider(settings.massive_api_key)
         app.state.aggregates_provider = MassiveAggregatesProvider(settings.massive_api_key)
         app.state.rate_provider = FredRateProvider(
@@ -123,6 +126,7 @@ def create_app() -> FastAPI:
     app.include_router(market_router)
     app.include_router(strategies_router)
     app.include_router(backtests_router)
+    app.include_router(discovery_router)
     app.include_router(forecast_router)
     app.include_router(montecarlo_router)
     app.include_router(sentiment_router)
