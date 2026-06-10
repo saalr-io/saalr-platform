@@ -60,8 +60,8 @@ class DiscoveryAdapter(Protocol):
 
 
 def make_adapter() -> DiscoveryAdapter:
-    # from saalr.discovery.testing import HarnessAdapter; return HarnessAdapter()
-    pytest.skip("DiscoveryAdapter not wired to Saalr yet")
+    from saalr_core.discovery.testing import HarnessAdapter
+    return HarnessAdapter()
 
 
 @pytest.fixture(scope="module")
