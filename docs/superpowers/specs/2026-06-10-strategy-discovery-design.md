@@ -3,7 +3,7 @@
 **Date:** 2026-06-10
 **Slice:** Strategy discovery (LLD strategy-discovery module; the target of the installed
 `docs/INVARIANTS.md` catalog and the `DiscoveryAdapter` invariant harness).
-**Status:** Approved design, pre-plan.
+**Status:** Built (Milestones A + B). Plan: `docs/superpowers/plans/2026-06-10-strategy-discovery.md`.
 
 ## Summary
 
