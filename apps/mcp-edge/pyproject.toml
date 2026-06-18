@@ -1,0 +1,23 @@
+[project]
+name = "saalr-mcp-edge"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "saalr-core",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["saalr_mcp"]
+
+[tool.uv.sources]
+saalr-core = { workspace = true }
+
+[dependency-groups]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
