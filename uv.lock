@@ -17,6 +17,7 @@ members = [
     "saalr-content-worker",
     "saalr-core",
     "saalr-ingest-worker",
+    "saalr-mcp-edge",
     "saalr-ml",
     "saalr-ml-models",
     "saalr-ml-worker",
@@ -1378,6 +1379,29 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "saalr-core", editable = "packages/core" }]
+
+[[package]]
+name = "saalr-mcp-edge"
+version = "0.0.0"
+source = { editable = "apps/mcp-edge" }
+dependencies = [
+    { name = "saalr-core" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "saalr-core", editable = "packages/core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "pytest-asyncio", specifier = ">=0.23" },
+]
 
 [[package]]
 name = "saalr-ml"
