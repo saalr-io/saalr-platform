@@ -1,5 +1,13 @@
 # AWS prod deployment + saalr.io — Implementation Plan
 
+> ⚠️ **SUPERSEDED — do not execute.** This plan was written on the false premise that no
+> Terraform existed in the repo. In fact `master` already carries a complete module-based stack
+> (`infra/terraform/modules/*` + `environments/dev/`). The real work was much smaller: an
+> `environments/prod/` reusing those modules + a `saalr.io` Route 53 zone. See
+> **`infra/terraform/environments/prod/`** and the **"Production environment"** section of
+> `infra/terraform/README.md` for the actual implementation. Retained only for its cost analysis
+> and the `saalr.io` domain/CORS reasoning.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Stand up the `saalr-prod` AWS stack with Terraform and serve the existing monorepo (web + API + workers + Postgres + Redis) at `https://saalr.io`.
