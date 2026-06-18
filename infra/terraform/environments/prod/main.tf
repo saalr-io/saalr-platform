@@ -205,8 +205,20 @@ module "web" {
 }
 
 module "cicd" {
-  source                      = "../../modules/cicd"
-  name_prefix                 = "saalr-prod"
+  source      = "../../modules/cicd"
+  name_prefix = "saalr-prod"
+
+  # The GitHub OIDC provider is account-global; the dev env already creates it.
+  # Prod reuses it (a data lookup in the module) instead of re-creating it, which
+  # would fail with EntityAlreadyExists.
+  create_oidc_provider = false
+
+  # Match the actual repo (remote is github.com/saalr-io/saalr-platform); the module
+  # default owner is "spayyavula", which would make the prod deploy role reject the
+  # real repo's OIDC token at deploy time.
+  github_owner = "saalr-io"
+  github_repo  = "saalr-platform"
+
   ecr_repository_arns         = values(module.compute.ecr_repository_arns)
   passable_role_arns          = [module.compute.task_execution_role_arn, module.compute.task_role_arn]
   web_bucket_arn              = module.web.bucket_arn
