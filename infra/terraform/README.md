@@ -125,3 +125,50 @@ Run via Docker from the repo root (the AWS provider is downloaded by `init`; no 
     docker run --rm -v "${PWD}\infra\terraform:/work" -w /work ghcr.io/terraform-linters/tflint --recursive
 
 `apply` is run deliberately by an operator against a funded account — never in CI for this slice.
+
+## Production environment (`environments/prod/`, domain `saalr.io`)
+
+`environments/prod/` composes the **same modules** as dev (`name_prefix = "saalr-prod"`,
+`Environment = prod` tags, VPC CIDR `10.1.0.0/16` so it never overlaps dev's `10.0.0.0/16`), with
+prod hardening flipped on: `db_multi_az = true`, `db_deletion_protection = true`,
+`db_skip_final_snapshot = false`, `db_instance_class = "db.t4g.small"`. It additionally creates a
+**Terraform-managed Route 53 hosted zone for `saalr.io`** and wires it into the `web` module, which
+already provisions the ACM cert (us-east-1, DNS-validated), the CloudFront alias, and the
+`/api/*` → ALB origin (a CloudFront Function strips the `/api` prefix).
+
+**Audit Object Lock:** prod ships `audit_object_lock_mode = "GOVERNANCE"` (immutable, but a root
+principal can override) — chosen for the beta so the stack can still be torn down. Switch to
+`"COMPLIANCE"` only when going to regulated production: COMPLIANCE is **irreversible**, and audit
+objects (and the bucket) cannot be deleted until their retention expires (`audit_retention_days`,
+default 365), even by root.
+
+### First apply — order matters (DNS delegation gates the cert)
+
+The ACM cert validates by writing DNS records into the new `saalr.io` zone, but validation only
+completes once that zone is authoritative — i.e. after you delegate NS at the **external
+registrar**. So create the zone first, delegate, then apply the rest:
+
+    cd environments/prod
+    # 1. set a GLOBALLY-UNIQUE bucket_prefix in terraform.tfvars (e.g. append your account id)
+    terraform init \
+      -backend-config="bucket=<state_bucket>" \
+      -backend-config="dynamodb_table=<lock_table>"   # reuse the same bootstrap bucket/table as dev
+
+    # 2. create ONLY the hosted zone, then read its name servers
+    terraform apply -target=aws_route53_zone.primary
+    terraform output route53_name_servers
+    #    -> set these 4 NS records at the saalr.io registrar; wait for propagation:
+    #       dig +short NS saalr.io @8.8.8.8   (should return the AWS ns-*.awsdns-* set)
+
+    # 3. apply the full stack (cert validation now resolves against the delegated zone)
+    terraform plan        # review; provisions BILLABLE infra
+    terraform apply
+
+### After apply
+
+- Set secret **values** out-of-band (never in state): the `saalr/app/*` keys and broker secrets,
+  e.g. `aws secretsmanager put-secret-value --secret-id saalr/app/massive --secret-string '...'`.
+- Set the GitHub repo secret `AWS_DEPLOY_ROLE_ARN` to the `gha_deploy_role_arn` output, then build
+  & push the per-app images and roll the ECS services (see `.github/workflows/deploy.yml`).
+- `saalr.io` resolves to CloudFront once the alias record + cert are live; the API is reachable
+  same-origin at `https://saalr.io/api/*`.
