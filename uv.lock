@@ -1223,7 +1223,9 @@ name = "saalr-api"
 version = "0.0.0"
 source = { editable = "apps/api" }
 dependencies = [
+    { name = "alembic" },
     { name = "fastapi" },
+    { name = "psycopg2-binary" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "redis" },
     { name = "saalr-brokers" },
@@ -1240,7 +1242,9 @@ stripe = [
 
 [package.metadata]
 requires-dist = [
+    { name = "alembic", specifier = ">=1.13" },
     { name = "fastapi", specifier = ">=0.110" },
+    { name = "psycopg2-binary", specifier = ">=2.9" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.9" },
     { name = "redis", specifier = ">=5" },
     { name = "saalr-brokers", editable = "packages/brokers" },

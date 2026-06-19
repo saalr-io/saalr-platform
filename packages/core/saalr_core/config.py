@@ -83,15 +83,19 @@ class Settings(BaseSettings):
     billing_portal_return_url: str = "http://localhost:5173/app/billing"
 
     @model_validator(mode="after")
-    def _compose_app_database_url(self) -> "Settings":
-        # Compose the app DB URL from container DB_* vars when present. URL-encode
-        # the password so RDS-generated special characters don't corrupt the DSN.
+    def _compose_database_urls(self) -> "Settings":
+        # Compose the DB URLs from container DB_* vars when present. URL-encode the
+        # password so RDS-generated special characters don't corrupt the DSN. The app
+        # and migrations (Alembic) both connect as the injected DB_USER, so app and
+        # admin URLs are the same composed DSN here.
         if self.db_host:
             password = quote(self.db_password or "", safe="")
-            self.app_database_url = (
+            composed = (
                 f"postgresql+asyncpg://{self.db_user}:{password}"
                 f"@{self.db_host}:{self.db_port}/{self.db_name}"
             )
+            self.app_database_url = composed
+            self.admin_database_url = composed
         return self
 
 
