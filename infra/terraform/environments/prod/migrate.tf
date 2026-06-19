@@ -14,9 +14,9 @@ resource "aws_ecs_task_definition" "migrate" {
   execution_role_arn       = module.compute.task_execution_role_arn
   task_role_arn            = module.compute.task_role_arn
 
-  # The api image bundles CUDA torch; extraction needs more than the 20 GiB default.
+  # CPU-torch image; headroom over its slim extracted size (was 80 for CUDA).
   ephemeral_storage {
-    size_in_gib = 80
+    size_in_gib = 30
   }
 
   container_definitions = jsonencode([

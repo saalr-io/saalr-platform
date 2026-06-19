@@ -11,11 +11,20 @@ package = false
 members = ["packages/*", "apps/*"]
 exclude = ["apps/web"]
 
+# CPU-only PyTorch: pin torch to the CPU wheel index so the images don't pull
+# the multi-GB NVIDIA CUDA libraries (Fargate has no GPU). Shrinks the api / ml
+# images by several GB and lets tasks run on the default ephemeral disk.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
 [tool.uv.sources]
 saalr-core = { workspace = true }
 saalr-api = { workspace = true }
 saalr-ml = { workspace = true }
 saalr-brokers = { workspace = true }
+torch = [{ index = "pytorch-cpu" }]
 
 [dependency-groups]
 dev = [
