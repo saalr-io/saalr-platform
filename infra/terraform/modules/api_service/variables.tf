@@ -3,6 +3,12 @@ variable "name_prefix" {
   type        = string
 }
 
+variable "ephemeral_storage_gib" {
+  description = "Fargate task ephemeral storage (GiB, 21-200). 0 keeps the 20 GiB default. Raise for large images (e.g. CUDA torch)."
+  type        = number
+  default     = 0
+}
+
 variable "vpc_id" {
   description = "VPC id (from the network module)."
   type        = string
