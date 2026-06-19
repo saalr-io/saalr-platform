@@ -5,6 +5,7 @@ Revises:
 Create Date: 2026-05-28
 """
 from alembic import op
+import sqlalchemy as sa
 
 revision = "0001"
 down_revision = None
@@ -19,7 +20,20 @@ TENANT_SCOPED = [
 
 
 def upgrade() -> None:
-    op.execute("CREATE EXTENSION IF NOT EXISTS timescaledb")
+    bind = op.get_bind()
+    # TimescaleDB isn't available on AWS RDS for PostgreSQL. When it's absent,
+    # bars / options_chain_snapshots are created as plain tables (queries stay
+    # correct; only the time-partitioning optimization is absent). Where it IS
+    # available (local/dev Timescale), they become hypertables (see below).
+    has_timescale = (
+        bind.execute(
+            sa.text("SELECT 1 FROM pg_available_extensions WHERE name = 'timescaledb'")
+        ).scalar()
+        is not None
+    )
+
+    if has_timescale:
+        op.execute("CREATE EXTENSION IF NOT EXISTS timescaledb")
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     op.execute("CREATE EXTENSION IF NOT EXISTS citext")
 
@@ -253,7 +267,6 @@ def upgrade() -> None:
           volume   BIGINT NOT NULL,
           PRIMARY KEY (symbol, market, interval, ts)
         );
-        SELECT create_hypertable('bars', 'ts', chunk_time_interval => INTERVAL '1 day');
 
         CREATE TABLE options_chain_snapshots (
           ts            TIMESTAMPTZ NOT NULL,
@@ -274,8 +287,14 @@ def upgrade() -> None:
           vega          NUMERIC(10,6),
           PRIMARY KEY (underlying, market, expiry, strike, option_type, ts)
         );
-        SELECT create_hypertable('options_chain_snapshots', 'ts', chunk_time_interval => INTERVAL '1 day');
     """)
+
+    # Promote the time-series tables to hypertables only where TimescaleDB exists.
+    if has_timescale:
+        op.execute("SELECT create_hypertable('bars', 'ts', chunk_time_interval => INTERVAL '1 day')")
+        op.execute(
+            "SELECT create_hypertable('options_chain_snapshots', 'ts', chunk_time_interval => INTERVAL '1 day')"
+        )
 
     # Non-superuser application role + grants.
     op.execute("""
