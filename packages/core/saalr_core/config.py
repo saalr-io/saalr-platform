@@ -1,3 +1,6 @@
+from urllib.parse import quote
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +13,17 @@ class Settings(BaseSettings):
     admin_database_url: str = (
         "postgresql+asyncpg://postgres:postgres@localhost:5432/saalr"
     )
+
+    # Container DB wiring. In ECS the connection arrives as separate env vars
+    # (DB_PASSWORD from the RDS-managed secret), since the password can't be
+    # interpolated into a single env. When db_host is set, app_database_url is
+    # composed from these (below) so the password is read fresh each boot and
+    # survives RDS rotation. Local dev leaves them unset.
+    db_host: str | None = None
+    db_port: str = "5432"
+    db_name: str | None = None
+    db_user: str | None = None
+    db_password: str | None = None
 
     # Auth (ADR-001): "dev" (local) or "clerk"
     auth_provider: str = "dev"
@@ -67,6 +81,18 @@ class Settings(BaseSettings):
     billing_success_url: str = "http://localhost:5173/app/billing/success"
     billing_cancel_url: str = "http://localhost:5173/app/billing/cancel"
     billing_portal_return_url: str = "http://localhost:5173/app/billing"
+
+    @model_validator(mode="after")
+    def _compose_app_database_url(self) -> "Settings":
+        # Compose the app DB URL from container DB_* vars when present. URL-encode
+        # the password so RDS-generated special characters don't corrupt the DSN.
+        if self.db_host:
+            password = quote(self.db_password or "", safe="")
+            self.app_database_url = (
+                f"postgresql+asyncpg://{self.db_user}:{password}"
+                f"@{self.db_host}:{self.db_port}/{self.db_name}"
+            )
+        return self
 
 
 def get_settings() -> Settings:
