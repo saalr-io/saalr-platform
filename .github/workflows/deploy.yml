@@ -1,19 +1,20 @@
 # Deploy to ECS. Manual trigger; pick the environment via the name_prefix input
-# (defaults to saalr-prod).
+# (defaults to saalr-prod). Runs build -> migrate -> rollout in order so the DB
+# schema is migrated before the new service code rolls out.
 #
-# Builds & pushes all seven images to ECR (<name_prefix>/<app>), then forces a new
-# deployment of the ECS *services* (api + the long-running queue consumers). The
-# scheduled / one-off images (ingest-worker, oms-worker, ml-worker, content-worker)
-# are build+push only — they run as EventBridge task-defs / run-tasks, rolled by
-# re-registering the task def (terraform apply with a new tag), not update-service.
+#   build:    build & push all seven images to ECR (<name_prefix>/<app>).
+#   migrate:  run the <name_prefix>-migrate task (alembic upgrade head) and wait.
+#   rollout:  force a new deployment of the ECS *services* (api + consumers).
+#             Scheduled/one-off images (ingest/oms/ml/content) are build+push only;
+#             they roll via terraform task-def re-register, so they're not here.
 #
 # Prerequisites before this can run successfully:
-#   1. terraform apply the target env (ECR repos, ECS cluster/services, OIDC deploy role).
+#   1. terraform apply the target env (ECR repos, ECS cluster/services, migrate task
+#      def, OIDC deploy role).
 #   2. Repo secret AWS_DEPLOY_ROLE_ARN = the env's gha_deploy_role_arn output.
 #   3. The injected app secrets (saalr/app/*) hold real values, or ECS tasks won't start.
 #
-# To activate continuous deploy, add `push: { branches: [master] }` (it will use the
-# default name_prefix).
+# To activate continuous deploy, add `push: { branches: [master] }` (uses the default prefix).
 name: Deploy to ECS
 
 on:
@@ -32,21 +33,12 @@ env:
   AWS_REGION: us-east-1
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # ECS *services* — build, push, and force a new deployment.
-          - { image: api, is_service: true }
-          - { image: backtest-worker, is_service: true }
-          - { image: research-agent, is_service: true }
-          # Scheduled / one-off images — build + push only (rolled via terraform task-def re-register).
-          - { image: ingest-worker, is_service: false }
-          - { image: oms-worker, is_service: false }
-          - { image: ml-worker, is_service: false }
-          - { image: content-worker, is_service: false }
+        image: [api, backtest-worker, research-agent, ingest-worker, oms-worker, ml-worker, content-worker]
     steps:
       - uses: actions/checkout@v4
 
@@ -70,12 +62,53 @@ jobs:
           docker push "$REPO:${{ github.sha }}"
           docker push "$REPO:latest"
 
+  migrate:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run alembic upgrade head (and wait)
+        env:
+          PREFIX: ${{ inputs.name_prefix }}
+        run: |
+          set -euo pipefail
+          CL="${PREFIX}-cluster"
+          # Reuse the api service's VPC config (private subnets + app SG) for the one-off task.
+          NET=$(aws ecs describe-services --cluster "$CL" --services "${PREFIX}-api" \
+            --query 'services[0].networkConfiguration' --output json)
+          TASK=$(aws ecs run-task --cluster "$CL" --task-definition "${PREFIX}-migrate" \
+            --launch-type FARGATE --network-configuration "$NET" \
+            --query 'tasks[0].taskArn' --output text)
+          echo "migrate task: $TASK"
+          aws ecs wait tasks-stopped --cluster "$CL" --tasks "$TASK"
+          CODE=$(aws ecs describe-tasks --cluster "$CL" --tasks "$TASK" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+          echo "migrate exit code: $CODE"
+          test "$CODE" = "0"
+
+  rollout:
+    needs: migrate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api, backtest-worker, research-agent]
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Force a new ECS deployment
-        if: ${{ matrix.is_service }}
         env:
           PREFIX: ${{ inputs.name_prefix }}
         run: |
           aws ecs update-service \
             --cluster "${PREFIX}-cluster" \
-            --service "${PREFIX}-${{ matrix.image }}" \
+            --service "${PREFIX}-${{ matrix.service }}" \
             --force-new-deployment

@@ -11,6 +11,10 @@ dependencies = [
   "uvicorn[standard]>=0.29",
   "pyjwt[crypto]>=2.9",
   "redis>=5",
+  # Migrations: the api image doubles as the migrate task (alembic upgrade head);
+  # psycopg2 is the sync driver Alembic uses (env.py coerces +asyncpg -> +psycopg2).
+  "alembic>=1.13",
+  "psycopg2-binary>=2.9",
 ]
 
 [project.optional-dependencies]
