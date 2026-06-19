@@ -120,11 +120,10 @@ module "api_service" {
   # DB_PASSWORD pulls the `password` key from the RDS-managed secret JSON. The app builds
   # APP_DATABASE_URL from DB_HOST/PORT/USER/NAME/PASSWORD at startup (app-config follow-up).
   secrets = {
-    OPENAI_API_KEY    = module.storage.secret_arns["saalr/app/openai"]
-    ANTHROPIC_API_KEY = module.storage.secret_arns["saalr/app/anthropic"]
-    MASSIVE_API_KEY   = module.storage.secret_arns["saalr/app/massive"]
-    FRED_API_KEY      = module.storage.secret_arns["saalr/app/fred"]
-    DB_PASSWORD       = "${module.data.db_master_user_secret_arn}:password::"
+    OPENAI_API_KEY  = module.storage.secret_arns["saalr/app/openai"]
+    MASSIVE_API_KEY = module.storage.secret_arns["saalr/app/massive"]
+    FRED_API_KEY    = module.storage.secret_arns["saalr/app/fred"]
+    DB_PASSWORD     = "${module.data.db_master_user_secret_arn}:password::"
   }
 }
 
@@ -152,11 +151,10 @@ module "workers" {
   }
 
   secrets = {
-    OPENAI_API_KEY    = module.storage.secret_arns["saalr/app/openai"]
-    ANTHROPIC_API_KEY = module.storage.secret_arns["saalr/app/anthropic"]
-    MASSIVE_API_KEY   = module.storage.secret_arns["saalr/app/massive"]
-    FRED_API_KEY      = module.storage.secret_arns["saalr/app/fred"]
-    DB_PASSWORD       = "${module.data.db_master_user_secret_arn}:password::"
+    OPENAI_API_KEY  = module.storage.secret_arns["saalr/app/openai"]
+    MASSIVE_API_KEY = module.storage.secret_arns["saalr/app/massive"]
+    FRED_API_KEY    = module.storage.secret_arns["saalr/app/fred"]
+    DB_PASSWORD     = "${module.data.db_master_user_secret_arn}:password::"
   }
 
   # Scheduled (EventBridge -> ecs RunTask): ingest daily, oms-reconcile 5-min, sentiment daily.
