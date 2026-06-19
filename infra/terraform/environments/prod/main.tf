@@ -94,7 +94,7 @@ module "compute" {
 module "api_service" {
   source                = "../../modules/api_service"
   name_prefix           = "saalr-prod"
-  ephemeral_storage_gib = 80 # CUDA torch image OOMs the 20 GiB default on extract (slim to CPU torch later)
+  ephemeral_storage_gib = 30 # CPU-torch image; headroom over its slim size (was 80 for the CUDA image)
   vpc_id                = module.network.vpc_id
   public_subnet_ids     = module.network.public_subnet_ids
   private_subnet_ids    = module.network.private_subnet_ids
@@ -131,7 +131,7 @@ module "api_service" {
 module "workers" {
   source                = "../../modules/workers"
   name_prefix           = "saalr-prod"
-  ephemeral_storage_gib = 80 # CUDA torch image OOMs the 20 GiB default on extract (slim to CPU torch later)
+  ephemeral_storage_gib = 30 # CPU-torch image; headroom over its slim size (was 80 for the CUDA image)
   private_subnet_ids    = module.network.private_subnet_ids
   app_security_group_id = module.compute.app_security_group_id
   cluster_arn           = module.compute.cluster_arn
