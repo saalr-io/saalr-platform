@@ -68,6 +68,29 @@ resource "aws_route53_record" "demo" {
   records = ["saalrdemo.netlify.app."]
 }
 
+# --- Clerk production instance (auth on saalr.io) --------------------------
+# Frontend API, account portal, and email/DKIM CNAMEs for the Clerk prod
+# instance. Required before AUTH_PROVIDER=clerk works (web Clerk init + API
+# JWKS fetch both hit clerk.saalr.io). Permanent.
+locals {
+  clerk_cnames = local.dns_enabled ? {
+    "clerk"           = "frontend-api.clerk.services."
+    "accounts"        = "accounts.clerk.services."
+    "clkmail"         = "mail.86c9b2fq990s.clerk.services."
+    "clk._domainkey"  = "dkim1.86c9b2fq990s.clerk.services."
+    "clk2._domainkey" = "dkim2.86c9b2fq990s.clerk.services."
+  } : {}
+}
+
+resource "aws_route53_record" "clerk" {
+  for_each = local.clerk_cnames
+  zone_id  = local.dns_zone_id
+  name     = "${each.key}.${var.dns_zone_name}"
+  type     = "CNAME"
+  ttl      = 3600
+  records  = [each.value]
+}
+
 # --- apex + www: TRANSITIONAL (Netlify) until the apex cutover -------------
 resource "aws_route53_record" "apex_netlify" {
   count   = local.dns_enabled && var.apex_on_netlify ? 1 : 0
