@@ -76,5 +76,5 @@ output "cloudfront_distribution_id" {
 
 output "route53_name_servers" {
   description = "Set these NS records at the saalr.io registrar to delegate DNS to Route 53."
-  value       = var.web_domain_name != "" ? aws_route53_zone.primary[0].name_servers : []
+  value       = var.dns_zone_name != "" ? aws_route53_zone.primary[0].name_servers : []
 }

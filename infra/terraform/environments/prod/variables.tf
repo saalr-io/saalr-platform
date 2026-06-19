@@ -41,7 +41,37 @@ variable "single_nat_gateway" {
 }
 
 variable "web_domain_name" {
-  description = "Custom domain for the web app (e.g. saalr.io). Empty uses the default CloudFront domain. Terraform creates the Route 53 hosted zone; delegate NS at the registrar."
+  description = "Custom domain the WEB MODULE binds to CloudFront (cert + apex alias). Empty => CloudFront default domain. Kept empty until the app is deployed + verified; set to saalr.io only at the apex cutover (Phase 2d)."
+  type        = string
+  default     = ""
+}
+
+# ---------------------------------------------------------------------------
+# DNS — the Route 53 hosted zone + records are managed independently of the
+# web module so the apex can be cut over deliberately (Phase 2d) rather than
+# the instant CloudFront is created. See dns_records.tf and the README.
+# ---------------------------------------------------------------------------
+
+variable "dns_zone_name" {
+  description = "Domain to create + manage a Route 53 public hosted zone for (e.g. saalr.io). Empty => no zone. Decoupled from web_domain_name so the zone persists across the apex cutover."
+  type        = string
+  default     = ""
+}
+
+variable "apex_on_netlify" {
+  description = "Transitional: while true, apex + www point at the existing Netlify site (zero-downtime DNS move before the AWS app is live). Set false at the apex cutover so the web module's CloudFront alias takes over."
+  type        = bool
+  default     = false
+}
+
+variable "netlify_apex_ipv4" {
+  description = "Netlify load-balancer IPv4 for an external-DNS apex A record (used while apex_on_netlify)."
+  type        = string
+  default     = "75.2.60.5"
+}
+
+variable "netlify_site_host" {
+  description = "Netlify site host for the www CNAME while apex_on_netlify (e.g. storied-llama-1beb21.netlify.app). Empty => no www record."
   type        = string
   default     = ""
 }

@@ -1,7 +1,7 @@
 region = "us-east-1"
 
-# MUST be globally unique across all of AWS S3 — append your account id or similar before apply.
-bucket_prefix = "saalr-prod"
+# MUST be globally unique across all of AWS S3 (account-id suffix).
+bucket_prefix = "saalr-prod-992382415038"
 
 # Non-overlapping with dev (10.0.0.0/16) so the VPCs can peer later if needed.
 vpc_cidr             = "10.1.0.0/16"
@@ -10,8 +10,14 @@ public_subnet_cidrs  = ["10.1.0.0/24", "10.1.1.0/24"]
 private_subnet_cidrs = ["10.1.10.0/24", "10.1.11.0/24"]
 single_nat_gateway   = true
 
-# Custom domain. Terraform creates the saalr.io hosted zone; delegate NS at the registrar.
-web_domain_name = "saalr.io"
+# DNS: Terraform owns the saalr.io hosted zone + records (migrated off Netlify/NS1).
+dns_zone_name     = "saalr.io"
+netlify_site_host = "storied-llama-1beb21.netlify.app"
+
+# Apex/www stay on Netlify (zero-downtime) until the AWS app is deployed + verified.
+# Phase 2d cutover: set apex_on_netlify=false AND web_domain_name="saalr.io".
+apex_on_netlify = true
+web_domain_name = ""
 
 # Prod hardening.
 db_multi_az            = true
