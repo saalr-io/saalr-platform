@@ -1,21 +1,28 @@
-# Deploy to ECS (AWS-2e). Manual trigger only until the stack is applied.
+# Deploy to ECS. Manual trigger; pick the environment via the name_prefix input
+# (defaults to saalr-prod).
 #
-# Builds & pushes ALL seven images to ECR (saalr-dev/<app>), then forces a new deployment of the
-# ECS *services* (api + the long-running queue consumers). The scheduled / one-off images
-# (ingest-worker, oms-worker, ml-worker, content-worker) are build+push only — they run as
-# EventBridge task-defs or manual run-tasks, so their image is rolled by re-registering the task
-# def (terraform apply with a new tag), not `update-service`.
+# Builds & pushes all seven images to ECR (<name_prefix>/<app>), then forces a new
+# deployment of the ECS *services* (api + the long-running queue consumers). The
+# scheduled / one-off images (ingest-worker, oms-worker, ml-worker, content-worker)
+# are build+push only — they run as EventBridge task-defs / run-tasks, rolled by
+# re-registering the task def (terraform apply with a new tag), not update-service.
 #
 # Prerequisites before this can run successfully:
-#   1. `terraform apply` the dev stack (creates the ECR repos, ECS cluster/services, and the
-#      GitHub OIDC deploy role — see infra/terraform/environments/dev/outputs.tf gha_deploy_role_arn).
-#   2. Set the repo secret AWS_DEPLOY_ROLE_ARN to that deploy-role ARN.
+#   1. terraform apply the target env (ECR repos, ECS cluster/services, OIDC deploy role).
+#   2. Repo secret AWS_DEPLOY_ROLE_ARN = the env's gha_deploy_role_arn output.
+#   3. The injected app secrets (saalr/app/*) hold real values, or ECS tasks won't start.
 #
-# To activate continuous deploy, replace `workflow_dispatch` with `push: { branches: [master] }`.
+# To activate continuous deploy, add `push: { branches: [master] }` (it will use the
+# default name_prefix).
 name: Deploy to ECS
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      name_prefix:
+        description: "Environment resource prefix (saalr-prod or saalr-dev)."
+        required: true
+        default: saalr-prod
 
 permissions:
   id-token: write # required for OIDC
@@ -23,7 +30,6 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  ECS_CLUSTER: saalr-dev-cluster
 
 jobs:
   deploy:
@@ -33,14 +39,14 @@ jobs:
       matrix:
         include:
           # ECS *services* — build, push, and force a new deployment.
-          - { image: api, service: saalr-dev-api, dockerfile: apps/api/Dockerfile }
-          - { image: backtest-worker, service: saalr-dev-backtest-worker, dockerfile: apps/backtest-worker/Dockerfile }
-          - { image: research-agent, service: saalr-dev-research-agent, dockerfile: apps/research-agent/Dockerfile }
+          - { image: api, is_service: true }
+          - { image: backtest-worker, is_service: true }
+          - { image: research-agent, is_service: true }
           # Scheduled / one-off images — build + push only (rolled via terraform task-def re-register).
-          - { image: ingest-worker, service: "", dockerfile: apps/ingest-worker/Dockerfile }
-          - { image: oms-worker, service: "", dockerfile: apps/oms-worker/Dockerfile }
-          - { image: ml-worker, service: "", dockerfile: apps/ml-worker/Dockerfile }
-          - { image: content-worker, service: "", dockerfile: apps/content-worker/Dockerfile }
+          - { image: ingest-worker, is_service: false }
+          - { image: oms-worker, is_service: false }
+          - { image: ml-worker, is_service: false }
+          - { image: content-worker, is_service: false }
     steps:
       - uses: actions/checkout@v4
 
@@ -57,21 +63,19 @@ jobs:
       - name: Build and push image
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
+          PREFIX: ${{ inputs.name_prefix }}
         run: |
-          REPO="$REGISTRY/saalr-dev/${{ matrix.image }}"
-          docker build -t "$REPO:${{ github.sha }}" -t "$REPO:latest" -f "${{ matrix.dockerfile }}" .
+          REPO="$REGISTRY/${PREFIX}/${{ matrix.image }}"
+          docker build -t "$REPO:${{ github.sha }}" -t "$REPO:latest" -f "apps/${{ matrix.image }}/Dockerfile" .
           docker push "$REPO:${{ github.sha }}"
           docker push "$REPO:latest"
 
       - name: Force a new ECS deployment
-        if: matrix.service != ''
+        if: ${{ matrix.is_service }}
+        env:
+          PREFIX: ${{ inputs.name_prefix }}
         run: |
           aws ecs update-service \
-            --cluster "$ECS_CLUSTER" \
-            --service "${{ matrix.service }}" \
+            --cluster "${PREFIX}-cluster" \
+            --service "${PREFIX}-${{ matrix.image }}" \
             --force-new-deployment
-
-# NOTE: the scheduled / one-off images (ingest-worker, oms-worker, ml-worker, content-worker) are
-# EventBridge tasks or manual run-tasks pinned to a task-definition revision, not ECS services — so
-# they carry `service: ""` and skip `update-service`. Their image is rolled by re-registering the
-# task def (terraform apply with a new image tag).
