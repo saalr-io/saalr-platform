@@ -45,6 +45,7 @@ jobs:
         env:
           VITE_API_BASE_URL: /api
           VITE_AUTH_PROVIDER: ${{ vars.VITE_AUTH_PROVIDER }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
           SITE_ORIGIN: ${{ vars.SITE_ORIGIN }}
         run: pnpm build
 

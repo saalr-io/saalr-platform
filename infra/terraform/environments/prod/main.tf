@@ -116,6 +116,12 @@ module "api_service" {
     DB_PORT              = tostring(module.data.db_port)
     DB_NAME              = module.data.db_name
     DB_USER              = "saalr_admin"
+    # Clerk auth (production). JWKS + issuer are public; AUTH_PROVIDER switches the
+    # API from dev auth to Clerk JWT validation against clerk.saalr.io.
+    AUTH_PROVIDER  = "clerk"
+    CLERK_JWKS_URL = "https://clerk.saalr.io/.well-known/jwks.json"
+    CLERK_ISSUER   = "https://clerk.saalr.io"
+    WEB_BASE_URL   = "https://saalr.io"
   }
 
   # DB_PASSWORD pulls the `password` key from the RDS-managed secret JSON. The app builds
