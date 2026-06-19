@@ -37,12 +37,14 @@ provider "aws" {
 }
 
 # ---------------------------------------------------------------------------
-# Route 53 hosted zone for the custom domain.
-# Prod creates and owns its zone; delegate NS records at the registrar.
+# Route 53 hosted zone for the custom domain. Gated on dns_zone_name (NOT
+# web_domain_name) so the zone + its records persist independently of whether
+# the web module has taken over the apex yet. Prod owns the zone; NS are
+# delegated at the registrar. Records live in dns_records.tf.
 # ---------------------------------------------------------------------------
 resource "aws_route53_zone" "primary" {
-  count = var.web_domain_name != "" ? 1 : 0
-  name  = var.web_domain_name
+  count = var.dns_zone_name != "" ? 1 : 0
+  name  = var.dns_zone_name
 }
 
 module "network" {
@@ -197,7 +199,7 @@ module "web" {
   bucket_prefix   = var.bucket_prefix
   alb_domain_name = module.api_service.alb_dns_name
   web_domain_name = var.web_domain_name
-  route53_zone_id = var.web_domain_name != "" ? aws_route53_zone.primary[0].zone_id : ""
+  route53_zone_id = var.dns_zone_name != "" ? aws_route53_zone.primary[0].zone_id : ""
   providers = {
     aws           = aws
     aws.us_east_1 = aws.us_east_1
@@ -208,10 +210,11 @@ module "cicd" {
   source      = "../../modules/cicd"
   name_prefix = "saalr-prod"
 
-  # The GitHub OIDC provider is account-global; the dev env already creates it.
-  # Prod reuses it (a data lookup in the module) instead of re-creating it, which
-  # would fail with EntityAlreadyExists.
-  create_oidc_provider = false
+  # The GitHub OIDC provider is account-global. Prod is the environment actually
+  # deployed (dev was never applied), so prod OWNS/creates it. If dev is ever
+  # applied later in this account, dev must set create_oidc_provider = false to
+  # reuse this one (else EntityAlreadyExists).
+  create_oidc_provider = true
 
   # Match the actual repo (remote is github.com/saalr-io/saalr-platform); the module
   # default owner is "spayyavula", which would make the prod deploy role reject the
