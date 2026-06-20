@@ -11,13 +11,10 @@ private_subnet_cidrs = ["10.1.10.0/24", "10.1.11.0/24"]
 single_nat_gateway   = true
 
 # DNS: Terraform owns the saalr.io hosted zone + records (migrated off Netlify/NS1).
-dns_zone_name     = "saalr.io"
-netlify_site_host = "storied-llama-1beb21.netlify.app"
+dns_zone_name = "saalr.io"
 
-# Apex/www stay on Netlify (zero-downtime) until the AWS app is deployed + verified.
-# Phase 2d cutover: set apex_on_netlify=false AND web_domain_name="saalr.io".
-apex_on_netlify = true
-web_domain_name = ""
+# Go-live: apex + www serve the AWS app via CloudFront (web module, include_www=true).
+web_domain_name = "saalr.io"
 
 # Prod hardening.
 db_multi_az            = true
@@ -28,3 +25,11 @@ db_instance_class      = "db.t4g.small"
 # GOVERNANCE (root can override) for beta. Switch to "COMPLIANCE" (IRREVERSIBLE, 365-day lock)
 # only when going to regulated production — see README.
 audit_object_lock_mode = "GOVERNANCE"
+
+# Stripe billing — non-secret price IDs from your Stripe products (test mode first).
+# Secret key + webhook secret live in the saalr/app/stripe Secrets Manager container.
+# Fill these with your real price_... IDs and re-apply. Annual is optional (""=monthly).
+stripe_price_pro            = ""
+stripe_price_premium        = ""
+stripe_price_pro_annual     = ""
+stripe_price_premium_annual = ""

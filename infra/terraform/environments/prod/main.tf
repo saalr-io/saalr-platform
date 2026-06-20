@@ -122,6 +122,16 @@ module "api_service" {
     CLERK_JWKS_URL = "https://clerk.saalr.io/.well-known/jwks.json"
     CLERK_ISSUER   = "https://clerk.saalr.io"
     WEB_BASE_URL   = "https://saalr.io"
+
+    # Stripe billing — non-secret config. Price IDs (from your Stripe products) and the
+    # prod redirect URLs. Secret key + webhook secret are injected via `secrets` below.
+    STRIPE_PRICE_PRO            = var.stripe_price_pro
+    STRIPE_PRICE_PREMIUM        = var.stripe_price_premium
+    STRIPE_PRICE_PRO_ANNUAL     = var.stripe_price_pro_annual
+    STRIPE_PRICE_PREMIUM_ANNUAL = var.stripe_price_premium_annual
+    BILLING_SUCCESS_URL         = "https://saalr.io/app/billing/success"
+    BILLING_CANCEL_URL          = "https://saalr.io/app/billing/cancel"
+    BILLING_PORTAL_RETURN_URL   = "https://saalr.io/app/billing"
   }
 
   # DB_PASSWORD pulls the `password` key from the RDS-managed secret JSON. The app builds
@@ -131,6 +141,10 @@ module "api_service" {
     MASSIVE_API_KEY = module.storage.secret_arns["saalr/app/massive"]
     FRED_API_KEY    = module.storage.secret_arns["saalr/app/fred"]
     DB_PASSWORD     = "${module.data.db_master_user_secret_arn}:password::"
+    # Stripe secret key + webhook signing secret, from the saalr/app/stripe secret JSON
+    # (set out-of-band: {"secret_key":"sk_test_...","webhook_secret":"whsec_..."}).
+    STRIPE_SECRET_KEY     = "${module.storage.secret_arns["saalr/app/stripe"]}:secret_key::"
+    STRIPE_WEBHOOK_SECRET = "${module.storage.secret_arns["saalr/app/stripe"]}:webhook_secret::"
   }
 }
 
@@ -205,6 +219,7 @@ module "web" {
   bucket_prefix   = var.bucket_prefix
   alb_domain_name = module.api_service.alb_dns_name
   web_domain_name = var.web_domain_name
+  include_www     = true
   route53_zone_id = var.dns_zone_name != "" ? aws_route53_zone.primary[0].zone_id : ""
   providers = {
     aws           = aws
