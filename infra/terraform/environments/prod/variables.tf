@@ -58,20 +58,32 @@ variable "dns_zone_name" {
   default     = ""
 }
 
-variable "apex_on_netlify" {
-  description = "Transitional: while true, apex + www point at the existing Netlify site (zero-downtime DNS move before the AWS app is live). Set false at the apex cutover so the web module's CloudFront alias takes over."
-  type        = bool
-  default     = false
-}
+# ---------------------------------------------------------------------------
+# Stripe billing — non-secret price IDs (from your Stripe products). Secret key
+# + webhook secret come from the saalr/app/stripe Secrets Manager container.
+# Annual IDs are optional ("" => fall back to monthly).
+# ---------------------------------------------------------------------------
 
-variable "netlify_apex_ipv4" {
-  description = "Netlify load-balancer IPv4 for an external-DNS apex A record (used while apex_on_netlify)."
+variable "stripe_price_pro" {
+  description = "Stripe price ID for the Pro monthly plan (price_...)."
   type        = string
-  default     = "75.2.60.5"
+  default     = ""
 }
 
-variable "netlify_site_host" {
-  description = "Netlify site host for the www CNAME while apex_on_netlify (e.g. storied-llama-1beb21.netlify.app). Empty => no www record."
+variable "stripe_price_premium" {
+  description = "Stripe price ID for the Premium monthly plan (price_...)."
+  type        = string
+  default     = ""
+}
+
+variable "stripe_price_pro_annual" {
+  description = "Stripe price ID for the Pro annual plan (optional)."
+  type        = string
+  default     = ""
+}
+
+variable "stripe_price_premium_annual" {
+  description = "Stripe price ID for the Premium annual plan (optional)."
   type        = string
   default     = ""
 }

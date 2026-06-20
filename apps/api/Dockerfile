@@ -9,7 +9,8 @@ ENV UV_LINK_MODE=copy \
 # Copy the uv workspace (apps/web, docs, etc. excluded via the root .dockerignore) and install
 # only the API package + its dependency closure (saalr-core, saalr-ml, saalr-content, uvicorn).
 COPY . /app
-RUN uv sync --frozen --package saalr-api
+# --extra stripe bundles the Stripe SDK (an optional extra) so billing works at runtime.
+RUN uv sync --frozen --package saalr-api --extra stripe
 
 RUN useradd --create-home --uid 10001 appuser \
  && chown -R appuser /app

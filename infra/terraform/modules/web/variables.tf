@@ -25,6 +25,12 @@ variable "route53_zone_id" {
   default     = ""
 }
 
+variable "include_www" {
+  description = "Also serve www.<web_domain_name> (adds it as an ACM SAN + CloudFront alias + a www CNAME to the distribution). Only meaningful with a custom domain."
+  type        = bool
+  default     = false
+}
+
 variable "price_class" {
   description = "CloudFront price class."
   type        = string

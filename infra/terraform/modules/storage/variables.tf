@@ -29,6 +29,7 @@ variable "secret_names" {
     "saalr/app/anthropic",
     "saalr/app/massive",
     "saalr/app/fred",
+    "saalr/app/stripe",
   ]
 }
 

@@ -82,11 +82,12 @@ data "aws_cloudfront_origin_request_policy" "all_viewer" {
 
 # --- ACM cert (us-east-1) + Route53 validation, only with a custom domain ---
 resource "aws_acm_certificate" "web" {
-  count             = local.use_custom_domain ? 1 : 0
-  provider          = aws.us_east_1
-  domain_name       = var.web_domain_name
-  validation_method = "DNS"
-  tags              = merge(var.tags, { Name = "${var.name_prefix}-web-cert" })
+  count                     = local.use_custom_domain ? 1 : 0
+  provider                  = aws.us_east_1
+  domain_name               = var.web_domain_name
+  subject_alternative_names = var.include_www ? ["www.${var.web_domain_name}"] : []
+  validation_method         = "DNS"
+  tags                      = merge(var.tags, { Name = "${var.name_prefix}-web-cert" })
   lifecycle {
     create_before_destroy = true
   }
@@ -120,7 +121,7 @@ resource "aws_cloudfront_distribution" "web" {
   default_root_object = "index.html"
   price_class         = var.price_class
   comment             = "${var.name_prefix} web"
-  aliases             = local.use_custom_domain ? [var.web_domain_name] : []
+  aliases             = local.use_custom_domain ? (var.include_www ? [var.web_domain_name, "www.${var.web_domain_name}"] : [var.web_domain_name]) : []
   tags                = merge(var.tags, { Name = "${var.name_prefix}-web" })
 
   origin {
@@ -204,15 +205,30 @@ resource "aws_s3_bucket_policy" "web" {
   policy = data.aws_iam_policy_document.web_bucket.json
 }
 
-# --- Optional Route53 alias to the distribution ---
+# --- Route53 records to the distribution ---
+# allow_overwrite so the apex/www can take over records that already exist in the
+# zone (e.g. a prior Netlify pointer) in-place, without a destroy/create race.
 resource "aws_route53_record" "web_alias" {
-  count   = local.use_custom_domain ? 1 : 0
-  zone_id = var.route53_zone_id
-  name    = var.web_domain_name
-  type    = "A"
+  count           = local.use_custom_domain ? 1 : 0
+  zone_id         = var.route53_zone_id
+  name            = var.web_domain_name
+  type            = "A"
+  allow_overwrite = true
   alias {
     name                   = aws_cloudfront_distribution.web.domain_name
     zone_id                = aws_cloudfront_distribution.web.hosted_zone_id
     evaluate_target_health = false
   }
+}
+
+# www as a CNAME to the distribution (same record type as a typical existing www
+# pointer, so allow_overwrite UPSERTs it cleanly).
+resource "aws_route53_record" "www_alias" {
+  count           = local.use_custom_domain && var.include_www ? 1 : 0
+  zone_id         = var.route53_zone_id
+  name            = "www.${var.web_domain_name}"
+  type            = "CNAME"
+  ttl             = 300
+  records         = [aws_cloudfront_distribution.web.domain_name]
+  allow_overwrite = true
 }
