@@ -91,21 +91,6 @@ resource "aws_route53_record" "clerk" {
   records  = [each.value]
 }
 
-# --- apex + www: TRANSITIONAL (Netlify) until the apex cutover -------------
-resource "aws_route53_record" "apex_netlify" {
-  count   = local.dns_enabled && var.apex_on_netlify ? 1 : 0
-  zone_id = local.dns_zone_id
-  name    = var.dns_zone_name
-  type    = "A"
-  ttl     = 3600
-  records = [var.netlify_apex_ipv4]
-}
-
-resource "aws_route53_record" "www_netlify" {
-  count   = local.dns_enabled && var.apex_on_netlify && var.netlify_site_host != "" ? 1 : 0
-  zone_id = local.dns_zone_id
-  name    = "www.${var.dns_zone_name}"
-  type    = "CNAME"
-  ttl     = 3600
-  records = ["${var.netlify_site_host}."]
-}
+# apex (saalr.io) + www now point at CloudFront via the web module
+# (module.web aws_route53_record.web_alias / www_alias, with allow_overwrite).
+# The transitional Netlify pointers were removed at the go-live cutover.
