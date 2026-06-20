@@ -29,7 +29,7 @@ audit_object_lock_mode = "GOVERNANCE"
 # Stripe billing — non-secret price IDs from your Stripe products (test mode first).
 # Secret key + webhook secret live in the saalr/app/stripe Secrets Manager container.
 # Fill these with your real price_... IDs and re-apply. Annual is optional (""=monthly).
-stripe_price_pro            = ""
-stripe_price_premium        = ""
-stripe_price_pro_annual     = ""
-stripe_price_premium_annual = ""
+stripe_price_pro            = "price_1TkR9yPmQOK9NAjmkYXy3TYF"
+stripe_price_premium        = "price_1TkRClPmQOK9NAjmywcoxgYa"
+stripe_price_pro_annual     = "price_1TkRBTPmQOK9NAjmPpuCUWwq"
+stripe_price_premium_annual = "price_1TkREBPmQOK9NAjm3YLD8qV2"
