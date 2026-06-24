@@ -46,7 +46,6 @@ def run(start_year: int, end_year: int, rf: float, limit: int | None) -> str:
                 funds[t] = replace(f, shares=split_adjust_shares(f.shares, sp))
 
     holdings: dict = {}
-    holding_counts: list[int] = []
     holdings_by_year: list[tuple[int, int]] = []
     for year in range(start_year, end_year):
         rebal = pd.Timestamp(f"{year}-01-01")
@@ -66,18 +65,18 @@ def run(start_year: int, end_year: int, rf: float, limit: int | None) -> str:
             if r and r.passed:
                 passers.append(t)
         holdings[d] = passers
-        holding_counts.append(len(passers))
         holdings_by_year.append((year, len(passers)))
 
     value = equal_weight_value(prices.drop(columns=["SPY"], errors="ignore"), holdings)
     rets = daily_returns(value)
     spy = prices["SPY"].dropna()
-    spy_rets = spy.pct_change().dropna()
+    spy_rets = daily_returns(spy)
 
+    counts = [n for _, n in holdings_by_year]
     metrics = {
         "sharpe": sharpe(rets, rf), "cagr": cagr_from_value(value),
         "vol": float(rets.std(ddof=0) * (252 ** 0.5)), "max_dd": max_drawdown(value),
-        "avg_holdings": sum(holding_counts) / len(holding_counts) if holding_counts else 0,
+        "avg_holdings": sum(counts) / len(counts) if counts else 0,
     }
     benchmark = {"sharpe": sharpe(spy_rets, rf), "cagr": cagr_from_value(spy)}
     coverage = {"screened": len(funds), "dropped": dropped}

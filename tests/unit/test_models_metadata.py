@@ -4,7 +4,7 @@ import saalr_core.db.models  # noqa: F401  (registers all models on Base.metadat
 EXPECTED_TABLES = {
     "tenants", "users", "memberships", "api_keys",
     "subscriptions", "billing_events",
-    "strategies", "backtests", "model_validation_runs",
+    "strategies", "backtests", "model_validation_runs", "discovery_runs",
     "broker_accounts", "orders", "executions", "positions",
     "audit_log",
     "bars", "options_chain_snapshots", "instruments",

@@ -9,7 +9,7 @@ package = false
 
 [tool.uv.workspace]
 members = ["packages/*", "apps/*"]
-exclude = ["apps/web"]
+exclude = ["apps/web", "apps/desktop"]
 
 # CPU-only PyTorch: pin torch to the CPU wheel index so the images don't pull
 # the multi-GB NVIDIA CUDA libraries (Fargate has no GPU). Shrinks the api / ml
@@ -35,6 +35,8 @@ dev = [
   "pytest-asyncio>=0.23",
   "httpx>=0.27",
   "ruff>=0.5",
+  "hypothesis>=6.0",
+  "numpy>=1.26",
 ]
 
 [tool.pytest.ini_options]

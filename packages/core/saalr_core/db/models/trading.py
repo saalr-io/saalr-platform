@@ -51,6 +51,22 @@ class Backtest(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
 
+class DiscoveryRun(Base):
+    __tablename__ = "discovery_runs"
+    discovery_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=new_id)
+    tenant_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("tenants.tenant_id"), nullable=False)
+    underlying: Mapped[str] = mapped_column(Text, nullable=False)
+    market: Mapped[str] = mapped_column(CHAR(2), nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    request_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    result_json: Mapped[dict | None] = mapped_column(JSONB)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    as_of: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+
 class ModelValidationRun(Base):
     __tablename__ = "model_validation_runs"
     validation_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=new_id)
