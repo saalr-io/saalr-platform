@@ -9,7 +9,7 @@ package = false
 
 [tool.uv.workspace]
 members = ["packages/*", "apps/*"]
-exclude = ["apps/web"]
+exclude = ["apps/web", "apps/desktop"]
 
 # CPU-only PyTorch: pin torch to the CPU wheel index so the images don't pull
 # the multi-GB NVIDIA CUDA libraries (Fargate has no GPU). Shrinks the api / ml

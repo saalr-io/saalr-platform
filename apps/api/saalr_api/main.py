@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 import redis.asyncio as aioredis
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -108,6 +109,16 @@ def create_app() -> FastAPI:
         await engine.dispose()
 
     app = FastAPI(title="Saalr API", lifespan=lifespan)
+
+    _cors_origins = [o.strip() for o in settings.cors_allow_origins.split(",") if o.strip()]
+    if _cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=_cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     app.include_router(market_router)
     app.include_router(strategies_router)

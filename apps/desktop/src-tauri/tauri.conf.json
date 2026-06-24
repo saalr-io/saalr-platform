@@ -1,0 +1,40 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Saalr",
+  "version": "0.1.0",
+  "identifier": "com.saalr.desktop",
+  "build": {
+    "frontendDist": "../../web/dist-desktop",
+    "devUrl": "http://localhost:5174",
+    "beforeDevCommand": "pnpm -C ../web dev:desktop",
+    "beforeBuildCommand": "pnpm -C ../web build:desktop"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Saalr",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:8000 https://localhost:8000; img-src 'self' data: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "Saalr"
+  }
+}

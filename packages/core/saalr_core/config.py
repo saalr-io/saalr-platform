@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     magic_link_ttl_seconds: int = 900
     web_base_url: str = "http://localhost:5173"
+    # Comma-separated origins allowed by CORS (desktop webview + desktop dev server).
+    cors_allow_origins: str = "http://tauri.localhost,http://localhost:5174"
 
     # Market data (Greeks/vol surface slice)
     massive_api_key: str | None = None
